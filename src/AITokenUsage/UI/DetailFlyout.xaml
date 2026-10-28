@@ -1,0 +1,38 @@
+<Window x:Class="AITokenUsage.UI.DetailFlyout"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="AI 사용량 상세"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Topmost="True"
+        ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="Manual"
+        Focusable="False"
+        UseLayoutRounding="True"
+        FontFamily="Segoe UI Variable Text, Segoe UI">
+    <Grid Margin="12">
+        <Border x:Name="ShadowLayer" CornerRadius="8">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="16" ShadowDepth="3" Direction="270" Opacity="0.35" Color="Black" />
+            </Border.Effect>
+        </Border>
+        <Border x:Name="Card" CornerRadius="8" BorderThickness="1" Padding="16,12,16,12" MinWidth="300">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                    <ContentControl x:Name="GlyphHost" Width="16" Height="16" VerticalAlignment="Center"
+                                    Focusable="False" IsTabStop="False" />
+                    <TextBlock x:Name="TitleText" Margin="8,0,0,0" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <TextBlock x:Name="PlanText" Margin="8,1,0,0" FontSize="12" VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel x:Name="RowsPanel" />
+                <TextBlock x:Name="ExtraText" Margin="0,2,0,0" FontSize="12" Visibility="Collapsed" />
+                <Border x:Name="Divider" Height="1" Margin="0,10,0,8" />
+                <StackPanel x:Name="StatusPanel" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

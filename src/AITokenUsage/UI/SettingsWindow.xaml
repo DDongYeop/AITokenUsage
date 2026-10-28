@@ -1,0 +1,85 @@
+<Window x:Class="AITokenUsage.UI.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="AI 사용량 설정"
+        Width="480"
+        Height="620"
+        ResizeMode="NoResize"
+        ShowInTaskbar="True"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="Segoe UI Variable Text, Segoe UI"
+        FontSize="13">
+    <Window.Resources>
+        <Style x:Key="SectionHeader" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,18,0,8" />
+        </Style>
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,10,8" />
+        </Style>
+    </Window.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+        <StackPanel Margin="20,4,20,20">
+            <TextBlock Style="{StaticResource SectionHeader}" Text="표시할 AI" />
+            <StackPanel x:Name="ProviderRowsPanel" />
+
+            <TextBlock Style="{StaticResource SectionHeader}" Text="자동 전환" />
+            <CheckBox x:Name="RotationEnabledBox" MinWidth="0" Content="여러 AI 자동으로 넘기기" />
+            <Grid Margin="0,8,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="48" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="간격" VerticalAlignment="Center" Margin="0,0,10,0" />
+                <Slider x:Name="IntervalSlider" AutomationProperties.Name="전환 간격" Grid.Column="1" Minimum="2" Maximum="60" SmallChange="1" LargeChange="5"
+                        TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center" />
+                <TextBlock x:Name="IntervalText" Grid.Column="2" TextAlignment="Right" VerticalAlignment="Center" />
+            </Grid>
+            <CheckBox x:Name="PauseOnHoverBox" MinWidth="0" Content="마우스 올리면 멈춤" />
+            <CheckBox x:Name="SkipUnavailableBox" MinWidth="0" Margin="0,4,0,0" Content="연결 안 된 AI 건너뛰기" />
+
+            <TextBlock Style="{StaticResource SectionHeader}" Text="표시" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="64" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Style="{StaticResource FieldLabel}" Text="모니터" />
+                <ComboBox x:Name="MonitorBox" AutomationProperties.Name="모니터" Grid.Row="0" Grid.Column="1" Margin="0,0,0,8" DisplayMemberPath="Label" />
+                <TextBlock Grid.Row="1" Style="{StaticResource FieldLabel}" Text="위치" />
+                <ComboBox x:Name="PlacementBox" AutomationProperties.Name="위치" Grid.Row="1" Grid.Column="1" Margin="0,0,0,8" DisplayMemberPath="Label" />
+                <TextBlock Grid.Row="2" Style="{StaticResource FieldLabel}" Text="수치" />
+                <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
+                    <RadioButton x:Name="UsedRadio" GroupName="ValueMode" MinWidth="0" Margin="0,0,16,0" Content="사용한 %" />
+                    <RadioButton x:Name="RemainingRadio" GroupName="ValueMode" MinWidth="0" Content="남은 %" />
+                </StackPanel>
+                <TextBlock Grid.Row="3" Style="{StaticResource FieldLabel}" Text="글자색" />
+                <ComboBox x:Name="TextColorBox" AutomationProperties.Name="글자색" Grid.Row="3" Grid.Column="1" Margin="0,0,0,8" DisplayMemberPath="Label" />
+            </Grid>
+
+            <TextBlock Style="{StaticResource SectionHeader}" Text="일반" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="64" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource FieldLabel}" Text="새로고침" />
+                <ComboBox x:Name="RefreshBox" AutomationProperties.Name="새로고침" Grid.Column="1" Margin="0,0,0,8" DisplayMemberPath="Label" />
+            </Grid>
+            <CheckBox x:Name="StartWithWindowsBox" MinWidth="0" Content="Windows 시작 시 자동 실행" />
+            <CheckBox x:Name="ShowTrayBox" MinWidth="0" Margin="0,4,0,0" Content="트레이 아이콘 표시" />
+
+            <TextBlock x:Name="FooterText" Margin="0,18,0,0" FontSize="11" Opacity="0.6" TextWrapping="Wrap" />
+        </StackPanel>
+    </ScrollViewer>
+</Window>

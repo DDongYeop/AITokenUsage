@@ -8,11 +8,15 @@
     <RootNamespace>AITokenUsage</RootNamespace>
     <AssemblyName>AITokenUsage</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
+    <!-- The WPF SDK drops these two from the implicit usings; the app code uses them throughout. -->
+    <Using Include="System.IO" />
+    <Using Include="System.Net.Http" />
   </ItemGroup>
 
   <ItemGroup>

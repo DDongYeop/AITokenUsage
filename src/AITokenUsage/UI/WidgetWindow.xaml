@@ -1,0 +1,30 @@
+<Window x:Class="AITokenUsage.UI.WidgetWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:AITokenUsage.UI"
+        Title="AI 사용량 위젯"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        ResizeMode="NoResize"
+        Topmost="False"
+        UseLayoutRounding="True"
+        SizeToContent="Manual"
+        WindowStartupLocation="Manual"
+        Width="176"
+        Height="40">
+    <!-- #01000000: alpha 1 keeps the whole widget hit-testable (alpha 0 pixels pass clicks to the taskbar). -->
+    <Border x:Name="Root"
+            Background="#01000000"
+            Width="176"
+            Height="40"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top">
+        <Grid x:Name="Stage" ClipToBounds="True">
+            <ui:ProviderPanel x:Name="PanelA" />
+            <ui:ProviderPanel x:Name="PanelB" Visibility="Hidden" Opacity="0" />
+        </Grid>
+    </Border>
+</Window>

@@ -1,0 +1,4 @@
+{
+  "ok": true,
+  "purpose": "Verifies that Fixtures/** is copied to the test output folder."
+}

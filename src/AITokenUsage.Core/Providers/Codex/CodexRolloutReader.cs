@@ -127,10 +127,11 @@ public sealed class CodexRolloutReader
         var minutes = ToMinutes(Json.Num(window, "window_minutes"));
 
         DateTimeOffset? resetsAt = null;
-        if (Json.Num(window, "resets_at") is double epoch && epoch > 0)
-            resetsAt = DateTimeOffset.FromUnixTimeSeconds((long)epoch);                     // C, D
+        // Out-of-range values (e.g. a millisecond epoch) degrade to "no reset time"; the meter is kept.
+        if (Json.Num(window, "resets_at") is > 0)
+            resetsAt = Json.EpochSeconds(window, "resets_at");                              // C, D
         else if (Json.Num(window, "resets_in_seconds") is double relative && relative >= 0)
-            resetsAt = eventTime.AddSeconds(relative);                                     // B
+            resetsAt = Json.AddSecondsOrNull(eventTime, relative);                          // B
 
         if (resetsAt is { } reset && reset <= now)
             return new CodexWindow(0, minutes, null); // the window reset since the log line was written

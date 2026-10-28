@@ -81,6 +81,27 @@ public static class Json
     public static DateTimeOffset? EpochMilliseconds(JsonElement e, string name) =>
         Num(e, name) is double milliseconds ? FromUnixMilliseconds(Math.Round(milliseconds)) : null;
 
+    /// <summary>
+    /// <paramref name="origin"/> plus a relative number of seconds, or null when the offset or the result
+    /// is out of the DateTimeOffset range (e.g. a bogus 1e18). Never throws.
+    /// </summary>
+    public static DateTimeOffset? AddSecondsOrNull(DateTimeOffset origin, double seconds)
+    {
+        if (double.IsNaN(seconds) || double.IsInfinity(seconds))
+        {
+            return null;
+        }
+
+        try
+        {
+            return origin.AddSeconds(seconds);
+        }
+        catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException)
+        {
+            return null;
+        }
+    }
+
     private static DateTimeOffset? FromUnixMilliseconds(double milliseconds)
     {
         if (milliseconds < MinUnixMilliseconds || milliseconds > MaxUnixMilliseconds)

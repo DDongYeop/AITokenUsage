@@ -191,6 +191,21 @@ public class CodexAppServerClientTests
         Assert.Equal(CodexAppServerOutcome.Failed, result.Outcome);
     }
 
+    [Theory]
+    [InlineData("1793163600000")]   // milliseconds epoch
+    [InlineData("1e30")]
+    public void MapRateLimits_OutOfRangeResetsAt_KeepsMeterWithNullReset(string resetsAt)
+    {
+        using var document = JsonDocument.Parse(
+            "{\"rateLimits\":{\"limitId\":\"codex\",\"primary\":{\"usedPercent\":11,\"windowDurationMins\":300,\"resetsAt\":" + resetsAt + "},\"secondary\":null,\"planType\":\"plus\"}}");
+
+        var result = CodexAppServerClient.MapRateLimits(document.RootElement);
+
+        var meter = Assert.Single(result.Meters);
+        Assert.Equal(11, meter.UsedPercent);
+        Assert.Null(meter.ResetsAt);
+    }
+
     [Fact]
     public void MapRateLimits_FallsBackToRateLimits_WhenByLimitIdMissing()
     {

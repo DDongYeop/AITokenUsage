@@ -82,7 +82,19 @@ public sealed class TaskbarGeometryReader : IDisposable
         if (snapshot is null || snapshot.Taskbar != taskbar || snapshot.TaskbarRect != bounds)
         {
             RequestRefreshThrottled();
-            snapshot = null;
+            if (snapshot is not null
+                && snapshot.Taskbar == taskbar
+                && snapshot.TaskbarRect.Width == bounds.Width
+                && snapshot.TaskbarRect.Height == bounds.Height)
+            {
+                // Same size, new position (auto-hide slide): the buttons moved with the bar, so keep the snapshot
+                // shifted by the same offset instead of dropping Widgets/AppButtons until the next UIA pass.
+                snapshot = snapshot.Translate(bounds.Left - snapshot.TaskbarRect.Left, bounds.Top - snapshot.TaskbarRect.Top);
+            }
+            else
+            {
+                snapshot = null;
+            }
         }
 
         PixelRect? start = snapshot?.Start;
@@ -305,5 +317,18 @@ public sealed class TaskbarGeometryReader : IDisposable
         PixelRect? Start,
         PixelRect? Widgets,
         PixelRect? AppButtons,
-        PixelRect? Tray);
+        PixelRect? Tray)
+    {
+        public UiaSnapshot Translate(int dx, int dy) => new(
+            Taskbar,
+            Shift(TaskbarRect, dx, dy),
+            Shift(Start, dx, dy),
+            Shift(Widgets, dx, dy),
+            Shift(AppButtons, dx, dy),
+            Shift(Tray, dx, dy));
+
+        private static PixelRect Shift(PixelRect r, int dx, int dy) => new(r.Left + dx, r.Top + dy, r.Right + dx, r.Bottom + dy);
+
+        private static PixelRect? Shift(PixelRect? r, int dx, int dy) => r is PixelRect rect ? Shift(rect, dx, dy) : null;
+    }
 }

@@ -93,6 +93,20 @@ public class CodexUsageParserTests
     }
 
     [Theory]
+    [InlineData("""{"used_percent":42,"limit_window_seconds":18000,"reset_at":1793163600000}""")]   // milliseconds epoch
+    [InlineData("""{"used_percent":42,"limit_window_seconds":18000,"reset_at":1e30}""")]
+    [InlineData("""{"used_percent":42,"limit_window_seconds":18000,"reset_after_seconds":1e18}""")]
+    [InlineData("""{"used_percent":42,"limit_window_seconds":18000,"reset_after_seconds":1e300}""")]
+    public void ParseWham_OutOfRangeReset_KeepsMeterWithNullReset(string window)
+    {
+        var result = CodexUsageParser.ParseWham("{\"plan_type\":\"plus\",\"rate_limit\":{\"primary_window\":" + window + "}}", Now);
+
+        var meter = Assert.Single(result.Meters);
+        Assert.Equal(42, meter.UsedPercent);
+        Assert.Null(meter.ResetsAt);
+    }
+
+    [Theory]
     [InlineData("<html><body>Just a moment...</body></html>")]
     [InlineData("[]")]
     [InlineData("")]

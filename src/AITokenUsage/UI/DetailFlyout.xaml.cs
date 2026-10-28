@@ -32,14 +32,15 @@ public partial class DetailFlyout : Window
         DpiChanged += (_, _) => Reposition();
     }
 
-    public void Render(DetailCardModel model, bool appIsLight)
+    /// <param name="taskbarIsLight">System (taskbar) theme, not the app theme (spec 2.3, 4.6).</param>
+    public void Render(DetailCardModel model, bool taskbarIsLight)
     {
         ArgumentNullException.ThrowIfNull(model);
 
-        WidgetPalette palette = appIsLight ? WidgetPalette.DarkText : WidgetPalette.LightText;
-        Brush background = appIsLight ? LightBackground : DarkBackground;
+        WidgetPalette palette = taskbarIsLight ? WidgetPalette.DarkText : WidgetPalette.LightText;
+        Brush background = taskbarIsLight ? LightBackground : DarkBackground;
         Card.Background = background;
-        Card.BorderBrush = appIsLight ? LightBorder : DarkBorder;
+        Card.BorderBrush = taskbarIsLight ? LightBorder : DarkBorder;
         ShadowLayer.Background = background;
         Divider.Background = palette.Track;
 

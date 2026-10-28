@@ -97,6 +97,12 @@ public partial class SettingsWindow : Window
         window.Activate();
     }
 
+    /// <summary>
+    /// Closes the open settings window, if any. OnClosed applies a pending slider change synchronously, so call this
+    /// before the host starts shutting down (AppHost.ApplySettings is a no-op afterwards). UI thread only.
+    /// </summary>
+    public static void CloseCurrent() => s_current?.Close();
+
     private void ApplyTheme()
     {
 #pragma warning disable WPF0001 // Window.ThemeMode (Fluent) is flagged experimental in .NET 9/10.

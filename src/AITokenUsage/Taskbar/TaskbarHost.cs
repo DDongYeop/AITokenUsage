@@ -751,6 +751,13 @@ public sealed class TaskbarHost : IDisposable
         {
             // DispatcherTimer tick: an escaping exception would be an unhandled Dispatcher exception.
             _log.Error("taskbar host: child attach retry failed", ex);
+
+            // A failure after TearDownWindow/Adopt can leave a half-adopted window (or none) without timers:
+            // rebuild from scratch. A healthy overlay keeps running and the retry timer simply ticks again.
+            if (_window is null || _mode != HostMode.Overlay)
+            {
+                RequestRecreate("retry attempt failed", AttachRetryInterval);
+            }
         }
     }
 

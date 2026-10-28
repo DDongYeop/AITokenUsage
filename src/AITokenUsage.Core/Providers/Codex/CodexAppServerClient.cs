@@ -143,9 +143,8 @@ public sealed class CodexAppServerClient
         var used = Json.Num(window, "usedPercent");
         if (used is null) return null;
         long? minutes = Json.Num(window, "windowDurationMins") is double mins && mins > 0 ? (long)Math.Round(mins) : null;
-        DateTimeOffset? resetsAt = Json.Num(window, "resetsAt") is double epoch && epoch > 0
-            ? DateTimeOffset.FromUnixTimeSeconds((long)epoch)
-            : null;
+        // Out-of-range values (e.g. a millisecond epoch) degrade to "no reset time"; the meter is kept.
+        DateTimeOffset? resetsAt = Json.Num(window, "resetsAt") is > 0 ? Json.EpochSeconds(window, "resetsAt") : null;
         return new CodexWindow(used, minutes, resetsAt);
     }
 

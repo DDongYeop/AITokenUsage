@@ -93,7 +93,7 @@ public sealed class AppHost : IAsyncDisposable
 
     public ShellEventWindow Shell { get; }
 
-    /// <summary>Created in Start(). Task 17 changes the factory to () => new WidgetWindow(new WidgetViewModel(this, Theme)).</summary>
+    /// <summary>Created in Start().</summary>
     public TaskbarHost? Taskbar { get; private set; }
 
     /// <summary>Raised on the UI thread at the end of ApplySettings.</summary>
@@ -131,6 +131,14 @@ public sealed class AppHost : IAsyncDisposable
     public void ApplySettings()
     {
         Dispatcher.VerifyAccess();
+        if (IsShuttingDown)
+        {
+            // Shutdown() already flushed the settings window's pending change; a later one (e.g. a window closed by
+            // Application.Shutdown) must not queue background work or touch disposed services.
+            Log.Info("ApplySettings ignored: shutting down");
+            return;
+        }
+
         Settings.Normalize();
 
         // Only the UI thread writes _refreshMinutes, so this read is the previously applied value.
@@ -151,8 +159,52 @@ public sealed class AppHost : IAsyncDisposable
         bool startWithWindows = Settings.StartWithWindows;
         QueueBackground(() => StartupRegistration.Apply(startWithWindows, Log));
 
-        SettingsChanged?.Invoke(this, EventArgs.Empty);
+        RaiseSettingsChanged();
     }
+
+    /// <summary>Each subscriber runs in isolation: a failing subscriber never blocks the others or the caller.</summary>
+    private void RaiseSettingsChanged()
+    {
+        if (SettingsChanged is not EventHandler handlers)
+        {
+            return;
+        }
+
+        foreach (Delegate handler in handlers.GetInvocationList())
+        {
+            try
+            {
+                ((EventHandler)handler)(this, EventArgs.Empty);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("app host: a SettingsChanged subscriber failed", ex);
+            }
+        }
+    }
+
+    /// <summary>Each subscriber runs in isolation: a failing subscriber never blocks the others or the publisher.</summary>
+    private void RaiseViewChanged(ProviderView view)
+    {
+        if (ViewChanged is not EventHandler<ProviderView> handlers)
+        {
+            return;
+        }
+
+        foreach (Delegate handler in handlers.GetInvocationList())
+        {
+            try
+            {
+                ((EventHandler<ProviderView>)handler)(this, view);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("app host: a ViewChanged subscriber failed", ex);
+            }
+        }
+    }
+
+    private bool IsShuttingDown => _shutdownRequested || Volatile.Read(ref _disposed) == 1;
 
     /// <summary>Settings order ∩ Enabled, as current views.</summary>
     public IReadOnlyList<ProviderView> EnabledViewsInOrder()
@@ -193,6 +245,12 @@ public sealed class AppHost : IAsyncDisposable
             return;
         }
 
+        if (IsShuttingDown)
+        {
+            Log.Info("show-settings ignored: shutting down");
+            return;
+        }
+
         Log.Info("show-settings requested");
         SettingsWindow.ShowOrActivate(this, Theme);
     }
@@ -225,6 +283,18 @@ public sealed class AppHost : IAsyncDisposable
         if (_shutdownRequested)
         {
             return;
+        }
+
+        // Close the settings window first: its Closed handler applies a pending slider change synchronously, and
+        // that ApplySettings must run before the shutdown flag (and the disposal below) turns it into a no-op.
+        // The save it queues is awaited by DisposeAsync through the background chain.
+        try
+        {
+            SettingsWindow.CloseCurrent();
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("closing the settings window at shutdown failed", ex);
         }
 
         _shutdownRequested = true;
@@ -357,7 +427,7 @@ public sealed class AppHost : IAsyncDisposable
         }
 
         Rotation.UpdateProviders(EnabledViewsInOrder());
-        ViewChanged?.Invoke(this, view);
+        RaiseViewChanged(view);
     }
 
     private void OnRotationTick(object? sender, EventArgs e) => Rotation.OnTick();

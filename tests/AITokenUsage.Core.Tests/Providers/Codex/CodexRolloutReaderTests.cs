@@ -164,6 +164,24 @@ public class CodexRolloutReaderTests
     }
 
     [Theory]
+    [InlineData("\"resets_at\":1793163600000")]        // C/D: milliseconds epoch
+    [InlineData("\"resets_at\":1e30")]
+    [InlineData("\"resets_in_seconds\":1e18")]          // B: relative seconds overflow
+    [InlineData("\"resets_in_seconds\":1e300")]
+    public void ParseLine_OutOfRangeReset_KeepsMeterWithNullReset(string resetField)
+    {
+        var line = "{\"timestamp\":\"2026-10-28T02:00:00.000Z\",\"type\":\"event_msg\",\"payload\":{\"type\":\"token_count\",\"info\":null,\"rate_limits\":"
+            + "{\"primary\":{\"used_percent\":10.0,\"window_minutes\":300," + resetField + "}}}}";
+
+        var snapshot = CodexRolloutReader.ParseLine(line, Now);
+
+        Assert.NotNull(snapshot);
+        var meter = Assert.Single(snapshot.Meters);
+        Assert.Equal(10, meter.UsedPercent);
+        Assert.Null(meter.ResetsAt);
+    }
+
+    [Theory]
     [InlineData("""{"timestamp":"2026-10-28T02:00:00.000Z","type":"response_item","payload":{"type":"token_count"}}""")]
     [InlineData("""{"timestamp":"2026-10-28T02:00:00.000Z","type":"event_msg","payload":{"type":"agent_message","message":"\"token_count\""}}""")]
     [InlineData("""{"type":"event_msg","payload":{"type":"token_count","info":null,"rate_limits":{"primary":{"used_percent":1.0,"window_minutes":300,"resets_at":1793163600}}}}""")]

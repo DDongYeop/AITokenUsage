@@ -171,7 +171,7 @@ public sealed class DetailFlyoutController : IDisposable
         }
 
         DetailFlyout flyout = EnsureFlyout();
-        flyout.Render(model, _theme.IsAppLight);
+        flyout.Render(model, _theme.IsTaskbarLight);
         flyout.ShowAbove(anchorHandle);
         _clockTimer.Start();
     }
@@ -228,7 +228,7 @@ public sealed class DetailFlyoutController : IDisposable
             return;
         }
 
-        _flyout.Render(model, _theme.IsAppLight);
+        _flyout.Render(model, _theme.IsTaskbarLight);
     }
 
     private void OnViewChanged(object? sender, ProviderView view)

@@ -171,7 +171,10 @@ public partial class CopilotSignInPanel : UserControl, IDisposable
 
         try
         {
-            Clipboard.SetText(_code.UserCode);
+            // One attempt, no retry delay: WPF's Clipboard.SetText retries 10 x 100 ms (up to ~1 s) on the UI thread,
+            // which is shared with explorer's input queue while the widget is attached. The clipboard needs STA, so it
+            // stays on this thread; a locked clipboard just reports failure and the user can click again.
+            System.Windows.Forms.Clipboard.SetDataObject(_code.UserCode, copy: true, retryTimes: 0, retryDelay: 0);
             CopyButton.Content = "복사됨";
         }
         catch (ExternalException ex)
@@ -189,17 +192,28 @@ public partial class CopilotSignInPanel : UserControl, IDisposable
         }
     }
 
+    /// <summary>ShellExecute can block (default-browser lookup, cold start), so it runs off the UI thread; a URL needs no STA.</summary>
     private void OpenBrowser(Uri uri)
     {
-        try
+        string url = uri.AbsoluteUri;
+        _ = Task.Run(() =>
         {
-            Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true })?.Dispose();
-        }
-        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
-        {
-            _host.Log.Warn("Opening the GitHub device page failed.", ex);
-            ShowError($"브라우저를 열지 못했습니다. {uri.AbsoluteUri} 에 직접 접속하세요.");
-        }
+            try
+            {
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true })?.Dispose();
+            }
+            catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
+            {
+                _host.Log.Warn("Opening the GitHub device page failed.", ex);
+                Dispatcher.BeginInvoke(() =>
+                {
+                    if (!_disposed)
+                    {
+                        ShowError($"브라우저를 열지 못했습니다. {url} 에 직접 접속하세요.");
+                    }
+                });
+            }
+        });
     }
 
     private async Task RefreshUsageAsync()

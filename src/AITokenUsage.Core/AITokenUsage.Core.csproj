@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>AITokenUsage.Core</RootNamespace>
+    <AssemblyName>AITokenUsage.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AITokenUsage.Core.Tests" />
+  </ItemGroup>
+
+</Project>

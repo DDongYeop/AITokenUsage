@@ -1,0 +1,12 @@
+{
+  // Gemini CLI settings are JSONC: comments and trailing commas are allowed.
+  "general": {
+    "vimMode": false,
+  },
+  /* auth block */
+  "security": {
+    "auth": {
+      "selectedType": "oauth-personal",
+    },
+  },
+}

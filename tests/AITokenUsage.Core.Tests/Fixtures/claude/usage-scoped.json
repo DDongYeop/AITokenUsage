@@ -1,0 +1,71 @@
+{
+  "five_hour": { "utilization": 1, "resets_at": "2026-10-28T06:50:00+00:00" },
+  "seven_day": { "utilization": 2, "resets_at": "2026-10-29T20:00:00+00:00" },
+  "seven_day_sonnet": null,
+  "seven_day_opus": { "utilization": 40, "resets_at": "2026-10-29T20:00:00+00:00" },
+  "limits": [
+    {
+      "kind": "session",
+      "group": "session",
+      "percent": 62,
+      "severity": "warning",
+      "resets_at": "2026-10-28T06:50:00.100000+00:00",
+      "scope": null,
+      "is_active": false
+    },
+    {
+      "kind": "weekly_all",
+      "group": "weekly",
+      "percent": 91,
+      "severity": "critical",
+      "resets_at": "2026-10-29T20:00:00.200000+00:00",
+      "scope": null,
+      "is_active": true
+    },
+    {
+      "kind": "weekly_scoped",
+      "group": "weekly",
+      "percent": 35,
+      "severity": "normal",
+      "resets_at": "2026-10-29T20:00:00.300000+00:00",
+      "scope": { "model": { "id": null, "display_name": "Fable" }, "surface": null },
+      "is_active": false
+    },
+    {
+      "kind": "weekly_scoped",
+      "group": "weekly",
+      "percent": 12.5,
+      "severity": "normal",
+      "resets_at": "2026-10-29T20:00:00+00:00",
+      "scope": { "model": { "id": "fable-5-1", "display_name": "Fable 5.1" }, "surface": null },
+      "is_active": false
+    },
+    {
+      "kind": "weekly_scoped",
+      "group": "weekly",
+      "percent": 8,
+      "severity": "normal",
+      "resets_at": null,
+      "scope": { "model": null, "surface": { "display_name": "Claude Design" } },
+      "is_active": false
+    },
+    {
+      "kind": "weekly_scoped",
+      "group": "weekly",
+      "percent": 99,
+      "severity": "critical",
+      "resets_at": null,
+      "scope": { "model": { "id": null, "display_name": "" }, "surface": null },
+      "is_active": false
+    },
+    {
+      "kind": "weekly_scoped",
+      "group": "weekly",
+      "percent": 77,
+      "severity": "warning",
+      "resets_at": null,
+      "scope": { "model": { "id": null, "display_name": "fable" }, "surface": null },
+      "is_active": false
+    }
+  ]
+}

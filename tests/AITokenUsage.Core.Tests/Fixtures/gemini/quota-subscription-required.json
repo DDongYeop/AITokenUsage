@@ -1,0 +1,14 @@
+{
+  "error": {
+    "code": 403,
+    "message": "You do not have a valid license of this product. (#3501)",
+    "status": "PERMISSION_DENIED",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "SUBSCRIPTION_REQUIRED",
+        "domain": "cloudaicompanion.googleapis.com"
+      }
+    ]
+  }
+}

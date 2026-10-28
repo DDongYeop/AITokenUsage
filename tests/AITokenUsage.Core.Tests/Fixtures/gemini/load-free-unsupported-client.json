@@ -1,0 +1,12 @@
+{
+  "currentTier": { "id": "free-tier", "name": "Gemini Code Assist for individuals" },
+  "cloudaicompanionProject": "fake-project-free",
+  "ineligibleTiers": [
+    {
+      "reasonCode": "UNSUPPORTED_CLIENT",
+      "reasonMessage": "This client is no longer supported for Gemini Code Assist for individuals.",
+      "tierId": "free-tier",
+      "tierName": "Gemini Code Assist for individuals"
+    }
+  ]
+}

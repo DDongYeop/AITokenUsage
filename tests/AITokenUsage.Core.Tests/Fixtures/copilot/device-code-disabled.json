@@ -1,0 +1,5 @@
+{
+  "error": "device_flow_disabled",
+  "error_description": "Device Flow must be explicitly enabled for this App",
+  "error_uri": "https://docs.github.com/developers/apps/authorizing-oauth-apps#device-flow"
+}

@@ -1,0 +1,10 @@
+{
+  "OPENAI_API_KEY": "sk-test-exchanged-key",
+  "tokens": {
+    "id_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImRldkBleGFtcGxlLmNvbSIsImh0dHBzOi8vYXBpLm9wZW5haS5jb20vYXV0aCI6eyJjaGF0Z3B0X2FjY291bnRfaWQiOiJhY2N0LWZpeHR1cmUtMDAwMSIsImNoYXRncHRfcGxhbl90eXBlIjoicHJvIiwiY2hhdGdwdF91c2VyX2lkIjoidXNlci1maXh0dXJlLTAwMDEiLCJjaGF0Z3B0X2FjY291bnRfaXNfZmVkcmFtcCI6ZmFsc2V9LCJleHAiOjE3OTMxNjAwMDAsImlhdCI6MTc5MzE1NjQwMH0.test-signature",
+    "access_token": "test-opaque-access-token",
+    "refresh_token": "test-refresh-token",
+    "account_id": null
+  },
+  "last_refresh": "2026-10-25T03:00:00Z"
+}

@@ -1,0 +1,29 @@
+{
+  "plan_type": "pro",
+  "rate_limit": {
+    "allowed": true,
+    "limit_reached": false,
+    "primary_window": { "used_percent": 18, "limit_window_seconds": 18000, "reset_after_seconds": 7200, "reset_at": 1793163600 },
+    "secondary_window": { "used_percent": 33.5, "limit_window_seconds": 604800, "reset_after_seconds": 259200, "reset_at": 1793415600 }
+  },
+  "credits": { "has_credits": true, "unlimited": false, "balance": "150.0", "approx_local_messages": [], "approx_cloud_messages": [] },
+  "spend_control": {
+    "reached": false,
+    "individual_limit": { "source": "workspace_spend_controls", "limit": "25000", "used": "8000", "remaining": "17000",
+                          "used_percent": 32, "remaining_percent": 68, "reset_after_seconds": 43200, "reset_at": 1793415600 }
+  },
+  "additional_rate_limits": [
+    { "limit_name": "GPT-5.3-Codex-Spark", "metered_feature": "gpt_5_3_codex_spark", "normal_model_slug": null,
+      "rate_limit": { "allowed": true, "limit_reached": false,
+        "primary_window":   { "used_percent": 30,  "limit_window_seconds": 18000,  "reset_after_seconds": 0, "reset_at": 1793163600 },
+        "secondary_window": { "used_percent": 100, "limit_window_seconds": 604800, "reset_after_seconds": 0, "reset_at": 1793761200 } } },
+    { "limit_name": "Broken entry", "metered_feature": "broken_feature", "rate_limit": null },
+    { "limit_name": "No feature", "rate_limit": { "allowed": true, "limit_reached": false,
+        "primary_window": { "used_percent": 1, "limit_window_seconds": 18000, "reset_at": 1793163600 } } },
+    42
+  ],
+  "rate_limit_reached_type": null,
+  "rate_limit_reset_credits": { "available_count": 3 },
+  "account_id": "acct-test-0001",
+  "user_id": "user-test-0001"
+}

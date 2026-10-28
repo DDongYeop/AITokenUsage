@@ -1,0 +1,13 @@
+{
+  "auth_mode": "chatgpt",
+  "OPENAI_API_KEY": "sk-test-exchanged-key",
+  "tokens": {
+    "id_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImRldkBleGFtcGxlLmNvbSIsImh0dHBzOi8vYXBpLm9wZW5haS5jb20vYXV0aCI6eyJjaGF0Z3B0X2FjY291bnRfaWQiOiJhY2N0LWZpeHR1cmUtMDAwMSIsImNoYXRncHRfcGxhbl90eXBlIjoicHJvIiwiY2hhdGdwdF91c2VyX2lkIjoidXNlci1maXh0dXJlLTAwMDEiLCJjaGF0Z3B0X2FjY291bnRfaXNfZmVkcmFtcCI6ZmFsc2V9LCJleHAiOjE3OTMxNjAwMDAsImlhdCI6MTc5MzE1NjQwMH0.test-signature",
+    "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3OTMxNzA4MDAsImlhdCI6MTc5MzE1NjQwMCwiaHR0cHM6Ly9hcGkub3BlbmFpLmNvbS9hdXRoIjp7ImNoYXRncHRfYWNjb3VudF9pZCI6ImFjY3QtZml4dHVyZS0wMDAxIn19.test-signature",
+    "refresh_token": "test-refresh-token",
+    "oauth_provenance": { "issuer": "https://auth.openai.com", "client_id": "app_test_client" },
+    "login_owner_id": "owner-test-0001",
+    "account_id": "acct-fixture-0001"
+  },
+  "last_refresh": "2026-10-28T02:59:00.123456789Z"
+}

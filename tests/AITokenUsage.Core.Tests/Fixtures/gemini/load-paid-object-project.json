@@ -1,0 +1,9 @@
+{
+  "currentTier": { "id": "standard-tier", "name": "Gemini Code Assist", "hasOnboardedPreviously": true },
+  "cloudaicompanionProject": { "id": "fake-project-object", "name": "projects/fake-project-object" },
+  "paidTier": {
+    "id": "g1-pro-tier",
+    "name": "Gemini Code Assist in Google One AI Pro",
+    "availableCredits": [ { "creditType": "GOOGLE_ONE_AI", "creditAmount": "1000" } ]
+  }
+}

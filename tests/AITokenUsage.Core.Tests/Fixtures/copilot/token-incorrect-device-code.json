@@ -1,0 +1,5 @@
+{
+  "error": "incorrect_device_code",
+  "error_description": "The device_code provided is not valid.",
+  "error_uri": "https://docs.github.com/developers/apps/authorizing-oauth-apps#error-codes-for-the-device-flow"
+}

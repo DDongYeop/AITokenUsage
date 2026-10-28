@@ -1,0 +1,12 @@
+{
+  "github.com:Iv1.b507a08c87ecfe98": {
+    "user": "octocat",
+    "oauth_token": "ghu_test_apps_token",
+    "githubAppId": "Iv1.b507a08c87ecfe98"
+  },
+  "ghe.example.com:Iv1.b507a08c87ecfe98": {
+    "user": "someone-else",
+    "oauth_token": "ghu_test_other_host_token",
+    "githubAppId": "Iv1.b507a08c87ecfe98"
+  }
+}

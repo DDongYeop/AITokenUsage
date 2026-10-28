@@ -1,0 +1,26 @@
+{
+  "login": "octocat",
+  "access_type_sku": "test_paid_individual_sku",
+  "copilot_plan": "individual",
+  "chat_enabled": true,
+  "can_signup_for_limited": false,
+  "token_based_billing": false,
+  "quota_reset_date": "2026-11-01",
+  "quota_reset_date_utc": "2026-11-01T00:00:00.000Z",
+  "quota_snapshots": {
+    "chat": { "quota_id": "chat", "entitlement": 0, "remaining": 0, "percent_remaining": 100, "unlimited": true, "overage_count": 0, "overage_permitted": false },
+    "completions": { "quota_id": "completions", "entitlement": 0, "remaining": 0, "percent_remaining": 100, "unlimited": true, "overage_count": 0, "overage_permitted": false },
+    "premium_interactions": {
+      "quota_id": "premium_interactions",
+      "entitlement": 300,
+      "remaining": 71,
+      "quota_remaining": 71,
+      "percent_remaining": 23.7,
+      "unlimited": false,
+      "overage_count": 0,
+      "overage_permitted": true,
+      "overage_entitlement": 0,
+      "timestamp_utc": "2026-10-28T09:00:00.000Z"
+    }
+  }
+}

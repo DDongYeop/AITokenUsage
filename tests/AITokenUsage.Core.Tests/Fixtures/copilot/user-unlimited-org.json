@@ -1,0 +1,13 @@
+{
+  "login": "enterprise-user",
+  "access_type_sku": "test_enterprise_seat_sku",
+  "copilot_plan": "enterprise",
+  "token_based_billing": false,
+  "quota_reset_date_utc": "2026-11-01T00:00:00.000Z",
+  "organization_login_list": ["example-org"],
+  "quota_snapshots": {
+    "chat": { "quota_id": "chat", "entitlement": -1, "remaining": 0, "percent_remaining": 100, "unlimited": true },
+    "completions": { "quota_id": "completions", "entitlement": -1, "remaining": 0, "percent_remaining": 100, "unlimited": true },
+    "premium_interactions": { "quota_id": "premium_interactions", "entitlement": -1, "remaining": 0, "percent_remaining": 100, "unlimited": true, "overage_permitted": false }
+  }
+}

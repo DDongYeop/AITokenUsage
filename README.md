@@ -20,19 +20,40 @@ Windows 11 작업 표시줄 안에 **Claude · Codex · Gemini CLI · GitHub Cop
 ## 요구 사항
 
 - Windows 11 24H2 또는 25H2, x64, **가로(아래쪽) 작업 표시줄**
-- 실행: [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0)
-- 빌드: .NET 10 SDK
-- 보려는 AI 도구에 미리 로그인해 두어야 합니다.
-  - Claude: Claude Code (`claude` 실행 후 `/login`, Pro/Max/Team/Enterprise 구독 로그인)
-  - Codex: Codex CLI (`codex login`, ChatGPT 계정 로그인)
-  - Gemini: Gemini CLI (Google 계정 로그인, Code Assist 라이선스)
-  - Copilot: `gh auth login`, Copilot CLI, VS Code 계열 Copilot 중 하나 — 또는 설정 창의 **GitHub 로그인**
+- 설치 프로그램으로 설치하면 .NET을 따로 설치할 필요가 없습니다(런타임 포함).
+- 직접 빌드: .NET 10 SDK, [Inno Setup 6](https://jrsoftware.org/isinfo.php)
+- 보려는 AI 도구에 로그인해 두어야 합니다. 설치·로그인 방법은 아래 [AI 연결 방법](#ai-연결-방법)을 보세요.
 
 관리자 권한은 필요 없습니다.
 
-## 빌드와 실행
+## 설치
 
-저장소 루트에서:
+1. GitHub Releases 또는 직접 빌드한 `AITokenUsage-Setup-<버전>.exe`를 실행합니다.
+2. SmartScreen 경고가 나오면 **추가 정보 → 실행**을 누릅니다(서명되지 않은 프로그램이라 나오는 경고입니다).
+3. 설치 마법사는 한국어·영어를 지원하고 Windows 언어에 맞춰 자동 선택합니다. "Windows 시작 시 자동 실행"과 바탕화면 아이콘은 선택 항목이며 기본은 꺼져 있습니다.
+
+관리자 권한은 필요 없고, 기본 설치 위치는 `%LOCALAPPDATA%\Programs\AITokenUsage`입니다. 제거는 **설정 → 앱**에서 하며, 제거할 때 설정과 캐시도 지울지 묻습니다. AI CLI의 로그인 파일은 건드리지 않습니다.
+
+## AI 연결 방법
+
+**설정 → AI 연결** 페이지에서 AI마다 연결 상태를 볼 수 있습니다. 연결되지 않은 AI는 카드에 단계별 안내가 나오고, 명령은 [복사]로 복사하거나 [터미널에서 로그인]으로 바로 실행할 수 있습니다. 로그인하면 자동으로 인식됩니다(바로 확인하려면 [다시 확인]).
+
+| AI | 설치 | 로그인 |
+|---|---|---|
+| Claude | `npm install -g @anthropic-ai/claude-code` | `claude` 실행 후 `/login` (Pro/Max/Team/Enterprise 구독) |
+| Codex | `npm install -g @openai/codex` | `codex login` (ChatGPT 계정) |
+| Gemini | `npm install -g @google/gemini-cli` | `gemini` 실행 후 "Login with Google" 선택 (Workspace Code Assist 계정) |
+| Copilot | 별도 설치 없음 | 설정 창의 **GitHub 로그인**(기기 코드), 또는 `gh auth login` · Copilot CLI · VS Code 계열 Copilot |
+
+Claude·Codex·Gemini 설치에는 Node.js가 필요합니다: `winget install OpenJS.NodeJS.LTS`
+
+## 언어
+
+**설정 → 일반 → 언어**에서 자동(Windows 설정) / 한국어 / English를 고릅니다. 바꾼 뒤에는 앱을 다시 시작해야 적용됩니다.
+
+## 직접 빌드
+
+개발용 빌드와 실행은 저장소 루트에서:
 
 ```powershell
 dotnet build AITokenUsage.sln
@@ -42,13 +63,14 @@ dotnet run --project src/AITokenUsage
 
 창 없이 시작해 작업 표시줄에 위젯이, 알림 영역에 트레이 아이콘이 나타납니다. 이미 실행 중일 때 다시 실행하면 새로 뜨지 않고 설정 창을 엽니다.
 
-## 배포
+설치 프로그램은 Inno Setup으로 만듭니다.
 
 ```powershell
-dotnet publish src/AITokenUsage -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o publish
+winget install JRSoftware.InnoSetup
+powershell -ExecutionPolicy Bypass -File tools\Build-Installer.ps1
 ```
 
-결과물은 `publish\AITokenUsage.exe` 한 파일입니다(.pdb는 디버깅용). 실행하는 PC에 .NET 10 Desktop Runtime이 있어야 합니다. 원하는 폴더에 복사해 실행하고, 설정 창에서 "Windows 시작 시 자동 실행"을 켜면 로그인할 때 자동으로 시작합니다.
+이 스크립트는 테스트를 돌리고, 런타임을 포함한 self-contained 배포본(`artifacts\publish`)을 만든 뒤, `artifacts\installer\AITokenUsage-Setup-<버전>.exe`를 만듭니다. 테스트를 건너뛰려면 `-SkipTests`를 붙입니다. 버전은 `Directory.Build.props`의 `<Version>` 한 곳에서 관리합니다.
 
 앱 아이콘을 다시 만들려면:
 

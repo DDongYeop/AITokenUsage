@@ -119,7 +119,10 @@ public partial class WidgetWindow : Window
 
     /// <summary>
     /// Keeps the WPF content width in step with the ShowResetTime setting (176 or 210 DIP). TaskbarHost sizes the HWND
-    /// from the same WidgetMetrics value on its next layout, so the two agree.
+    /// from the same WidgetMetrics value on its next layout, so the two agree. Root.Width is only seeded here before that
+    /// first layout (it is still NaN); afterwards TaskbarHost owns it (pixel width / DPI scale), and every ShowResetTime
+    /// flip reaches it through TaskbarHost's own SettingsChanged layout, so writing the round DIP value here would only
+    /// reintroduce a 1 px drift at fractional DPI.
     /// </summary>
     private void ApplyWidth()
     {
@@ -131,7 +134,10 @@ public partial class WidgetWindow : Window
 
         _widthDip = width;
         Width = width;
-        Root.Width = width;
+        if (double.IsNaN(Root.Width))
+        {
+            Root.Width = width;
+        }
     }
 
     private void OnProviderSwitched(object? sender, int direction)

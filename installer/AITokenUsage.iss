@@ -7,15 +7,17 @@
 
 [Setup]
 AppId={{135FF402-48F6-486E-B730-03060A8E9414}
-AppName=AI Token Usage
+AppName=AI Usage
 AppVersion={#AppVersion}
-AppVerName=AI Token Usage {#AppVersion}
+AppVerName=AI Usage {#AppVersion}
 AppPublisher=DDongYeop
 AppPublisherURL=https://github.com/DDongYeop/AITokenUsage
 DefaultDirName={localappdata}\Programs\AITokenUsage
 DisableProgramGroupPage=yes
 DisableDirPage=auto
 UsePreviousAppDir=yes
+; 업그레이드 때 첫 설치의 작업 선택을 다시 적용하지 않는다: 안 고른 작업은 기존 Run 값과 바탕 화면 아이콘을 건드리지 않는다.
+UsePreviousTasks=no
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -24,7 +26,7 @@ OutputDir=..\artifacts\installer
 OutputBaseFilename=AITokenUsage-Setup-{#AppVersion}
 SetupIconFile=..\src\AITokenUsage\Assets\AppIcon.ico
 UninstallDisplayIcon={app}\{#AppExe}
-UninstallDisplayName=AI Token Usage
+UninstallDisplayName=AI Usage
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
@@ -41,10 +43,10 @@ Name: "korean"; MessagesFile: "compiler:Languages\Korean.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [CustomMessages]
-english.AppDisplayName=AI Token Usage
+english.AppDisplayName=AI Usage
 english.StartWithWindows=Start with Windows
 english.OtherOptions=Other options:
-english.LaunchApp=Launch AI Token Usage
+english.LaunchApp=Launch AI Usage
 english.DeleteUserData=Also delete settings and cache?%n%nThis removes the app's own data (including the Copilot sign-in it stored). AI CLI sign-in files are never touched.
 #if HasKorean
 korean.AppDisplayName=AI 사용량
@@ -60,7 +62,7 @@ Name: "startup"; Description: "{cm:StartWithWindows}"; GroupDescription: "{cm:Ot
 
 [Files]
 ; [InstallDelete]를 두지 않는다: 사용자가 고른 비어 있지 않은 폴더가 지워질 수 있고, self-contained 앱은 이전 버전의 잔여 파일이 있어도 문제가 없다.
-Source: "..\artifacts\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\artifacts\publish\*"; DestDir: "{app}"; Excludes: "*.pdb"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{cm:AppDisplayName}"; Filename: "{app}\{#AppExe}"

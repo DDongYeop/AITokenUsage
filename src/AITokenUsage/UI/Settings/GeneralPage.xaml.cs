@@ -48,19 +48,46 @@ public partial class GeneralPage : SettingsPage
         };
         HookToggle(StartWithWindowsBox, on => Update(s => s.StartWithWindows = on));
         HookToggle(ShowTrayBox, on => Update(s => s.ShowTrayIcon = on));
+        Host.SettingsChanged += OnHostSettingsChanged;
     }
 
     protected override void OnLoad()
     {
+        LanguageBox.ItemsSource = LanguageChoices;
+        RefreshBox.ItemsSource = RefreshChoices;
+        ShowSettings();
+    }
+
+    protected override void OnDispose() => Host.SettingsChanged -= OnHostSettingsChanged;
+
+    /// <summary>Copies the current settings into the controls; callers run it inside WhileLoading so nothing is written back.</summary>
+    private void ShowSettings()
+    {
         AppSettings settings = Host.Settings;
 
-        LanguageBox.ItemsSource = LanguageChoices;
         LanguageBox.SelectedItem = Find(LanguageChoices, LanguageResolver.Normalize(settings.Language));
         UpdateRestartNotice();
-        RefreshBox.ItemsSource = RefreshChoices;
         RefreshBox.SelectedItem = Find(RefreshChoices, settings.RefreshMinutes);
         StartWithWindowsBox.IsChecked = settings.StartWithWindows;
         ShowTrayBox.IsChecked = settings.ShowTrayIcon;
+    }
+
+    /// <summary>
+    /// The app can change settings behind an open window (AppHost adopts the installer's Run value into StartWithWindows),
+    /// so keep the controls in step. AppHost raises SettingsChanged on the UI thread; marshal anyway in case that changes.
+    /// </summary>
+    private void OnHostSettingsChanged(object? sender, EventArgs e)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() => OnHostSettingsChanged(sender, e)));
+            return;
+        }
+
+        if (!IsDisposed)
+        {
+            WhileLoading(ShowSettings);
+        }
     }
 
     /// <summary>Shown while the saved language would start the app in a language other than the running one.</summary>

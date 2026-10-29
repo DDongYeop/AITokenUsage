@@ -11,6 +11,8 @@
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
     <!-- Emits [assembly: NeutralResourcesLanguage("en")]: UiStrings.resx is English, so English UI skips the satellite probe. -->
     <NeutralLanguage>en</NeutralLanguage>
+    <!-- Keeps our own ko satellites and drops the framework satellites for every other language (installer size). -->
+    <SatelliteResourceLanguages>en;ko</SatelliteResourceLanguages>
     <!-- WPF0001 (experimental theme API) is used by the settings window rewrite. -->
     <NoWarn>$(NoWarn);WPF0001</NoWarn>
   </PropertyGroup>

@@ -14,12 +14,10 @@
         UseLayoutRounding="True"
         SizeToContent="Manual"
         WindowStartupLocation="Manual"
-        Width="176"
         Height="40">
     <!-- #01000000: alpha 1 keeps the whole widget hit-testable (alpha 0 pixels pass clicks to the taskbar). -->
     <Border x:Name="Root"
             Background="#01000000"
-            Width="176"
             Height="40"
             HorizontalAlignment="Left"
             VerticalAlignment="Top">

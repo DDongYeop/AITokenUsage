@@ -14,8 +14,8 @@ public enum WidgetRowKind
     Message,
 }
 
-/// <summary>One line of the widget's right column.</summary>
-public sealed record WidgetRow(WidgetRowKind Kind, string Label, double? Fraction, string Value, Severity Severity, bool Dimmed)
+/// <summary>One line of the widget's right column. ResetText is the compact time-to-reset (meter rows only, otherwise empty).</summary>
+public sealed record WidgetRow(WidgetRowKind Kind, string Label, double? Fraction, string Value, Severity Severity, bool Dimmed, string ResetText = "")
 {
     public static WidgetRow Message(string text) => new(WidgetRowKind.Message, "", null, text, Severity.Normal, false);
 }

@@ -255,4 +255,23 @@ public class TaskbarLayoutCalculatorTests
 
         Assert.Null(TaskbarLayoutCalculator.Compute(g, WidgetPlacement.BeforeTray));
     }
+
+    [Fact]
+    public void WiderWidget_ScalesWidthByDpi()
+    {
+        var g = GroundTruth with { Dpi = 144 };
+
+        // 210 DIP at 150% = 315 px; BeforeTray: right bound 1630 - 12 = 1618, height min(48, 60) = 48.
+        Assert.Equal(new PixelRect(1303, 0, 1618, 48), TaskbarLayoutCalculator.Compute(g, WidgetPlacement.BeforeTray, widthDip: 210));
+    }
+
+    [Fact]
+    public void WiderWidget_DoesNotFitGapThatNarrowOneFits()
+    {
+        // Gap [8, 184] = 176 px: fits the narrow widget, not the 210 DIP one.
+        var g = GroundTruth with { Start = new PixelRect(192, 1032, 237, 1080) };
+
+        Assert.NotNull(TaskbarLayoutCalculator.Compute(g, WidgetPlacement.LeftEdge, WidgetMetrics.WidthDip(showResetTime: false)));
+        Assert.Null(TaskbarLayoutCalculator.Compute(g, WidgetPlacement.LeftEdge, WidgetMetrics.WidthDip(showResetTime: true)));
+    }
 }

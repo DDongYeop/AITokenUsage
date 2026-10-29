@@ -10,9 +10,13 @@ namespace AITokenUsage.UI;
 /// <summary>Feeds the widget: which provider is shown, its two lines, the dots and the text colours.</summary>
 public sealed class WidgetViewModel : IDisposable
 {
+    /// <summary>How often the widget redraws so the time-to-reset column keeps counting down between data refreshes.</summary>
+    public static readonly TimeSpan ResetRefreshInterval = TimeSpan.FromSeconds(30);
+
     private readonly AppHost _host;
     private readonly ThemeWatcher _theme;
     private readonly Dispatcher _dispatcher;
+    private readonly DispatcherTimer _resetTimer;
     private bool _pointerOver;
     private bool _hoverPaused;
     private bool _disposed;
@@ -32,9 +36,16 @@ public sealed class WidgetViewModel : IDisposable
         _host.SettingsChanged += OnSettingsChanged;
         _host.Rotation.CurrentChanged += OnCurrentChanged;
         _theme.Changed += OnThemeChanged;
+
+        _resetTimer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher) { Interval = ResetRefreshInterval };
+        _resetTimer.Tick += OnResetTick;
+        _resetTimer.Start();
     }
 
     public AppHost Host => _host;
+
+    /// <summary>Whether the widget shows the time-to-reset column (and is therefore 210 instead of 176 DIP wide).</summary>
+    public bool ShowResetTime => _host.Settings.ShowResetTime;
 
     public ThemeWatcher Theme => _theme;
 
@@ -95,7 +106,8 @@ public sealed class WidgetViewModel : IDisposable
             : (settings.Line1Key, settings.Line2Key);
 
         return WidgetPanelBuilder.Build(
-            view, line1, line2, _host.Settings.ValueMode, rotation.EligibleIds.Count, rotation.CurrentIndex);
+            view, line1, line2, _host.Settings.ValueMode, rotation.EligibleIds.Count, rotation.CurrentIndex,
+            _host.ProviderContext.Time.GetUtcNow());
     }
 
     public void Dispose()
@@ -106,6 +118,8 @@ public sealed class WidgetViewModel : IDisposable
         }
 
         _disposed = true;
+        _resetTimer.Stop();
+        _resetTimer.Tick -= OnResetTick;
         _host.ViewChanged -= OnViewChanged;
         _host.SettingsChanged -= OnSettingsChanged;
         _host.Rotation.CurrentChanged -= OnCurrentChanged;
@@ -131,6 +145,12 @@ public sealed class WidgetViewModel : IDisposable
         _hoverPaused = paused;
         _host.Rotation.SetHoverPaused(paused);
     }
+
+    /// <summary>
+    /// Redraws the current panel in place (no slide). A running rotation transition is unaffected: the widget only
+    /// re-renders its front panel, which already shows the current provider.
+    /// </summary>
+    private void OnResetTick(object? sender, EventArgs e) => RaiseUpdated();
 
     private void OnViewChanged(object? sender, ProviderView view) => RaiseUpdated();
 

@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using AITokenUsage.Core.Presentation;
+using AITokenUsage.Core.Taskbar;
 
 namespace AITokenUsage.UI;
 
@@ -23,15 +24,16 @@ public partial class ProviderPanel : UserControl
     public ProviderPanel()
     {
         InitializeComponent();
-        _row1 = new RowParts(Row1, Row1Label, Row1Track, Row1Fill, Row1Value, Row1Text);
-        _row2 = new RowParts(Row2, Row2Label, Row2Track, Row2Fill, Row2Value, Row2Text);
+        _row1 = new RowParts(Row1, Row1Label, Row1Track, Row1Fill, Row1Value, Row1Text, Row1Reset, Row1Gap, Row1ResetColumn);
+        _row2 = new RowParts(Row2, Row2Label, Row2Track, Row2Fill, Row2Value, Row2Text, Row2Reset, Row2Gap, Row2ResetColumn);
         RenderTransform = new TranslateTransform();
     }
 
     /// <summary>The slide offset animated by the widget's transition.</summary>
     public TranslateTransform Slide => (TranslateTransform)RenderTransform;
 
-    public void Render(WidgetPanelModel model, WidgetPalette palette)
+    /// <param name="showResetTime">Reserve the right-hand time-to-reset column (WidgetMetrics.ResetGapDip + ResetColumnDip) and fill it on meter rows.</param>
+    public void Render(WidgetPanelModel model, WidgetPalette palette, bool showResetTime)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(palette);
@@ -58,7 +60,7 @@ public partial class ProviderPanel : UserControl
         }
 
         MessageText.Visibility = Visibility.Collapsed;
-        RenderRow(_row1, model.Row1, palette, model.ProviderId);
+        RenderRow(_row1, model.Row1, palette, model.ProviderId, showResetTime);
 
         if (model.Row2 is null)
         {
@@ -68,20 +70,26 @@ public partial class ProviderPanel : UserControl
         else
         {
             Grid.SetRowSpan(Row1, 1);
-            RenderRow(_row2, model.Row2, palette, model.ProviderId);
+            RenderRow(_row2, model.Row2, palette, model.ProviderId, showResetTime);
         }
     }
 
-    private static void RenderRow(RowParts row, WidgetRow model, WidgetPalette palette, string providerId)
+    private static void RenderRow(RowParts row, WidgetRow model, WidgetPalette palette, string providerId, bool showResetTime)
     {
         row.Container.Visibility = Visibility.Visible;
         row.Container.Opacity = model.Dimmed ? StaleOpacity : 1.0;
         row.Label.Text = model.Label;
         row.Label.Foreground = palette.Muted;
+        row.Gap.Width = new GridLength(showResetTime ? WidgetMetrics.ResetGapDip : 0);
+        row.ResetColumn.Width = new GridLength(showResetTime ? WidgetMetrics.ResetColumnDip : 0);
+        row.Reset.Visibility = Visibility.Collapsed;
 
         switch (model.Kind)
         {
             case WidgetRowKind.Meter:
+                row.Reset.Text = model.ResetText;
+                row.Reset.Foreground = palette.Muted;
+                row.Reset.Visibility = showResetTime && model.ResetText.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
                 row.Label.Visibility = Visibility.Visible;
                 row.Track.Visibility = Visibility.Visible;
                 row.Track.Background = palette.Track;
@@ -154,5 +162,6 @@ public partial class ProviderPanel : UserControl
         DotsPanel.Visibility = Visibility.Visible;
     }
 
-    private sealed record RowParts(Grid Container, TextBlock Label, Border Track, Border Fill, TextBlock Value, TextBlock Text);
+    private sealed record RowParts(
+        Grid Container, TextBlock Label, Border Track, Border Fill, TextBlock Value, TextBlock Text, TextBlock Reset, ColumnDefinition Gap, ColumnDefinition ResetColumn);
 }

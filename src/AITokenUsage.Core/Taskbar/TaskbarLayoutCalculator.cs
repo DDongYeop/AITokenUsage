@@ -7,13 +7,13 @@ namespace AITokenUsage.Core.Taskbar;
 /// </summary>
 public static class TaskbarLayoutCalculator
 {
-    public const double DesiredWidthDip = 176, DesiredHeightDip = 40, PaddingDip = 8;
+    public const double PaddingDip = 8;
 
     /// <summary>Width assumed for the clock area when a (secondary) taskbar reports no tray rectangle.</summary>
     public const double TrayFallbackWidthDip = 88;
 
-    /// <summary>작업 표시줄 기준(부모 상대) 물리 px 사각형. 공간 부족·세로 작업 표시줄이면 null.</summary>
-    public static PixelRect? Compute(TaskbarGeometry g, WidgetPlacement placement)
+    /// <summary>작업 표시줄 기준(부모 상대) 물리 px 사각형. 공간 부족·세로 작업 표시줄이면 null. <paramref name="widthDip"/>은 위젯 폭(DIP)이다.</summary>
+    public static PixelRect? Compute(TaskbarGeometry g, WidgetPlacement placement, double widthDip = WidgetMetrics.NarrowWidthDip)
     {
         ArgumentNullException.ThrowIfNull(g);
         PixelRect tb = g.Taskbar;
@@ -23,8 +23,8 @@ public static class TaskbarLayoutCalculator
         }
 
         double scale = g.Dpi == 0 ? 1.0 : g.Dpi / 96.0;
-        int width = Px(DesiredWidthDip, scale);
-        int height = Math.Min(tb.Height, Px(DesiredHeightDip, scale));
+        int width = Px(widthDip, scale);
+        int height = Math.Min(tb.Height, Px(WidgetMetrics.HeightDip, scale));
         int pad = Px(PaddingDip, scale);
 
         // LeftEdge/BeforeStart only exist on a centered taskbar with a known Start button; otherwise use BeforeTray.

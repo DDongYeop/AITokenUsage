@@ -40,8 +40,13 @@
   <!-- WPF compiles a temporary assembly for XAML type resolution before ResGen has produced UiStrings.Designer.cs, and it
        ignores obj\ files in Compile except the ones MarkupCompilePass1 reports as generated. XAML and code-behind both
        reference UiStrings, so run ResGen first and hand the designer file to that temporary assembly.
-       If a future WPF SDK renames _GeneratedCodeFiles, fall back to Microsoft.CodeAnalysis.ResxSourceGenerator or a checked-in designer file. -->
-  <Target Name="IncludeUiStringsInMarkupTempAssembly" BeforeTargets="GenerateTemporaryTargetAssembly" DependsOnTargets="ResGen">
+       If a future WPF SDK renames _GeneratedCodeFiles, fall back to Microsoft.CodeAnalysis.ResxSourceGenerator or a checked-in designer file.
+       PrepareResourceNames must run before that early ResGen: GenerateResource writes each .resx to
+       obj\%(ManifestResourceName).resources, and without names both UiStrings.resx and UiStrings.ko.resx land in
+       obj\...\.resources, so the dll embeds ".resources" and ResourceManager throws MissingManifestResourceException.
+       Running it this early is safe here: the only items added later (WPF's AITokenUsage.g.resources) carry their own
+       OutputResource and need no manifest name, and the project has no CLR .resources Resource items. -->
+  <Target Name="IncludeUiStringsInMarkupTempAssembly" BeforeTargets="GenerateTemporaryTargetAssembly" DependsOnTargets="PrepareResourceNames;ResGen">
     <ItemGroup>
       <_GeneratedCodeFiles Include="$(IntermediateOutputPath)UiStrings.Designer.cs" />
     </ItemGroup>

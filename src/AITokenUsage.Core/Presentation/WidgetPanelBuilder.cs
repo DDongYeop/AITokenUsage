@@ -22,7 +22,8 @@ public static class WidgetPanelBuilder
         string? line2Key,
         ValueMode mode,
         int dotCount,
-        int dotIndex)
+        int dotIndex,
+        DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(view);
 
@@ -34,8 +35,8 @@ public static class WidgetPanelBuilder
         }
 
         bool stale = view.IsStale;
-        WidgetRow row1 = ToRow(first, mode, stale);
-        WidgetRow? row2 = second is null ? null : ToRow(second, mode, stale);
+        WidgetRow row1 = ToRow(first, mode, stale, now);
+        WidgetRow? row2 = second is null ? null : ToRow(second, mode, stale, now);
 
         if (stale && ReplacesSecondLine(view.Current.Status))
         {
@@ -66,7 +67,7 @@ public static class WidgetPanelBuilder
         };
     }
 
-    public static WidgetRow ToRow(UsageMeter meter, ValueMode mode, bool dimmed)
+    public static WidgetRow ToRow(UsageMeter meter, ValueMode mode, bool dimmed, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(meter);
 
@@ -83,7 +84,8 @@ public static class WidgetPanelBuilder
             MeterFormatter.BarFraction(meter, mode),
             MeterFormatter.ValueText(meter, mode),
             severity,
-            dimmed);
+            dimmed,
+            CompactDurationFormatter.Format(meter.ResetsAt, now));
     }
 
     private static bool ReplacesSecondLine(ProviderStatus status) => status is

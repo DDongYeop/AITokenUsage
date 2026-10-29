@@ -18,4 +18,17 @@ public class PixelRectTests
         Assert.True(new PixelRect(8, 4, 184, 44).IsInside(new PixelRect(0, 0, 1920, 48)));
         Assert.False(new PixelRect(-1, 4, 184, 44).IsInside(new PixelRect(0, 0, 1920, 48)));
     }
+
+    [Fact]
+    public void Contains_LeftTopInclusive_RightBottomExclusive()
+    {
+        var r = new PixelRect(-1920, 1032, 0, 1080);
+
+        Assert.True(r.Contains(new PixelPoint(-1920, 1032)));
+        Assert.True(r.Contains(new PixelPoint(-1, 1079)));
+        Assert.False(r.Contains(new PixelPoint(0, 1050)));
+        Assert.False(r.Contains(new PixelPoint(-100, 1080)));
+        Assert.False(r.Contains(new PixelPoint(-1921, 1050)));
+        Assert.False(r.Contains(new PixelPoint(-100, 1031)));
+    }
 }

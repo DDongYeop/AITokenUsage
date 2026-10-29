@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using AITokenUsage.Core.Taskbar;
 using AITokenUsage.Resources;
 
 namespace AITokenUsage.UI;
@@ -23,6 +24,7 @@ public partial class WidgetWindow : Window
     private ProviderPanel _back;
     private int _transitionId;
     private bool _transitionRunning;
+    private double _widthDip;
 
     public WidgetWindow(WidgetViewModel vm)
     {
@@ -30,6 +32,7 @@ public partial class WidgetWindow : Window
 
         _vm = vm;
         InitializeComponent();
+        ApplyWidth();
 
         _front = PanelA;
         _back = PanelB;
@@ -48,7 +51,7 @@ public partial class WidgetWindow : Window
         Closed += OnClosed;
 
         ResetPanels();
-        _front.Render(_vm.CurrentModel, _vm.Palette);
+        _front.Render(_vm.CurrentModel, _vm.Palette, _vm.ShowResetTime);
     }
 
     /// <summary>The DIP-sized content root; TaskbarHost sizes the HWND from it.</summary>
@@ -108,7 +111,28 @@ public partial class WidgetWindow : Window
 
     private void OnFlyoutPointerOverChanged(object? sender, EventArgs e) => _vm.SetPointerOver(_flyout.IsPointerOver);
 
-    private void OnUpdated(object? sender, EventArgs e) => _front.Render(_vm.CurrentModel, _vm.Palette);
+    private void OnUpdated(object? sender, EventArgs e)
+    {
+        ApplyWidth();
+        _front.Render(_vm.CurrentModel, _vm.Palette, _vm.ShowResetTime);
+    }
+
+    /// <summary>
+    /// Keeps the WPF content width in step with the ShowResetTime setting (176 or 210 DIP). TaskbarHost sizes the HWND
+    /// from the same WidgetMetrics value on its next layout, so the two agree.
+    /// </summary>
+    private void ApplyWidth()
+    {
+        double width = WidgetMetrics.WidthDip(_vm.ShowResetTime);
+        if (width == _widthDip)
+        {
+            return;
+        }
+
+        _widthDip = width;
+        Width = width;
+        Root.Width = width;
+    }
 
     private void OnProviderSwitched(object? sender, int direction)
     {
@@ -116,13 +140,13 @@ public partial class WidgetWindow : Window
 
         if (direction == 0)
         {
-            _front.Render(_vm.CurrentModel, _vm.Palette);
+            _front.Render(_vm.CurrentModel, _vm.Palette, _vm.ShowResetTime);
             return;
         }
 
         ProviderPanel outgoing = _front;
         ProviderPanel incoming = _back;
-        incoming.Render(_vm.CurrentModel, _vm.Palette);
+        incoming.Render(_vm.CurrentModel, _vm.Palette, _vm.ShowResetTime);
         incoming.Visibility = Visibility.Visible;
         _front = incoming;
         _back = outgoing;

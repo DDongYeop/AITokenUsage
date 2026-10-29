@@ -4,6 +4,7 @@ using System.Windows.Threading;
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Presentation;
 using AITokenUsage.Core.Rotation;
+using AITokenUsage.Core.Taskbar;
 using AITokenUsage.Taskbar;
 
 namespace AITokenUsage.UI;
@@ -15,12 +16,16 @@ public sealed class DetailFlyoutController : IDisposable
     public static readonly TimeSpan CloseDelay = TimeSpan.FromMilliseconds(200);
     public static readonly TimeSpan ClockRefreshInterval = TimeSpan.FromSeconds(30);
 
+    /// <summary>How often the open card compares the real cursor position with the widget and card windows.</summary>
+    public static readonly TimeSpan HoverCheckInterval = TimeSpan.FromMilliseconds(100);
+
     private readonly AppHost _host;
     private readonly ThemeWatcher _theme;
     private readonly Window _anchor;
     private readonly DispatcherTimer _openTimer;
     private readonly DispatcherTimer _closeTimer;
     private readonly DispatcherTimer _clockTimer;
+    private readonly DispatcherTimer _hoverCheckTimer;
     private DetailFlyout? _flyout;
     private bool _overAnchor;
     private bool _overFlyout;
@@ -39,6 +44,7 @@ public sealed class DetailFlyoutController : IDisposable
         _openTimer = CreateTimer(OpenDelay, OnOpenTimer);
         _closeTimer = CreateTimer(CloseDelay, OnCloseTimer);
         _clockTimer = CreateTimer(ClockRefreshInterval, (_, _) => RefreshIfOpen());
+        _hoverCheckTimer = CreateTimer(HoverCheckInterval, OnHoverCheck);
 
         _host.ViewChanged += OnViewChanged;
         _host.SettingsChanged += OnSettingsChanged;
@@ -102,6 +108,7 @@ public sealed class DetailFlyoutController : IDisposable
         _openTimer.Stop();
         _closeTimer.Stop();
         _clockTimer.Stop();
+        _hoverCheckTimer.Stop();
         _flyout?.Hide();
 
         if (_overFlyout)
@@ -126,6 +133,7 @@ public sealed class DetailFlyoutController : IDisposable
         _openTimer.Stop();
         _closeTimer.Stop();
         _clockTimer.Stop();
+        _hoverCheckTimer.Stop();
         _flyout?.Close();
         _flyout = null;
     }
@@ -152,13 +160,90 @@ public sealed class DetailFlyoutController : IDisposable
         }
     }
 
+    /// <summary>
+    /// The close decision trusts the real cursor, not the last WPF MouseEnter/MouseLeave. Those only say which window
+    /// gets mouse messages, so a window moving or resizing under a resting cursor (the card re-rendering for the next
+    /// AI) or capture taken by another window reports a leave while the cursor is still over the widget or the card.
+    /// In that case the card stays open and the hover check keeps watching.
+    /// </summary>
     private void OnCloseTimer(object? sender, EventArgs e)
     {
         _closeTimer.Stop();
-        if (!IsPointerOver)
+        if (_disposed)
         {
-            CloseNow();
+            return;
         }
+
+        if (SampleCursor() is FlyoutHoverState state)
+        {
+            ApplyPointer(state);
+            if (state.IsOver)
+            {
+                return;
+            }
+        }
+        else if (IsPointerOver)
+        {
+            return; // cursor unreadable (e.g. secure desktop): fall back to the WPF events
+        }
+
+        CloseNow();
+    }
+
+    /// <summary>
+    /// Runs while the card is open: keeps the card anchored if the widget moved, re-syncs the hover flags to the real
+    /// cursor and starts the 200 ms close countdown when the cursor has left both windows, even if WPF raised no
+    /// MouseLeave for it (it may already have reported a spurious one).
+    /// </summary>
+    private void OnHoverCheck(object? sender, EventArgs e)
+    {
+        if (_disposed || _flyout is null || !IsOpen)
+        {
+            _hoverCheckTimer.Stop();
+            return;
+        }
+
+        _flyout.Reposition();
+        if (SampleCursor() is not FlyoutHoverState state)
+        {
+            return;
+        }
+
+        ApplyPointer(state);
+        if (state.IsOver)
+        {
+            _closeTimer.Stop();
+        }
+        else if (!_closeTimer.IsEnabled)
+        {
+            _closeTimer.Start();
+        }
+    }
+
+    /// <summary>Where the cursor really is; null when it cannot be read.</summary>
+    private FlyoutHoverState? SampleCursor()
+    {
+        if (NativeMethods.TryGetCursorPos() is not PixelPoint cursor)
+        {
+            return null;
+        }
+
+        nint anchor = new WindowInteropHelper(_anchor).Handle;
+        PixelRect? anchorRect = anchor != 0 && NativeMethods.IsWindowVisible(anchor) ? NativeMethods.TryGetWindowRect(anchor) : null;
+        PixelRect? cardRect = _flyout is not null && IsOpen ? NativeMethods.TryGetWindowRect(new WindowInteropHelper(_flyout).Handle) : null;
+        return FlyoutHover.Locate(cursor, anchorRect, cardRect);
+    }
+
+    private void ApplyPointer(FlyoutHoverState state)
+    {
+        if (state.OverAnchor == _overAnchor && state.OverCard == _overFlyout)
+        {
+            return;
+        }
+
+        _overAnchor = state.OverAnchor;
+        _overFlyout = state.OverCard;
+        PointerOverChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void Open()
@@ -174,6 +259,7 @@ public sealed class DetailFlyoutController : IDisposable
         flyout.Render(model, _theme.IsTaskbarLight);
         flyout.ShowAbove(anchorHandle);
         _clockTimer.Start();
+        _hoverCheckTimer.Start();
     }
 
     private DetailFlyout EnsureFlyout()

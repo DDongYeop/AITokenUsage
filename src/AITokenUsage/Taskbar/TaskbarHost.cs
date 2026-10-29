@@ -531,7 +531,8 @@ public sealed class TaskbarHost : IDisposable
             return;
         }
 
-        if (TaskbarLayoutCalculator.Compute(geometry, _host.Settings.Placement) is not PixelRect relative)
+        double widthDip = WidgetMetrics.WidthDip(_host.Settings.ShowResetTime);
+        if (TaskbarLayoutCalculator.Compute(geometry, _host.Settings.Placement, widthDip) is not PixelRect relative)
         {
             Hide(geometry.IsHorizontal ? "not enough room" : "vertical taskbar");
             return;
@@ -599,7 +600,7 @@ public sealed class TaskbarHost : IDisposable
     {
         WidgetWindow window = _window!;
 
-        // Size the content in DIPs with the DPI WPF actually renders at; never touch Window.Width/Height after attach.
+        // Size the content in DIPs with the DPI WPF actually renders at; the widget itself only changes Window.Width when ShowResetTime flips.
         double scale = VisualTreeHelper.GetDpi(window).DpiScaleX;
         if (scale <= 0)
         {

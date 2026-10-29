@@ -100,37 +100,13 @@ public partial class DetailFlyout : Window
     public void Reposition()
     {
         nint self = new WindowInteropHelper(this).Handle;
-        if (self == 0 || _anchor == 0 || !IsVisible)
+        if (self == 0 || _anchor == 0 || !IsVisible || !UiNative.GetWindowRect(self, out UiNative.RECT own))
         {
             return;
         }
 
-        if (!UiNative.GetWindowRect(_anchor, out UiNative.RECT anchor) || !UiNative.GetWindowRect(self, out UiNative.RECT own))
-        {
-            return;
-        }
-
-        nint monitor = UiNative.MonitorFromRect(ref anchor, UiNative.MONITOR_DEFAULTTONEAREST);
-        var info = new UiNative.MONITORINFO { cbSize = (uint)Marshal.SizeOf<UiNative.MONITORINFO>() };
-        if (monitor == 0 || !UiNative.GetMonitorInfo(monitor, ref info))
-        {
-            return;
-        }
-
-        uint dpi = UiNative.GetDpiForWindow(self);
-        double scale = dpi == 0 ? 1.0 : dpi / 96.0;
-        int margin = (int)Math.Round(ShadowMargin * scale);
-        int gap = (int)Math.Round(GapAboveAnchor * scale);
-
-        (int x, int y) = FlyoutPlacement.Compute(
-            new PixelRect(anchor.Left, anchor.Top, anchor.Right, anchor.Bottom),
-            new PixelRect(info.rcWork.Left, info.rcWork.Top, info.rcWork.Right, info.rcWork.Bottom),
-            own.Right - own.Left,
-            own.Bottom - own.Top,
-            margin,
-            gap);
-
-        if (x == own.Left && y == own.Top)
+        if (!TryComputePosition(self, own.Right - own.Left, own.Bottom - own.Top, out int x, out int y)
+            || (x == own.Left && y == own.Top))
         {
             return;
         }
@@ -146,6 +122,69 @@ public partial class DetailFlyout : Window
         nint hwnd = new WindowInteropHelper(this).Handle;
         nint exStyle = UiNative.GetWindowLongPtr(hwnd, UiNative.GWL_EXSTYLE);
         UiNative.SetWindowLongPtr(hwnd, UiNative.GWL_EXSTYLE, exStyle | UiNative.WS_EX_TOOLWINDOW | UiNative.WS_EX_NOACTIVATE);
+        HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
+    }
+
+    /// <summary>
+    /// SizeToContent resizes the HWND with its top-left fixed, so a card that grows (e.g. after a click switches to a
+    /// provider with more rows) would extend down over the widget. SizeChanged fires before that resize, when
+    /// GetWindowRect still reports the old size, so Reposition cannot fix it. Instead every resize is re-anchored here,
+    /// in the same SetWindowPos call, with the new size: the card never draws over the widget, not even for a frame.
+    /// </summary>
+    private nint WndProc(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
+    {
+        if (msg != UiNative.WM_WINDOWPOSCHANGING || _anchor == 0 || lParam == 0)
+        {
+            return 0;
+        }
+
+        var pos = Marshal.PtrToStructure<UiNative.WINDOWPOS>(lParam);
+        if ((pos.flags & UiNative.SWP_NOSIZE) != 0 || pos.cx <= 0 || pos.cy <= 0)
+        {
+            return 0;
+        }
+
+        if (TryComputePosition(hwnd, pos.cx, pos.cy, out int x, out int y))
+        {
+            pos.x = x;
+            pos.y = y;
+            pos.flags &= ~UiNative.SWP_NOMOVE;
+            Marshal.StructureToPtr(pos, lParam, false);
+        }
+
+        return 0;
+    }
+
+    /// <summary>Top-left (physical pixels) for a card window of the given size above the current anchor.</summary>
+    private bool TryComputePosition(nint self, int width, int height, out int x, out int y)
+    {
+        x = 0;
+        y = 0;
+        if (_anchor == 0 || !UiNative.GetWindowRect(_anchor, out UiNative.RECT anchor))
+        {
+            return false;
+        }
+
+        nint monitor = UiNative.MonitorFromRect(ref anchor, UiNative.MONITOR_DEFAULTTONEAREST);
+        var info = new UiNative.MONITORINFO { cbSize = (uint)Marshal.SizeOf<UiNative.MONITORINFO>() };
+        if (monitor == 0 || !UiNative.GetMonitorInfo(monitor, ref info))
+        {
+            return false;
+        }
+
+        uint dpi = UiNative.GetDpiForWindow(self);
+        double scale = dpi == 0 ? 1.0 : dpi / 96.0;
+        int margin = (int)Math.Round(ShadowMargin * scale);
+        int gap = (int)Math.Round(GapAboveAnchor * scale);
+
+        (x, y) = FlyoutPlacement.Compute(
+            new PixelRect(anchor.Left, anchor.Top, anchor.Right, anchor.Bottom),
+            new PixelRect(info.rcWork.Left, info.rcWork.Top, info.rcWork.Right, info.rcWork.Bottom),
+            width,
+            height,
+            margin,
+            gap);
+        return true;
     }
 
     private static FrameworkElement BuildRow(CardRow row, WidgetPalette palette, string providerId)

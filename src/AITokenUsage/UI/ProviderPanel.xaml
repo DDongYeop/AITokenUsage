@@ -34,6 +34,8 @@
                     <ColumnDefinition Width="44" />
                     <ColumnDefinition Width="4" />
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition x:Name="Row1Gap" Width="0" />
+                    <ColumnDefinition x:Name="Row1ResetColumn" Width="0" />
                 </Grid.ColumnDefinitions>
                 <TextBlock x:Name="Row1Label" Grid.Column="0" FontSize="10.5" VerticalAlignment="Center" />
                 <Border x:Name="Row1Track" Grid.Column="1" Height="4" CornerRadius="2" VerticalAlignment="Center">
@@ -43,6 +45,8 @@
                            TextAlignment="Right" HorizontalAlignment="Right" VerticalAlignment="Center" />
                 <TextBlock x:Name="Row1Text" Grid.Column="1" Grid.ColumnSpan="3" FontSize="11"
                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Visibility="Collapsed" />
+                <TextBlock x:Name="Row1Reset" Grid.Column="5" FontSize="10" TextAlignment="Right"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="Collapsed" />
             </Grid>
 
             <Grid x:Name="Row2" Grid.Row="1">
@@ -51,6 +55,8 @@
                     <ColumnDefinition Width="44" />
                     <ColumnDefinition Width="4" />
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition x:Name="Row2Gap" Width="0" />
+                    <ColumnDefinition x:Name="Row2ResetColumn" Width="0" />
                 </Grid.ColumnDefinitions>
                 <TextBlock x:Name="Row2Label" Grid.Column="0" FontSize="10.5" VerticalAlignment="Center" />
                 <Border x:Name="Row2Track" Grid.Column="1" Height="4" CornerRadius="2" VerticalAlignment="Center">
@@ -60,6 +66,8 @@
                            TextAlignment="Right" HorizontalAlignment="Right" VerticalAlignment="Center" />
                 <TextBlock x:Name="Row2Text" Grid.Column="1" Grid.ColumnSpan="3" FontSize="11"
                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Visibility="Collapsed" />
+                <TextBlock x:Name="Row2Reset" Grid.Column="5" FontSize="10" TextAlignment="Right"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="Collapsed" />
             </Grid>
 
             <TextBlock x:Name="MessageText" Grid.RowSpan="2" FontSize="11" VerticalAlignment="Center"

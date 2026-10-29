@@ -65,6 +65,13 @@ internal static unsafe partial class NativeMethods
     }
 
     [StructLayout(LayoutKind.Sequential)]
+    public struct POINT
+    {
+        public int X;
+        public int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
     public struct APPBARDATA
     {
         public uint cbSize;
@@ -96,6 +103,10 @@ internal static unsafe partial class NativeMethods
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool GetWindowRect(nint hwnd, out RECT rect);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool GetCursorPos(out POINT point);
 
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -184,6 +195,10 @@ internal static unsafe partial class NativeMethods
 
     public static PixelRect? TryGetWindowRect(nint hwnd) =>
         hwnd != 0 && GetWindowRect(hwnd, out RECT rect) ? rect.ToPixelRect() : null;
+
+    /// <summary>The cursor position in physical screen pixels, or null when it cannot be read (e.g. secure desktop).</summary>
+    public static PixelPoint? TryGetCursorPos() =>
+        GetCursorPos(out POINT point) ? new PixelPoint(point.X, point.Y) : null;
 
     public static MonitorDetails? TryGetMonitorDetails(nint monitor)
     {

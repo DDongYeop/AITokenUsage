@@ -393,4 +393,28 @@
   <data name="GuideGeminiDiscontinued" xml:space="preserve">
     <value>Usage lookup for personal Google accounts has ended. A Workspace (Code Assist) account is required.</value>
   </data>
+  <data name="SystemPanelName" xml:space="preserve">
+    <value>PC</value>
+  </data>
+  <data name="SystemCpuLabel" xml:space="preserve">
+    <value>CPU</value>
+  </data>
+  <data name="SystemRamLabel" xml:space="preserve">
+    <value>RAM</value>
+  </data>
+  <data name="SystemMemoryLabel" xml:space="preserve">
+    <value>Memory</value>
+  </data>
+  <data name="SystemMemoryText" xml:space="preserve">
+    <value>{0} / {1} GB</value>
+  </data>
+  <data name="SystemCardLine" xml:space="preserve">
+    <value>CPU {0} · Memory {1}</value>
+  </data>
+  <data name="SystemTooltipLine" xml:space="preserve">
+    <value>PC CPU {0} · RAM {1}</value>
+  </data>
+  <data name="SystemCardStatus" xml:space="preserve">
+    <value>Updates every 2 s</value>
+  </data>
 </root>

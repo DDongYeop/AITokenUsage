@@ -11,6 +11,15 @@ public static class WidgetMetrics
     /// <summary>Gap between the value column and the reset column.</summary>
     public const double ResetGapDip = 4;
 
-    public static double WidthDip(bool showResetTime) =>
-        showResetTime ? NarrowWidthDip + ResetGapDip + ResetColumnDip : NarrowWidthDip;
+    /// <summary>Gap before the PC column, divider included.</summary>
+    public const double SystemGapDip = 8;
+
+    /// <summary>The PC column: label (24) + value (32).</summary>
+    public const double SystemColumnDip = 56;
+
+    /// <summary>Width of the widget; systemBeside adds the always-visible PC column (default: not shown).</summary>
+    public static double WidthDip(bool showResetTime, bool systemBeside = false) =>
+        NarrowWidthDip
+        + (showResetTime ? ResetGapDip + ResetColumnDip : 0)
+        + (systemBeside ? SystemGapDip + SystemColumnDip : 0);
 }

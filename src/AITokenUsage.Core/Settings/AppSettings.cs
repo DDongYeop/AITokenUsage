@@ -53,6 +53,9 @@ public sealed class AppSettings
     /// <summary>위젯에 마우스를 올리면 상세 카드 표시</summary>
     public bool ShowDetailCard { get; set; } = true;
 
+    /// <summary>PC 사용량(CPU·메모리) 표시 위치. 기본은 끄기.</summary>
+    public SystemMonitorMode SystemMonitor { get; set; } = SystemMonitorMode.Off;
+
     /// <summary>
     /// Repairs this instance in place and returns it:
     /// unknown/duplicate provider ids are dropped (first one wins, ids are lower-cased),
@@ -83,6 +86,11 @@ public sealed class AppSettings
         if (!Enum.IsDefined(TextColor))
         {
             TextColor = TextColorMode.Auto;
+        }
+
+        if (!Enum.IsDefined(SystemMonitor))
+        {
+            SystemMonitor = SystemMonitorMode.Off;
         }
 
         if (string.IsNullOrWhiteSpace(MonitorDeviceName))
@@ -117,6 +125,7 @@ public sealed class AppSettings
         Language = Language,
         ShowResetTime = ShowResetTime,
         ShowDetailCard = ShowDetailCard,
+        SystemMonitor = SystemMonitor,
     };
 
     private static List<ProviderSettings> NormalizeProviders(List<ProviderSettings>? providers)

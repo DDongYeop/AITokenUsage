@@ -27,6 +27,41 @@ public class TrayTextFormatterTests
     }
 
     [Fact]
+    public void Tooltip_WithSystemLine_AppendsItOnANewLine()
+    {
+        string tooltip = TrayTextFormatter.Tooltip(ClaudeOk(14, 50), ClaudeLines, ValueMode.Used, "PC CPU 23% · RAM 61%");
+
+        Assert.Equal("Claude 5h 14% · 주 50%\nPC CPU 23% · RAM 61%", tooltip);
+    }
+
+    [Fact]
+    public void Tooltip_NullOrEmptySystemLine_IsUnchanged()
+    {
+        string expected = TrayTextFormatter.Tooltip(ClaudeOk(14, 50), ClaudeLines, ValueMode.Used);
+
+        Assert.Equal(expected, TrayTextFormatter.Tooltip(ClaudeOk(14, 50), ClaudeLines, ValueMode.Used, null));
+        Assert.Equal(expected, TrayTextFormatter.Tooltip(ClaudeOk(14, 50), ClaudeLines, ValueMode.Used, ""));
+    }
+
+    [Fact]
+    public void Tooltip_SystemLineThatWouldExceedLimit_IsLeftOut()
+    {
+        string baseText = TrayTextFormatter.Tooltip(ClaudeOk(14, 50), ClaudeLines, ValueMode.Used);
+        int room = TrayTextFormatter.MaxTooltipLength - baseText.Length - 1; // the "\n"
+
+        Assert.Equal(baseText + "\n" + new string('x', room),
+            TrayTextFormatter.Tooltip(ClaudeOk(14, 50), ClaudeLines, ValueMode.Used, new string('x', room)));
+        Assert.Equal(baseText,
+            TrayTextFormatter.Tooltip(ClaudeOk(14, 50), ClaudeLines, ValueMode.Used, new string('x', room + 1)));
+    }
+
+    [Fact]
+    public void Tooltip_WithoutView_AppendsSystemLineToAppTitle()
+    {
+        Assert.Equal("AI 사용량\nPC CPU 1% · RAM 2%", TrayTextFormatter.Tooltip(null, null, ValueMode.Used, "PC CPU 1% · RAM 2%"));
+    }
+
+    [Fact]
     public void Tooltip_WithoutView_ReturnsAppTitle()
     {
         Assert.Equal("AI 사용량", TrayTextFormatter.Tooltip(null, null, ValueMode.Used));

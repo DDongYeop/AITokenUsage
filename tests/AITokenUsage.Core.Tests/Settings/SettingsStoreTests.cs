@@ -214,6 +214,35 @@ public sealed class SettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void Load_JsonWithoutSystemMonitor_IsOff()
+    {
+        WriteRaw("""{ "version": 1, "rotationSeconds": 8 }""");
+
+        Assert.Equal(SystemMonitorMode.Off, _store.Load().SystemMonitor);
+    }
+
+    [Theory]
+    [InlineData(SystemMonitorMode.RotationPanel)]
+    [InlineData(SystemMonitorMode.AlwaysBeside)]
+    [InlineData(SystemMonitorMode.CardOnly)]
+    public void SaveThenLoad_RoundTripsSystemMonitor(SystemMonitorMode mode)
+    {
+        _store.Save(new AppSettings { SystemMonitor = mode });
+
+        AppSettings loaded = new SettingsStore(_path, _log).Load();
+
+        Assert.Equal(mode, loaded.SystemMonitor);
+    }
+
+    [Fact]
+    public void Load_UnknownSystemMonitorValue_FallsBackToOff()
+    {
+        WriteRaw("""{ "version": 1, "systemMonitor": 42 }""");
+
+        Assert.Equal(SystemMonitorMode.Off, _store.Load().SystemMonitor);
+    }
+
+    [Fact]
     public void SaveThenLoad_RoundTripsLanguageAndShowResetTime()
     {
         _store.Save(new AppSettings { Language = "ko", ShowResetTime = false });

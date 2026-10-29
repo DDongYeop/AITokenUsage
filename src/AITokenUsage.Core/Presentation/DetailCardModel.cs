@@ -20,4 +20,5 @@ public sealed record DetailCardModel(
     IReadOnlyList<CardRow> Rows,
     string? ExtraLine,
     IReadOnlyList<string> StatusLines,
-    bool IsStale);
+    bool IsStale,
+    string? SystemLine = null);

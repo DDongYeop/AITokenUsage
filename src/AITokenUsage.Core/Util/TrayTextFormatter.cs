@@ -75,7 +75,23 @@ public static class TrayTextFormatter
         _ => Strings.StatusLoading,
     };
 
-    public static string Tooltip(ProviderView? view, ProviderSettings? lines, ValueMode mode)
+    /// <summary>
+    /// Tooltip for the current panel. A non-empty systemLine ("PC CPU 23% · RAM 61%") goes on a new line
+    /// when the whole text still fits in MaxTooltipLength; otherwise it is left out.
+    /// </summary>
+    public static string Tooltip(ProviderView? view, ProviderSettings? lines, ValueMode mode, string? systemLine = null)
+    {
+        string text = BaseTooltip(view, lines, mode);
+        if (string.IsNullOrEmpty(systemLine))
+        {
+            return text;
+        }
+
+        string combined = text + "\n" + systemLine;
+        return combined.Length <= MaxTooltipLength ? combined : text;
+    }
+
+    private static string BaseTooltip(ProviderView? view, ProviderSettings? lines, ValueMode mode)
     {
         if (view is null)
         {

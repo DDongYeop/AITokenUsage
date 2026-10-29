@@ -95,6 +95,16 @@ public class DetailCardBuilderTests
     }
 
     [Fact]
+    public void Build_LeavesSystemLineEmpty_AndModelAcceptsOne()
+    {
+        DetailCardModel card = DetailCardBuilder.Build(
+            View(Ok("claude", Meter("session", "5h", 14, Now.AddHours(1)))), ValueMode.Used, Now, Kst);
+
+        Assert.Null(card.SystemLine);
+        Assert.Equal("PC CPU 1%", (card with { SystemLine = "PC CPU 1%" }).SystemLine);
+    }
+
+    [Fact]
     public void Build_SignedOutWithoutCache_HasNoRows()
     {
         var view = View(Status("claude", ProviderStatus.SignedOut, "터미널에서 claude 실행 후 /login"));

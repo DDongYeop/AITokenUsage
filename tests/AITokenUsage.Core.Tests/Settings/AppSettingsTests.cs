@@ -315,4 +315,31 @@ public class AppSettingsTests
 
         Assert.False(original.Clone().ShowDetailCard);
     }
+
+    [Fact]
+    public void SystemMonitor_DefaultsToOff() => Assert.Equal(SystemMonitorMode.Off, new AppSettings().SystemMonitor);
+
+    [Fact]
+    public void Normalize_UndefinedSystemMonitor_BecomesOff()
+    {
+        var settings = new AppSettings { SystemMonitor = (SystemMonitorMode)42 };
+
+        Assert.Equal(SystemMonitorMode.Off, settings.Normalize().SystemMonitor);
+    }
+
+    [Fact]
+    public void Normalize_KeepsDefinedSystemMonitor()
+    {
+        var settings = new AppSettings { SystemMonitor = SystemMonitorMode.AlwaysBeside };
+
+        Assert.Equal(SystemMonitorMode.AlwaysBeside, settings.Normalize().SystemMonitor);
+    }
+
+    [Fact]
+    public void Clone_CopiesSystemMonitor()
+    {
+        var original = new AppSettings { SystemMonitor = SystemMonitorMode.CardOnly };
+
+        Assert.Equal(SystemMonitorMode.CardOnly, original.Clone().SystemMonitor);
+    }
 }

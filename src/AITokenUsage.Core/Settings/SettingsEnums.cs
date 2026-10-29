@@ -15,6 +15,22 @@ public enum ValueMode
     Remaining,
 }
 
+/// <summary>Where PC usage (CPU and memory) is shown. Off by default.</summary>
+public enum SystemMonitorMode
+{
+    /// <summary>Not shown and not measured.</summary>
+    Off,
+
+    /// <summary>A "PC" panel at the end of the rotation.</summary>
+    RotationPanel,
+
+    /// <summary>A two-line column beside the AI panel, always visible.</summary>
+    AlwaysBeside,
+
+    /// <summary>Only a line on the detail card and in the tray tooltip.</summary>
+    CardOnly,
+}
+
 /// <summary>Auto follows the taskbar theme; Light/Dark force the text color.</summary>
 public enum TextColorMode
 {

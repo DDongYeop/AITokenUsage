@@ -18,6 +18,7 @@ public sealed partial class TrayIconController : IDisposable
     private readonly Forms.ContextMenuStrip _menu;
     private readonly Forms.ToolStripMenuItem _pauseItem;
     private TrayIconRenderer.IconSpec? _lastSpec;
+    private string? _lastTooltip;
     private int _lastSize;
     private Drawing.Icon? _icon;
     private nint _hicon;
@@ -39,6 +40,7 @@ public sealed partial class TrayIconController : IDisposable
 
         _notifyIcon = new Forms.NotifyIcon { ContextMenuStrip = _menu, Text = TrayTextFormatter.AppTitle };
         _notifyIcon.MouseClick += OnMouseClick;
+        _notifyIcon.MouseMove += OnMouseMove;
 
         _host.ViewChanged += OnViewChanged;
         _host.SystemUsageChanged += OnSystemUsageChanged;
@@ -101,13 +103,29 @@ public sealed partial class TrayIconController : IDisposable
 
     private void TogglePause() => _host.Rotation.SetUserPaused(!_host.Rotation.IsUserPaused);
 
-    /// <summary>A new PC sample: update only when the icon or tooltip shows PC values.</summary>
+    /// <summary>
+    /// A new PC sample: only the icon can change, and only while the PC panel is current. The tooltip's PC line is
+    /// filled lazily in <see cref="OnMouseMove"/>; each NotifyIcon update is a synchronous round-trip to Explorer.
+    /// </summary>
     private void OnSystemUsageChanged(object? sender, EventArgs e)
     {
-        if (_host.Rotation.CurrentId == SystemPanel.Id || _host.ShowsSystemLine)
+        if (_disposed || _host.Rotation.CurrentId != SystemPanel.Id)
         {
-            Update();
+            return;
         }
+
+        UpdateIcon(CurrentView());
+    }
+
+    /// <summary>The shell shows the tooltip after the pointer rests on the icon, so refresh the PC line just before.</summary>
+    private void OnMouseMove(object? sender, Forms.MouseEventArgs e)
+    {
+        if (_disposed || (_host.Rotation.CurrentId != SystemPanel.Id && !_host.ShowsSystemLine))
+        {
+            return;
+        }
+
+        ApplyTooltip(CurrentView());
     }
 
     private ProviderView? CurrentView()
@@ -131,18 +149,40 @@ public sealed partial class TrayIconController : IDisposable
         }
 
         ProviderView? view = CurrentView();
+        ApplyTooltip(view);
+        UpdateIcon(view);
+    }
+
+    private void ApplyTooltip(ProviderView? view)
+    {
         bool isSystem = view?.ProviderId == SystemPanel.Id;
-        ProviderSettings? lines = view is null || isSystem
-            ? null
-            : _host.Settings.Providers.FirstOrDefault(p => string.Equals(p.Id, view.ProviderId, StringComparison.Ordinal));
 
         // PC values are always "used %" (the ValueMode setting applies to AI limits only); line 1 is CPU.
         ValueMode mode = isSystem ? ValueMode.Used : _host.Settings.ValueMode;
 
-        _notifyIcon.Text = isSystem
+        string text = isSystem
             ? SystemPanel.TooltipLine(_host.SystemUsage)
             : TrayTextFormatter.Tooltip(
-                view, lines, mode, _host.ShowsSystemLine ? SystemPanel.TooltipLine(_host.SystemUsage) : null);
+                view, LinesFor(view), mode, _host.ShowsSystemLine ? SystemPanel.TooltipLine(_host.SystemUsage) : null);
+
+        // Skip identical text: every NotifyIcon.Text write is a shell round-trip.
+        if (!string.Equals(text, _lastTooltip, StringComparison.Ordinal))
+        {
+            _notifyIcon.Text = text;
+            _lastTooltip = text;
+        }
+    }
+
+    private ProviderSettings? LinesFor(ProviderView? view) =>
+        view is null || view.ProviderId == SystemPanel.Id
+            ? null
+            : _host.Settings.Providers.FirstOrDefault(p => string.Equals(p.Id, view.ProviderId, StringComparison.Ordinal));
+
+    private void UpdateIcon(ProviderView? view)
+    {
+        bool isSystem = view?.ProviderId == SystemPanel.Id;
+        ProviderSettings? lines = LinesFor(view);
+        ValueMode mode = isSystem ? ValueMode.Used : _host.Settings.ValueMode;
 
         UsageMeter? line1 = view is null ? null : TrayTextFormatter.SelectLine1(view, lines);
         TrayIconRenderer.IconSpec spec = TrayIconRenderer.CreateSpec(view, line1, mode);

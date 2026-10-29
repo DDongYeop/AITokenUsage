@@ -64,7 +64,7 @@ public sealed class DetailFlyoutController : IDisposable
         {
             _pinTimer = CreateTimer(TimeSpan.FromSeconds(2), (_, _) =>
             {
-                if (!_disposed && !IsOpen)
+                if (!_disposed && !IsOpen && CanOpen)
                 {
                     Open();
                 }

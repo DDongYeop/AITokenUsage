@@ -1,4 +1,5 @@
 using AITokenUsage.Core.Models;
+using AITokenUsage.Core.SystemUsage;
 
 namespace AITokenUsage.Core.Rotation;
 
@@ -150,9 +151,20 @@ public sealed class RotationController
             .Select(v => v.ProviderId)
             .ToArray();
 
+        // The always-Ok PC view must not hide the "nothing eligible" fallback: with no AI eligible, keep the
+        // first enabled AI (so its status message is visible) followed by the PC view.
+        bool anyAiEligible = eligible.Any(id => !IsSystem(id));
+        string? firstAi = enabledInOrder.Select(v => v.ProviderId).FirstOrDefault(id => !IsSystem(id));
+        if (!anyAiEligible && firstAi is not null)
+        {
+            return [firstAi, .. eligible.Where(IsSystem)];
+        }
+
         // Nothing eligible: show the first enabled provider so its status message is visible.
         return eligible.Length > 0 ? eligible : [enabledInOrder[0].ProviderId];
     }
+
+    private static bool IsSystem(string id) => string.Equals(id, SystemPanel.Id, StringComparison.Ordinal);
 
     private static bool IsUnavailable(ProviderView view) =>
         view.LastGood is null

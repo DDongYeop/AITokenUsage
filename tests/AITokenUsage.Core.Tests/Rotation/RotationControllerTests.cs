@@ -1,5 +1,6 @@
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Rotation;
+using AITokenUsage.Core.SystemUsage;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
@@ -190,6 +191,41 @@ public class RotationControllerTests
 
         Assert.Equal(new[] { "codex" }, _rotation.EligibleIds);
         Assert.Equal("codex", _rotation.CurrentId);
+    }
+
+    [Fact]
+    public void NoAiEligible_WithPcPanel_KeepsFirstEnabledAiThenPc()
+    {
+        _rotation.UpdateProviders(
+        [
+            View("codex", ProviderStatus.NotInstalled),
+            View("copilot", ProviderStatus.SignedOut),
+            View(SystemPanel.Id),
+        ]);
+
+        Assert.Equal(new[] { "codex", SystemPanel.Id }, _rotation.EligibleIds);
+        Assert.Equal("codex", _rotation.CurrentId);
+    }
+
+    [Fact]
+    public void SomeAiEligible_WithPcPanel_KeepsUsualEligibility()
+    {
+        _rotation.UpdateProviders(
+        [
+            View("codex", ProviderStatus.NotInstalled),
+            View("claude"),
+            View(SystemPanel.Id),
+        ]);
+
+        Assert.Equal(new[] { "claude", SystemPanel.Id }, _rotation.EligibleIds);
+    }
+
+    [Fact]
+    public void OnlyPcPanel_IsEligible()
+    {
+        _rotation.UpdateProviders([View(SystemPanel.Id)]);
+
+        Assert.Equal(new[] { SystemPanel.Id }, _rotation.EligibleIds);
     }
 
     [Fact]

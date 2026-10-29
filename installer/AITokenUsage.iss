@@ -11,6 +11,7 @@ AppName=AI Usage
 AppVersion={#AppVersion}
 AppVerName=AI Usage {#AppVersion}
 AppPublisher=DDongYeop
+AppCopyright=Copyright (C) 2026 DDongYeop
 AppPublisherURL=https://github.com/DDongYeop/AITokenUsage
 DefaultDirName={localappdata}\Programs\AITokenUsage
 DisableProgramGroupPage=yes

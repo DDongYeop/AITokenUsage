@@ -22,7 +22,8 @@ public partial class AboutPage : SettingsPage
     protected override void OnLoad()
     {
         AppCard.Header = TrayTextFormatter.AppTitle;
-        AppCard.Description = string.Format(CultureInfo.CurrentCulture, UiStrings.AboutVersionFormat, AppVersion());
+        string version = string.Format(CultureInfo.CurrentCulture, UiStrings.AboutVersionFormat, AppVersion());
+        AppCard.Description = AppCopyright() is { Length: > 0 } copyright ? version + Environment.NewLine + copyright : version;
         LogsCard.Description = AppPaths.LogDirectory;
         SettingsFileCard.Description = string.Format(
             CultureInfo.CurrentCulture, UiStrings.AboutSettingsFileDescriptionFormat, Host.SettingsStore.FilePath);
@@ -35,6 +36,10 @@ public partial class AboutPage : SettingsPage
         string? informational = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
         return VersionText.FromInformational(informational, assembly.GetName().Version);
     }
+
+    /// <summary>The Copyright set in Directory.Build.props ("Copyright © 2026 DDongYeop").</summary>
+    private static string? AppCopyright() =>
+        (Assembly.GetEntryAssembly() ?? typeof(AboutPage).Assembly).GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright;
 
     private void OnOpenLogFolderClick(object sender, RoutedEventArgs e)
     {

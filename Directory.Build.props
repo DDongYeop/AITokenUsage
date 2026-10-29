@@ -6,5 +6,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Version>1.1.0</Version>
     <Product>AITokenUsage</Product>
+    <Authors>DDongYeop</Authors>
+    <Company>DDongYeop</Company>
+    <Copyright>Copyright © 2026 DDongYeop</Copyright>
   </PropertyGroup>
 </Project>

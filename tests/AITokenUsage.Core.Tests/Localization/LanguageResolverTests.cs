@@ -37,4 +37,18 @@ public class LanguageResolverTests
     [InlineData("de", AppSettings.LanguageAuto)]
     public void Normalize_maps_to_known_values(string? input, string expected) =>
         Assert.Equal(expected, LanguageResolver.Normalize(input));
+
+    [Theory]
+    [InlineData("ko", "ko-KR", "ko-KR", false)]
+    [InlineData("en", "ko-KR", "ko-KR", true)]
+    [InlineData("auto", "ko-KR", "ko-KR", false)]   // auto resolves to the running Korean UI: nothing would change
+    [InlineData("auto", "en-US", "ko-KR", true)]
+    [InlineData("ko", "en-US", "en-US", true)]
+    [InlineData("en", "en-US", "en-US", false)]
+    [InlineData("fr", "ja-JP", "en-US", false)]     // unknown → auto → English on a non-Korean OS
+    public void RequiresRestart_compares_the_resolved_culture_with_the_running_one(
+        string setting, string os, string running, bool expected) =>
+        Assert.Equal(
+            expected,
+            LanguageResolver.RequiresRestart(setting, CultureInfo.GetCultureInfo(os), CultureInfo.GetCultureInfo(running)));
 }

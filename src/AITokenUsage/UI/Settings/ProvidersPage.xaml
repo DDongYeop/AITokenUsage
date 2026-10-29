@@ -1,0 +1,12 @@
+<local:SettingsPage x:Class="AITokenUsage.UI.Settings.ProvidersPage"
+                    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:AITokenUsage.UI.Settings"
+                    xmlns:res="clr-namespace:AITokenUsage.Resources">
+    <StackPanel>
+        <TextBlock Margin="0,0,0,12" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                   Text="{x:Static res:UiStrings.ProvidersPageDescription}" />
+        <!-- One ProviderCard per AI, in the settings order (the widget's order). -->
+        <StackPanel x:Name="CardsPanel" />
+    </StackPanel>
+</local:SettingsPage>

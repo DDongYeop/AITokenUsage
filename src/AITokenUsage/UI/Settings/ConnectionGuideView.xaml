@@ -1,0 +1,12 @@
+<UserControl x:Class="AITokenUsage.UI.Settings.ConnectionGuideView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Focusable="False"
+             IsTabStop="False">
+    <!-- Step rows are built in code from a Core ConnectionGuide (v1.1 spec §4.4). -->
+    <StackPanel>
+        <StackPanel x:Name="StepsPanel" />
+        <TextBlock x:Name="FootnoteText" FontSize="12" TextWrapping="Wrap" Visibility="Collapsed"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+    </StackPanel>
+</UserControl>

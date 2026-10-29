@@ -369,4 +369,28 @@
   <data name="GeminiFlashLiteDaily" xml:space="preserve">
     <value>Flash-Lite daily</value>
   </data>
+  <data name="GuideStepNode" xml:space="preserve">
+    <value>Install Node.js (skip if you already have it)</value>
+  </data>
+  <data name="GuideStepInstall" xml:space="preserve">
+    <value>Install {0}</value>
+  </data>
+  <data name="GuideStepLoginClaude" xml:space="preserve">
+    <value>Run claude in a terminal, then type /login</value>
+  </data>
+  <data name="GuideStepRefreshClaude" xml:space="preserve">
+    <value>Run Claude Code once to refresh the sign-in</value>
+  </data>
+  <data name="GuideStepLoginCodex" xml:space="preserve">
+    <value>Sign in from a terminal</value>
+  </data>
+  <data name="GuideStepLoginGemini" xml:space="preserve">
+    <value>Run gemini in a terminal and choose &quot;Login with Google&quot;</value>
+  </data>
+  <data name="GuideStepRecheck" xml:space="preserve">
+    <value>It is detected automatically once you sign in</value>
+  </data>
+  <data name="GuideGeminiDiscontinued" xml:space="preserve">
+    <value>Usage lookup for personal Google accounts has ended. A Workspace (Code Assist) account is required.</value>
+  </data>
 </root>

@@ -1,0 +1,32 @@
+<local:SettingsPage x:Class="AITokenUsage.UI.Settings.RotationPage"
+                    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:AITokenUsage.UI.Settings"
+                    xmlns:controls="clr-namespace:AITokenUsage.UI.Controls"
+                    xmlns:res="clr-namespace:AITokenUsage.Resources">
+    <StackPanel>
+        <controls:SettingsCard Header="{x:Static res:UiStrings.RotationEnabledHeader}">
+            <CheckBox x:Name="RotationEnabledBox" Style="{StaticResource ToggleSwitchStyle}"
+                      AutomationProperties.Name="{x:Static res:UiStrings.RotationEnabledHeader}" />
+        </controls:SettingsCard>
+
+        <controls:SettingsCard x:Name="IntervalCard" Header="{x:Static res:UiStrings.RotationIntervalHeader}">
+            <StackPanel Orientation="Horizontal">
+                <Slider x:Name="IntervalSlider" Width="200" VerticalAlignment="Center" Minimum="2" Maximum="60"
+                        SmallChange="1" LargeChange="5" TickFrequency="1" IsSnapToTickEnabled="True"
+                        AutomationProperties.Name="{x:Static res:UiStrings.RotationIntervalSliderName}" />
+                <TextBlock x:Name="IntervalText" Width="48" Margin="8,0,0,0" VerticalAlignment="Center" TextAlignment="Right" />
+            </StackPanel>
+        </controls:SettingsCard>
+
+        <controls:SettingsCard Header="{x:Static res:UiStrings.RotationPauseOnHoverHeader}">
+            <CheckBox x:Name="PauseOnHoverBox" Style="{StaticResource ToggleSwitchStyle}"
+                      AutomationProperties.Name="{x:Static res:UiStrings.RotationPauseOnHoverHeader}" />
+        </controls:SettingsCard>
+
+        <controls:SettingsCard Header="{x:Static res:UiStrings.RotationSkipUnavailableHeader}">
+            <CheckBox x:Name="SkipUnavailableBox" Style="{StaticResource ToggleSwitchStyle}"
+                      AutomationProperties.Name="{x:Static res:UiStrings.RotationSkipUnavailableHeader}" />
+        </controls:SettingsCard>
+    </StackPanel>
+</local:SettingsPage>

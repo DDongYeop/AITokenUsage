@@ -369,4 +369,28 @@
   <data name="GeminiFlashLiteDaily" xml:space="preserve">
     <value>Flash-Lite 일간</value>
   </data>
+  <data name="GuideStepNode" xml:space="preserve">
+    <value>Node.js 설치 (이미 있으면 건너뛰세요)</value>
+  </data>
+  <data name="GuideStepInstall" xml:space="preserve">
+    <value>{0} 설치</value>
+  </data>
+  <data name="GuideStepLoginClaude" xml:space="preserve">
+    <value>터미널에서 claude 실행 후 /login 입력</value>
+  </data>
+  <data name="GuideStepRefreshClaude" xml:space="preserve">
+    <value>Claude Code를 한 번 실행하면 로그인이 갱신돼요</value>
+  </data>
+  <data name="GuideStepLoginCodex" xml:space="preserve">
+    <value>터미널에서 로그인</value>
+  </data>
+  <data name="GuideStepLoginGemini" xml:space="preserve">
+    <value>터미널에서 gemini 실행 후 &quot;Login with Google&quot; 선택</value>
+  </data>
+  <data name="GuideStepRecheck" xml:space="preserve">
+    <value>로그인하면 자동으로 인식돼요</value>
+  </data>
+  <data name="GuideGeminiDiscontinued" xml:space="preserve">
+    <value>개인 Google 계정은 Gemini CLI 사용량 조회가 종료됐어요. Workspace(Code Assist) 계정이 필요해요</value>
+  </data>
 </root>

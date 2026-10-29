@@ -1,0 +1,21 @@
+<local:SettingsPage x:Class="AITokenUsage.UI.Settings.AboutPage"
+                    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:AITokenUsage.UI.Settings"
+                    xmlns:controls="clr-namespace:AITokenUsage.UI.Controls"
+                    xmlns:res="clr-namespace:AITokenUsage.Resources">
+    <StackPanel>
+        <controls:SettingsCard x:Name="AppCard" />
+
+        <controls:SettingsCard Header="{x:Static res:UiStrings.AboutUnofficialApiHeader}"
+                               Description="{x:Static res:UiStrings.AboutUnofficialApiDescription}" />
+
+        <controls:SettingsCard x:Name="LogsCard" Header="{x:Static res:UiStrings.AboutLogsHeader}">
+            <Button x:Name="OpenLogFolderButton" Padding="12,4,12,4" MinWidth="0"
+                    Content="{x:Static res:UiStrings.AboutOpenLogFolderButton}"
+                    AutomationProperties.Name="{x:Static res:UiStrings.AboutOpenLogFolderButton}" />
+        </controls:SettingsCard>
+
+        <controls:SettingsCard x:Name="SettingsFileCard" Header="{x:Static res:UiStrings.AboutSettingsFileHeader}" />
+    </StackPanel>
+</local:SettingsPage>

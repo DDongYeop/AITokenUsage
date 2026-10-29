@@ -1,5 +1,6 @@
 using System.Security;
 using AITokenUsage.Core.Abstractions;
+using AITokenUsage.Core.Settings;
 using Microsoft.Win32;
 
 namespace AITokenUsage;
@@ -12,6 +13,38 @@ public static class StartupRegistration
 
     public static string? BuildCommand() =>
         Environment.ProcessPath is { Length: > 0 } path ? "\"" + path + "\"" : null;
+
+    /// <summary>The current Run value, or null when it is missing, not a string, or cannot be read.</summary>
+    public static string? ReadCurrent()
+    {
+        try
+        {
+            using RegistryKey? key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: false);
+            return key?.GetValue(ValueName) as string;
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or SecurityException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Startup reconciliation (spec §5.3). When the setting is off but the Run value already points at this exe
+    /// (the installer wrote it), the registry is left alone and true is returned so the caller turns the setting on.
+    /// Otherwise behaves like <see cref="Apply"/> and returns false. Takes a bool, not AppSettings, because it runs on
+    /// a background thread that must not read the object the UI edits.
+    /// </summary>
+    public static bool Sync(bool settingEnabled, IAppLog log)
+    {
+        ArgumentNullException.ThrowIfNull(log);
+        if (StartupSync.Decide(ReadCurrent(), Environment.ProcessPath, settingEnabled) == StartupSyncDecision.AdoptRegistryEnabled)
+        {
+            return true;
+        }
+
+        Apply(settingEnabled, log);
+        return false;
+    }
 
     public static void Apply(bool enabled, IAppLog log)
     {

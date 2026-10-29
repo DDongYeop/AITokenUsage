@@ -27,4 +27,15 @@ public static class LanguageResolver
 
         return CultureInfo.GetCultureInfo(language == AppSettings.LanguageKorean ? "ko-KR" : "en-US");
     }
+
+    /// <summary>
+    /// True when a restart with <paramref name="setting"/> would show a different language than the running app
+    /// (the culture applied at startup). "auto" that resolves to the running language needs no restart.
+    /// </summary>
+    public static bool RequiresRestart(string? setting, CultureInfo osUiCulture, CultureInfo runningCulture)
+    {
+        ArgumentNullException.ThrowIfNull(runningCulture);
+
+        return !string.Equals(Resolve(setting, osUiCulture).Name, runningCulture.Name, StringComparison.OrdinalIgnoreCase);
+    }
 }

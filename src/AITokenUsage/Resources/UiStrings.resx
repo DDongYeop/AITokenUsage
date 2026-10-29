@@ -76,4 +76,178 @@ Log: {0}</value>
   <data name="CopilotBrowserOpenErrorFormat" xml:space="preserve">
     <value>Could not open the browser. Go to {0} manually.</value>
   </data>
+  <data name="SettingsTitle" xml:space="preserve">
+    <value>AI Usage Settings</value>
+  </data>
+  <data name="SettingsNavigationName" xml:space="preserve">
+    <value>Settings pages</value>
+  </data>
+  <data name="NavProviders" xml:space="preserve">
+    <value>AI connections</value>
+  </data>
+  <data name="NavWidget" xml:space="preserve">
+    <value>Widget</value>
+  </data>
+  <data name="NavRotation" xml:space="preserve">
+    <value>Rotation</value>
+  </data>
+  <data name="NavGeneral" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="NavAbout" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="ToggleOn" xml:space="preserve">
+    <value>On</value>
+  </data>
+  <data name="ToggleOff" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="WidgetMonitorHeader" xml:space="preserve">
+    <value>Monitor</value>
+  </data>
+  <data name="WidgetPlacementHeader" xml:space="preserve">
+    <value>Position</value>
+  </data>
+  <data name="PlacementLeftEdge" xml:space="preserve">
+    <value>Left end of the taskbar</value>
+  </data>
+  <data name="PlacementBeforeStart" xml:space="preserve">
+    <value>Left of the Start button</value>
+  </data>
+  <data name="PlacementBeforeTray" xml:space="preserve">
+    <value>Left of the notification area</value>
+  </data>
+  <data name="WidgetValueModeHeader" xml:space="preserve">
+    <value>Values</value>
+  </data>
+  <data name="ValueModeUsed" xml:space="preserve">
+    <value>Used %</value>
+  </data>
+  <data name="ValueModeRemaining" xml:space="preserve">
+    <value>Remaining %</value>
+  </data>
+  <data name="WidgetShowResetTimeHeader" xml:space="preserve">
+    <value>Time until reset</value>
+  </data>
+  <data name="WidgetShowResetTimeDescription" xml:space="preserve">
+    <value>Turn off to make the widget narrower</value>
+  </data>
+  <data name="WidgetTextColorHeader" xml:space="preserve">
+    <value>Text color</value>
+  </data>
+  <data name="TextColorAuto" xml:space="preserve">
+    <value>Automatic (taskbar theme)</value>
+  </data>
+  <data name="TextColorLight" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="TextColorDark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="RotationEnabledHeader" xml:space="preserve">
+    <value>Rotate between AIs automatically</value>
+  </data>
+  <data name="RotationIntervalHeader" xml:space="preserve">
+    <value>Interval</value>
+  </data>
+  <data name="RotationIntervalSliderName" xml:space="preserve">
+    <value>Rotation interval</value>
+  </data>
+  <data name="RotationSecondsFormat" xml:space="preserve">
+    <value>{0} s</value>
+  </data>
+  <data name="RotationPauseOnHoverHeader" xml:space="preserve">
+    <value>Pause while the mouse is over the widget</value>
+  </data>
+  <data name="RotationSkipUnavailableHeader" xml:space="preserve">
+    <value>Skip AIs that aren't connected</value>
+  </data>
+  <data name="GeneralLanguageHeader" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="GeneralRestartNotice" xml:space="preserve">
+    <value>Applies after a restart</value>
+  </data>
+  <data name="GeneralRestartNowButton" xml:space="preserve">
+    <value>Restart now</value>
+  </data>
+  <data name="GeneralRefreshHeader" xml:space="preserve">
+    <value>Refresh interval</value>
+  </data>
+  <data name="RefreshMinutesFormat" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
+  <data name="GeneralStartWithWindowsHeader" xml:space="preserve">
+    <value>Start with Windows</value>
+  </data>
+  <data name="GeneralShowTrayIconHeader" xml:space="preserve">
+    <value>Show tray icon</value>
+  </data>
+  <data name="AboutVersionFormat" xml:space="preserve">
+    <value>Version {0}</value>
+  </data>
+  <data name="AboutUnofficialApiHeader" xml:space="preserve">
+    <value>Uses unofficial APIs</value>
+  </data>
+  <data name="AboutUnofficialApiDescription" xml:space="preserve">
+    <value>Usage is read through unofficial endpoints of each AI service, so it can stop working when a service changes.</value>
+  </data>
+  <data name="AboutLogsHeader" xml:space="preserve">
+    <value>Logs</value>
+  </data>
+  <data name="AboutOpenLogFolderButton" xml:space="preserve">
+    <value>Open log folder</value>
+  </data>
+  <data name="AboutSettingsFileHeader" xml:space="preserve">
+    <value>Settings file</value>
+  </data>
+  <data name="AboutSettingsFileDescriptionFormat" xml:space="preserve">
+    <value>Changes apply and save immediately · {0}</value>
+  </data>
+  <data name="ProvidersPageDescription" xml:space="preserve">
+    <value>Choose which AIs the widget shows and in what order</value>
+  </data>
+  <data name="ProviderShowOnWidget" xml:space="preserve">
+    <value>Show on widget</value>
+  </data>
+  <data name="ProviderControlNameFormat" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="ProviderOptionsName" xml:space="preserve">
+    <value>Display options</value>
+  </data>
+  <data name="ProviderLine1Label" xml:space="preserve">
+    <value>Line 1</value>
+  </data>
+  <data name="ProviderLine2Label" xml:space="preserve">
+    <value>Line 2</value>
+  </data>
+  <data name="ProviderMoveUpButton" xml:space="preserve">
+    <value>Move up</value>
+  </data>
+  <data name="ProviderMoveDownButton" xml:space="preserve">
+    <value>Move down</value>
+  </data>
+  <data name="GuideCopyButton" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="GuideCopiedButton" xml:space="preserve">
+    <value>Copied</value>
+  </data>
+  <data name="GuideCopyCommandNameFormat" xml:space="preserve">
+    <value>Copy command: {0}</value>
+  </data>
+  <data name="GuideSignInTerminalButton" xml:space="preserve">
+    <value>Sign in from terminal</value>
+  </data>
+  <data name="GuideOpenTerminalButton" xml:space="preserve">
+    <value>Open terminal</value>
+  </data>
+  <data name="GuideRecheckButton" xml:space="preserve">
+    <value>Check again</value>
+  </data>
+  <data name="GuideTerminalFailed" xml:space="preserve">
+    <value>Couldn't open a terminal. Copy the command and run it yourself</value>
+  </data>
 </root>

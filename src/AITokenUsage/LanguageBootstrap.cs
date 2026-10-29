@@ -9,9 +9,16 @@ public static class LanguageBootstrap
 {
     public const string RestartedArgument = "--restarted";
 
+    /// <summary>
+    /// The culture applied at startup, i.e. the language the running UI was built in. The settings window compares a
+    /// changed "Language" setting against it to decide whether a restart is needed. Null until Apply runs.
+    /// </summary>
+    public static CultureInfo? RunningCulture { get; private set; }
+
     public static CultureInfo Apply(string? languageSetting)
     {
         CultureInfo culture = LanguageResolver.Resolve(languageSetting, CultureInfo.InstalledUICulture);
+        RunningCulture = culture;
         CultureInfo.DefaultThreadCurrentCulture = culture;
         CultureInfo.DefaultThreadCurrentUICulture = culture;
         CultureInfo.CurrentCulture = culture;
@@ -19,7 +26,11 @@ public static class LanguageBootstrap
         return culture;
     }
 
-    /// <summary>Starts a new instance that waits for our mutex, then shuts this one down through AppHost.Shutdown (which saves pending settings).</summary>
+    /// <summary>
+    /// Starts a new instance that waits for our mutex, then shuts this one down through AppHost.Shutdown (which saves pending settings).
+    /// UI thread only; no re-entry guard (callers disable their trigger). Shutdown closes the settings window synchronously,
+    /// so a settings-window click handler should post this call (Dispatcher.BeginInvoke) instead of calling it inline.
+    /// </summary>
     public static void Restart(AppHost host)
     {
         ArgumentNullException.ThrowIfNull(host);

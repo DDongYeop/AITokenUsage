@@ -1,0 +1,46 @@
+<local:SettingsPage x:Class="AITokenUsage.UI.Settings.GeneralPage"
+                    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:AITokenUsage.UI.Settings"
+                    xmlns:controls="clr-namespace:AITokenUsage.UI.Controls"
+                    xmlns:res="clr-namespace:AITokenUsage.Resources">
+    <StackPanel>
+        <controls:SettingsCard Header="{x:Static res:UiStrings.GeneralLanguageHeader}">
+            <ComboBox x:Name="LanguageBox" Width="260" DisplayMemberPath="Label"
+                      AutomationProperties.Name="{x:Static res:UiStrings.GeneralLanguageHeader}" />
+        </controls:SettingsCard>
+
+        <Border x:Name="RestartNotice" Style="{StaticResource InfoBarBorderStyle}" Visibility="Collapsed">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <controls:IconGlyph Grid.Column="0" Margin="0,0,12,0" VerticalAlignment="Center" FontSize="16"
+                                    FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Text="&#xE946;"
+                                    Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
+                <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap"
+                           Text="{x:Static res:UiStrings.GeneralRestartNotice}" />
+                <Button x:Name="RestartButton" Grid.Column="2" Margin="12,0,0,0" Padding="12,4,12,4" MinWidth="0"
+                        Content="{x:Static res:UiStrings.GeneralRestartNowButton}"
+                        AutomationProperties.Name="{x:Static res:UiStrings.GeneralRestartNowButton}" />
+            </Grid>
+        </Border>
+
+        <controls:SettingsCard Header="{x:Static res:UiStrings.GeneralRefreshHeader}">
+            <ComboBox x:Name="RefreshBox" Width="260" DisplayMemberPath="Label"
+                      AutomationProperties.Name="{x:Static res:UiStrings.GeneralRefreshHeader}" />
+        </controls:SettingsCard>
+
+        <controls:SettingsCard Header="{x:Static res:UiStrings.GeneralStartWithWindowsHeader}">
+            <CheckBox x:Name="StartWithWindowsBox" Style="{StaticResource ToggleSwitchStyle}"
+                      AutomationProperties.Name="{x:Static res:UiStrings.GeneralStartWithWindowsHeader}" />
+        </controls:SettingsCard>
+
+        <controls:SettingsCard Header="{x:Static res:UiStrings.GeneralShowTrayIconHeader}">
+            <CheckBox x:Name="ShowTrayBox" Style="{StaticResource ToggleSwitchStyle}"
+                      AutomationProperties.Name="{x:Static res:UiStrings.GeneralShowTrayIconHeader}" />
+        </controls:SettingsCard>
+    </StackPanel>
+</local:SettingsPage>

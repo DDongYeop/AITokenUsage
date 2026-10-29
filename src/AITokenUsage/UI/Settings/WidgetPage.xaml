@@ -1,0 +1,40 @@
+<local:SettingsPage x:Class="AITokenUsage.UI.Settings.WidgetPage"
+                    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:AITokenUsage.UI.Settings"
+                    xmlns:controls="clr-namespace:AITokenUsage.UI.Controls"
+                    xmlns:res="clr-namespace:AITokenUsage.Resources">
+    <StackPanel>
+        <controls:SettingsCard Header="{x:Static res:UiStrings.WidgetMonitorHeader}">
+            <ComboBox x:Name="MonitorBox" Width="260" DisplayMemberPath="Label"
+                      AutomationProperties.Name="{x:Static res:UiStrings.WidgetMonitorHeader}" />
+        </controls:SettingsCard>
+
+        <controls:SettingsCard Header="{x:Static res:UiStrings.WidgetPlacementHeader}">
+            <ComboBox x:Name="PlacementBox" Width="260" DisplayMemberPath="Label"
+                      AutomationProperties.Name="{x:Static res:UiStrings.WidgetPlacementHeader}" />
+        </controls:SettingsCard>
+
+        <controls:SettingsCard Header="{x:Static res:UiStrings.WidgetValueModeHeader}">
+            <StackPanel Orientation="Horizontal">
+                <RadioButton x:Name="UsedRadio" GroupName="ValueMode" MinWidth="0" Margin="0,0,16,0"
+                             Content="{x:Static res:UiStrings.ValueModeUsed}"
+                             AutomationProperties.Name="{x:Static res:UiStrings.ValueModeUsed}" />
+                <RadioButton x:Name="RemainingRadio" GroupName="ValueMode" MinWidth="0"
+                             Content="{x:Static res:UiStrings.ValueModeRemaining}"
+                             AutomationProperties.Name="{x:Static res:UiStrings.ValueModeRemaining}" />
+            </StackPanel>
+        </controls:SettingsCard>
+
+        <controls:SettingsCard Header="{x:Static res:UiStrings.WidgetShowResetTimeHeader}"
+                               Description="{x:Static res:UiStrings.WidgetShowResetTimeDescription}">
+            <CheckBox x:Name="ShowResetTimeBox" Style="{StaticResource ToggleSwitchStyle}"
+                      AutomationProperties.Name="{x:Static res:UiStrings.WidgetShowResetTimeHeader}" />
+        </controls:SettingsCard>
+
+        <controls:SettingsCard Header="{x:Static res:UiStrings.WidgetTextColorHeader}">
+            <ComboBox x:Name="TextColorBox" Width="260" DisplayMemberPath="Label"
+                      AutomationProperties.Name="{x:Static res:UiStrings.WidgetTextColorHeader}" />
+        </controls:SettingsCard>
+    </StackPanel>
+</local:SettingsPage>

@@ -9,6 +9,7 @@ using AITokenUsage.Core.Rotation;
 using AITokenUsage.Core.Settings;
 using AITokenUsage.Taskbar;
 using AITokenUsage.UI;
+using AITokenUsage.UI.Settings;
 
 namespace AITokenUsage;
 
@@ -122,7 +123,13 @@ public sealed class AppHost : IAsyncDisposable
         _pathWatcher.Start();
         _rotationTimer.Start();
         bool startWithWindows = Settings.StartWithWindows;
-        QueueBackground(() => StartupRegistration.Apply(startWithWindows, Log));
+        QueueBackground(() =>
+        {
+            if (StartupRegistration.Sync(startWithWindows, Log))
+            {
+                AdoptInstallerStartupRegistration();
+            }
+        });
         _ = Task.Run(LogTaskbarDiagnostics);
         Log.Info($"diagnostics: theme taskbarLight={Theme.IsTaskbarLight} appLight={Theme.IsAppLight}");
         Taskbar = new TaskbarHost(() => new WidgetWindow(new WidgetViewModel(this, Theme)), this, Shell);
@@ -166,6 +173,30 @@ public sealed class AppHost : IAsyncDisposable
         QueueBackground(() => StartupRegistration.Apply(startWithWindows, Log));
 
         RaiseSettingsChanged();
+    }
+
+    /// <summary>
+    /// Background thread: the installer registered this exe, so turn the setting on (UI thread) and persist it through
+    /// ApplySettings. Its own StartupRegistration.Apply(true) is then a no-op because the value already matches.
+    /// </summary>
+    private void AdoptInstallerStartupRegistration()
+    {
+        if (Volatile.Read(ref _disposed) == 1 || Dispatcher.HasShutdownStarted)
+        {
+            return;
+        }
+
+        Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
+        {
+            if (Settings.StartWithWindows)
+            {
+                return;
+            }
+
+            Log.Info("startup registration adopted from installer");
+            Settings.StartWithWindows = true;
+            ApplySettings();
+        }));
     }
 
     /// <summary>Each subscriber runs in isolation: a failing subscriber never blocks the others or the caller.</summary>
@@ -258,7 +289,7 @@ public sealed class AppHost : IAsyncDisposable
         }
 
         Log.Info("show-settings requested");
-        SettingsWindow.ShowOrActivate(this, Theme);
+        SettingsWindow.ShowOrActivate(this);
     }
 
     /// <summary>

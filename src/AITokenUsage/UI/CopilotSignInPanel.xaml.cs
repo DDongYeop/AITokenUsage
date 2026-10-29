@@ -35,6 +35,12 @@ public partial class CopilotSignInPanel : UserControl, IDisposable
         Refresh();
     }
 
+    /// <summary>
+    /// True while a sign-in is in progress or the app's own GitHub sign-in is saved: the Copilot card keeps the panel visible
+    /// then, whatever the provider status is.
+    /// </summary>
+    public bool IsActive => _flowCts is not null || _copilot.SignedInLogin is not null;
+
     /// <summary>Shows sign-in, progress or "GitHub: login" depending on the current state.</summary>
     public void Refresh()
     {

@@ -3,6 +3,7 @@ using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Rotation;
 using AITokenUsage.Core.Settings;
 using AITokenUsage.Core.Util;
+using AITokenUsage.Resources;
 using Drawing = System.Drawing;
 using Forms = System.Windows.Forms;
 
@@ -26,13 +27,13 @@ public sealed partial class TrayIconController : IDisposable
         ArgumentNullException.ThrowIfNull(host);
         _host = host;
 
-        var refreshItem = new Forms.ToolStripMenuItem("지금 새로고침", null, (_, _) => { _ = _host.RefreshNowAsync(); });
-        _pauseItem = new Forms.ToolStripMenuItem("자동 전환 일시정지", null, (_, _) => TogglePause());
-        var exitItem = new Forms.ToolStripMenuItem("종료", null, (_, _) => _host.Shutdown());
+        var refreshItem = new Forms.ToolStripMenuItem(UiStrings.TrayMenuRefreshNow, null, (_, _) => { _ = _host.RefreshNowAsync(); });
+        _pauseItem = new Forms.ToolStripMenuItem(UiStrings.TrayMenuPauseRotation, null, (_, _) => TogglePause());
+        var exitItem = new Forms.ToolStripMenuItem(UiStrings.TrayMenuExit, null, (_, _) => _host.Shutdown());
 
         _menu = new Forms.ContextMenuStrip();
         _menu.Items.AddRange(new Forms.ToolStripItem[] { refreshItem, _pauseItem, new Forms.ToolStripSeparator(), exitItem });
-        _menu.Items.Insert(0, new Forms.ToolStripMenuItem("설정…", null, (_, _) => _host.OpenSettings()));
+        _menu.Items.Insert(0, new Forms.ToolStripMenuItem(UiStrings.TrayMenuSettings, null, (_, _) => _host.OpenSettings()));
         _menu.Opening += OnMenuOpening;
 
         _notifyIcon = new Forms.NotifyIcon { ContextMenuStrip = _menu, Text = TrayTextFormatter.AppTitle };

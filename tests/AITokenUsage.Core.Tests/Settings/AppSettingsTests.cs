@@ -263,4 +263,45 @@ public class AppSettingsTests
         Assert.Equal("weekly:fable", original.Providers[1].Line1Key);
         Assert.Equal(17, original.RotationSeconds);
     }
+
+    [Fact]
+    public void LanguageAndShowResetTime_DefaultsAreAutoAndTrue()
+    {
+        var settings = new AppSettings();
+
+        Assert.Equal(AppSettings.LanguageAuto, settings.Language);
+        Assert.Equal("auto", settings.Language);
+        Assert.True(settings.ShowResetTime);
+    }
+
+    [Fact]
+    public void Normalize_UnknownLanguage_BecomesAuto()
+    {
+        var settings = new AppSettings { Language = "xx" };
+
+        settings.Normalize();
+
+        Assert.Equal("auto", settings.Language);
+    }
+
+    [Fact]
+    public void Normalize_KnownLanguage_IsKeptLowerCased()
+    {
+        var settings = new AppSettings { Language = " EN " };
+
+        settings.Normalize();
+
+        Assert.Equal(AppSettings.LanguageEnglish, settings.Language);
+    }
+
+    [Fact]
+    public void Clone_CopiesLanguageAndShowResetTime()
+    {
+        var original = new AppSettings { Language = "en", ShowResetTime = false };
+
+        AppSettings clone = original.Clone();
+
+        Assert.Equal("en", clone.Language);
+        Assert.False(clone.ShowResetTime);
+    }
 }

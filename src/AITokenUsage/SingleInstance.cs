@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Windows.Threading;
 
 namespace AITokenUsage;
@@ -10,6 +11,8 @@ public sealed class SingleInstance : IDisposable
 {
     public const string MutexName = @"Local\AITokenUsage.SingleInstance";
     public const string ShowSettingsEventName = @"Local\AITokenUsage.ShowSettings";
+
+    private static readonly TimeSpan RetryInterval = TimeSpan.FromMilliseconds(200);
 
     private readonly Mutex _mutex;
     private readonly EventWaitHandle _showSettings;
@@ -24,9 +27,35 @@ public sealed class SingleInstance : IDisposable
     }
 
     /// <summary>Returns the owner object for the first instance; for a second instance signals the first and returns null.</summary>
-    public static SingleInstance? TryAcquire()
+    public static SingleInstance? TryAcquire() => TryAcquire(TimeSpan.Zero);
+
+    /// <summary>
+    /// Like <see cref="TryAcquire()"/>, but when the mutex is already held it retries every 200 ms until
+    /// <paramref name="waitForRelease"/> has elapsed (a restarting instance waits for its predecessor to exit).
+    /// The first instance is signalled only after the wait ran out.
+    /// </summary>
+    public static SingleInstance? TryAcquire(TimeSpan waitForRelease) => TryAcquire(waitForRelease, signalFirstInstanceOnTimeout: true);
+
+    /// <param name="signalFirstInstanceOnTimeout">
+    /// False for a restarted instance: the owner is the exiting predecessor, so signalling it would only make it open a settings window.
+    /// </param>
+    public static SingleInstance? TryAcquire(TimeSpan waitForRelease, bool signalFirstInstanceOnTimeout)
     {
-        var mutex = new Mutex(initiallyOwned: true, MutexName, out bool createdNew);
+        long start = Stopwatch.GetTimestamp();
+        Mutex mutex;
+        bool createdNew;
+        while (true)
+        {
+            mutex = new Mutex(initiallyOwned: true, MutexName, out createdNew);
+            if (createdNew || Stopwatch.GetElapsedTime(start) >= waitForRelease)
+            {
+                break;
+            }
+
+            // Not created new means we do not own it: just close our handle and try again.
+            mutex.Dispose();
+            Thread.Sleep(RetryInterval);
+        }
 
         // Both instances open-or-create the event, so the signal is never lost even if the first
         // instance has not created it yet.
@@ -36,7 +65,11 @@ public sealed class SingleInstance : IDisposable
             return new SingleInstance(mutex, showSettings);
         }
 
-        showSettings.Set();
+        if (signalFirstInstanceOnTimeout)
+        {
+            showSettings.Set();
+        }
+
         showSettings.Dispose();
         mutex.Dispose();
         return null;

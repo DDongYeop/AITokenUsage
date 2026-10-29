@@ -189,4 +189,27 @@ public sealed class SettingsStoreTests : IDisposable
 
         Assert.True(File.Exists(nested));
     }
+
+    [Fact]
+    public void Load_JsonWithoutLanguageFields_UsesDefaults()
+    {
+        WriteRaw("""{ "version": 1, "rotationSeconds": 8 }""");
+
+        AppSettings settings = _store.Load();
+
+        Assert.Equal("auto", settings.Language);
+        Assert.True(settings.ShowResetTime);
+        Assert.Equal(8, settings.RotationSeconds);
+    }
+
+    [Fact]
+    public void SaveThenLoad_RoundTripsLanguageAndShowResetTime()
+    {
+        _store.Save(new AppSettings { Language = "ko", ShowResetTime = false });
+
+        AppSettings loaded = new SettingsStore(_path, _log).Load();
+
+        Assert.Equal("ko", loaded.Language);
+        Assert.False(loaded.ShowResetTime);
+    }
 }

@@ -1,5 +1,8 @@
+using System.Globalization;
 using System.Windows;
 using AITokenUsage.Core.Abstractions;
+using AITokenUsage.Core.Util;
+using AITokenUsage.Resources;
 using AITokenUsage.UI;
 
 namespace AITokenUsage;
@@ -14,16 +17,27 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        _instance = SingleInstance.TryAcquire();
+        // A restart (language change) starts the new instance while the old one is still shutting down (it releases the
+        // mutex only after AppHost.DisposeAsync): wait for it, and never signal that exiting instance on timeout.
+        bool restarted = e.Args.Contains(LanguageBootstrap.RestartedArgument);
+        _instance = restarted
+            ? SingleInstance.TryAcquire(TimeSpan.FromSeconds(10), signalFirstInstanceOnTimeout: false)
+            : SingleInstance.TryAcquire();
         if (_instance is null)
         {
-            // Another instance owns the mutex and has been signalled to open its settings window.
+            if (restarted)
+            {
+                LogRestartTimeout();
+            }
+
+            // Otherwise another instance owns the mutex and has been signalled to open its settings window.
             Shutdown(0);
             return;
         }
 
         try
         {
+            // AppHost applies the UI language itself (LanguageBootstrap.Apply) right after loading the settings.
             _host = new AppHost(Dispatcher);
             HookGlobalExceptionHandlers(_host.Log);
             _instance.StartListening(Dispatcher, _host.OpenSettings);
@@ -42,7 +56,7 @@ public partial class App : Application
     {
         _tray?.Dispose();
 
-        // Windows logoff/shutdown (SessionEnding) and failed startups reach here without the tray's 종료 path:
+        // Windows logoff/shutdown (SessionEnding) and failed startups reach here without the tray's Exit path:
         // finish the pending settings save and flush the log. No-op after the normal AppHost.DisposeAsync.
         _host?.FlushPendingWork();
         _instance?.Dispose();
@@ -70,6 +84,20 @@ public partial class App : Application
         };
     }
 
+    private static void LogRestartTimeout()
+    {
+        try
+        {
+            // No AppHost yet: open the log just for this line; Dispose flushes the background queue.
+            using var log = new FileAppLog(AppPaths.LogDirectory);
+            log.Warn("restarted instance gave up waiting for the previous instance to release the single-instance mutex; exiting");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Nothing else we can do; the process exits right after.
+        }
+    }
+
     private static void ReportStartupFailure(Exception ex, AppHost? host)
     {
         try
@@ -93,8 +121,8 @@ public partial class App : Application
         }
 
         MessageBox.Show(
-            $"AI 사용량 위젯을 시작하지 못했습니다.\n로그: {AppPaths.LogDirectory}",
-            "AI 사용량",
+            string.Format(CultureInfo.CurrentCulture, UiStrings.StartupFailedMessage, AppPaths.LogDirectory),
+            TrayTextFormatter.AppTitle,
             MessageBoxButton.OK,
             MessageBoxImage.Error);
     }

@@ -1,18 +1,19 @@
 using System.Globalization;
 using AITokenUsage.Core.Models;
+using AITokenUsage.Core.Resources;
 using AITokenUsage.Core.Util;
 
 namespace AITokenUsage.Core.Presentation;
 
-/// <summary>Korean status sentences for the settings window rows (spec §2.5) and the detail card (spec §2.3).</summary>
+/// <summary>Localized status sentences for the settings window rows (spec §2.5) and the detail card (spec §2.3).</summary>
 public static class ProviderStatusText
 {
-    public const string Connected = "연결됨";
-    public const string NotInstalled = "설치 안 됨";
-    public const string SignInRequired = "로그인 필요";
-    public const string NotSupported = "지원 안 됨";
-    public const string NoData = "데이터 없음";
-    public const string RetrySoon = "잠시 후 다시 시도";
+    public static string Connected => Strings.StatusConnected;
+    public static string NotInstalled => Strings.StatusNotInstalled;
+    public static string SignInRequired => Strings.StatusSignedOut;
+    public static string NotSupported => Strings.StatusNotSupported;
+    public static string NoData => Strings.StatusNoData;
+    public static string RetrySoon => Strings.StatusRetrySoon;
 
     private const string Separator = " · ";
     private const string Dash = " — ";
@@ -34,7 +35,7 @@ public static class ProviderStatusText
         ArgumentNullException.ThrowIfNull(zone);
 
         string? clock = RetryClock(snapshot, zone);
-        return clock is null ? $"요청 제한{Dash}{RetrySoon}" : $"요청 제한{Dash}{clock} 이후 재시도";
+        return Strings.StatusRateLimited + Dash + (clock is null ? RetrySoon : RetryAfter(clock));
     }
 
     /// <summary>One line for the settings window provider row.</summary>
@@ -58,7 +59,7 @@ public static class ProviderStatusText
             case ProviderStatus.SignedOut:
                 return Prefixed(SignInRequired, message);
             case ProviderStatus.WaitingForCliRefresh:
-                return $"{CliName(view.ProviderId)}의 로그인 갱신 대기 중";
+                return string.Format(CultureInfo.CurrentCulture, Strings.StatusWaitingForCliRefresh, CliName(view.ProviderId));
             case ProviderStatus.Unsupported:
                 return message ?? NotSupported;
             case ProviderStatus.RateLimited:
@@ -85,7 +86,7 @@ public static class ProviderStatusText
                 return new[] { message ?? NoData };
             }
 
-            string updated = $"{formatter.FormatAgo(current.FetchedAt, now)} 갱신";
+            string updated = string.Format(CultureInfo.CurrentCulture, Strings.StatusUpdatedAgo, formatter.FormatAgo(current.FetchedAt, now));
             return new[] { message is null ? updated : updated + Separator + message };
         }
 
@@ -95,7 +96,7 @@ public static class ProviderStatusText
 
         if (view.LastGood is { } lastGood)
         {
-            return new[] { reason, $"마지막 정상 값{Separator}{formatter.FormatAgo(lastGood.FetchedAt, now)}" };
+            return new[] { reason, Strings.StatusLastGoodValue + Separator + formatter.FormatAgo(lastGood.FetchedAt, now) };
         }
 
         return new[] { reason };
@@ -103,7 +104,7 @@ public static class ProviderStatusText
 
     private static string ErrorText(UsageSnapshot snapshot, string? message, TimeZoneInfo zone)
     {
-        string reason = message ?? "오류";
+        string reason = message ?? Strings.StatusError;
         string? clock = RetryClock(snapshot, zone);
         if (clock is null)
         {
@@ -116,8 +117,11 @@ public static class ProviderStatusText
             reason = reason[..^retrySoonSuffix.Length];
         }
 
-        return $"{reason}{Dash}{clock} 이후 재시도";
+        return reason + Dash + RetryAfter(clock);
     }
+
+    private static string RetryAfter(string clock) =>
+        string.Format(CultureInfo.CurrentCulture, Strings.StatusRetryAfterClock, clock);
 
     private static string? RetryClock(UsageSnapshot snapshot, TimeZoneInfo zone)
     {
@@ -127,7 +131,7 @@ public static class ProviderStatusText
         }
 
         DateTimeOffset local = TimeZoneInfo.ConvertTime(snapshot.FetchedAt + retry, zone);
-        return local.ToString("HH:mm", CultureInfo.InvariantCulture);
+        return ResetTimeFormatter.FormatClock(local);
     }
 
     private static string Prefixed(string prefix, string? message)

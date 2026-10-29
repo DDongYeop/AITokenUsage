@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using AITokenUsage.Core.Abstractions;
 using AITokenUsage.Core.Models;
+using AITokenUsage.Core.Resources;
 
 namespace AITokenUsage.Core.Providers.Codex;
 
@@ -14,13 +15,13 @@ public sealed class CodexUsageProvider : IUsageProvider
 {
     public static readonly TimeSpan AppServerMinimumGap = TimeSpan.FromMinutes(15);
 
-    public const string MessageApiKey = "API 키 로그인 — 플랜 한도 없음";
-    public const string MessageNotInstalled = "설치 안 됨 — codex 설치 후 codex login";
-    public const string MessageSignedOut = "로그인 필요 — 터미널에서 codex login";
-    public const string MessageWaitingForCli = "Codex 로그인 갱신 대기 — 터미널에서 codex 실행";
-    public const string MessageUnsupportedLogin = "이 로그인 방식은 codex 설치 후 조회 가능";
-    public const string MessageAuthUnreadable = "auth.json을 읽지 못했습니다 — 잠시 후 다시 시도";
-    public const string MessageFailed = "Codex 사용량을 불러오지 못했습니다";
+    public static string MessageApiKey => Strings.CodexApiKey;
+    public static string MessageNotInstalled => Strings.CodexNotInstalled;
+    public static string MessageSignedOut => Strings.CodexSignedOut;
+    public static string MessageWaitingForCli => Strings.CodexWaitingForCli;
+    public static string MessageUnsupportedLogin => Strings.CodexUnsupportedLogin;
+    public static string MessageAuthUnreadable => Strings.CodexAuthUnreadable;
+    public static string MessageFailed => Strings.CodexFailed;
 
     private readonly ProviderContext _ctx;
     private readonly CodexPaths _paths;
@@ -50,12 +51,12 @@ public sealed class CodexUsageProvider : IUsageProvider
     public TimeSpan MinInterval => TimeSpan.FromMinutes(1);
     public IReadOnlyList<string> WatchPaths { get; }
 
-    public IReadOnlyList<MeterOption> StaticMeterOptions { get; } =
+    public IReadOnlyList<MeterOption> StaticMeterOptions =>
     [
-        new("5h", "5시간 한도"),
-        new("weekly", "주간 한도"),
-        new("daily", "일간 한도"),
-        new("monthly", "월간 한도"),
+        new("5h", Strings.CodexWindow5hLong),
+        new("weekly", Strings.CodexWindowWeeklyLong),
+        new("daily", Strings.CodexWindowDailyLong),
+        new("monthly", Strings.CodexWindowMonthlyLong),
     ];
 
     public async Task<UsageSnapshot> FetchAsync(CancellationToken ct)
@@ -199,7 +200,8 @@ public sealed class CodexUsageProvider : IUsageProvider
     private UsageSnapshot FromRollout(CodexRolloutSnapshot logs, CodexAuth? auth, DateTimeOffset now)
     {
         var local = TimeZoneInfo.ConvertTime(logs.Timestamp, _ctx.Time.LocalTimeZone);
-        var message = "로그 기준 · " + local.ToString("HH:mm", CultureInfo.InvariantCulture);
+        var message = string.Format(
+            CultureInfo.CurrentCulture, Strings.CodexFromLogsFormat, local.ToString("HH:mm", CultureInfo.InvariantCulture));
         var plan = CodexUsageParser.FormatPlan(logs.PlanType ?? auth?.PlanTypeClaim);
         return new UsageSnapshot(Id, ProviderStatus.Ok, plan, logs.Meters, now, message);
     }
@@ -208,7 +210,8 @@ public sealed class CodexUsageProvider : IUsageProvider
     {
         var wait = retryAfter ?? TimeSpan.FromMinutes(5);
         var until = TimeZoneInfo.ConvertTime(now + wait, _ctx.Time.LocalTimeZone);
-        var message = "요청 제한 — " + until.ToString("HH:mm", CultureInfo.InvariantCulture) + " 이후 재시도";
+        var message = string.Format(
+            CultureInfo.CurrentCulture, Strings.CodexRateLimitedUntilFormat, until.ToString("HH:mm", CultureInfo.InvariantCulture));
         return UsageSnapshot.WithStatus(Id, ProviderStatus.RateLimited, now, message, retryAfter);
     }
 

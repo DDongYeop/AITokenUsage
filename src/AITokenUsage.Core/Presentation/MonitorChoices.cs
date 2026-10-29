@@ -1,3 +1,6 @@
+using System.Globalization;
+using AITokenUsage.Core.Resources;
+
 namespace AITokenUsage.Core.Presentation;
 
 /// <summary>A connected monitor in physical screen pixels (from System.Windows.Forms.Screen in the app).</summary>
@@ -8,7 +11,7 @@ public sealed record MonitorChoice(string? DeviceName, string Label);
 
 public static class MonitorChoices
 {
-    public const string PrimaryLabel = "주 모니터";
+    public static string PrimaryLabel => Strings.MonitorPrimaryLabel;
 
     /// <summary>"주 모니터", then "모니터 N (W×H, 왼쪽|오른쪽|위|아래|주)" sorted left-to-right, then a disconnected saved choice.</summary>
     public static IReadOnlyList<MonitorChoice> Build(IReadOnlyList<MonitorDescriptor> monitors, string? selectedDeviceName)
@@ -24,14 +27,20 @@ public static class MonitorChoices
             MonitorDescriptor monitor = ordered[i];
             result.Add(new MonitorChoice(
                 monitor.DeviceName,
-                $"모니터 {i + 1} ({monitor.Width}×{monitor.Height}, {Describe(monitor, primary)})"));
+                string.Format(
+                    CultureInfo.CurrentCulture,
+                    Strings.MonitorNameFormat,
+                    i + 1,
+                    monitor.Width,
+                    monitor.Height,
+                    Describe(monitor, primary))));
         }
 
         bool selectedIsConnected = monitors.Any(m =>
             string.Equals(m.DeviceName, selectedDeviceName, StringComparison.OrdinalIgnoreCase));
         if (!string.IsNullOrWhiteSpace(selectedDeviceName) && !selectedIsConnected)
         {
-            result.Add(new MonitorChoice(selectedDeviceName, $"{selectedDeviceName} (연결 안 됨)"));
+            result.Add(new MonitorChoice(selectedDeviceName, string.Format(CultureInfo.CurrentCulture, Strings.MonitorDisconnectedFormat, selectedDeviceName)));
         }
 
         return result;
@@ -57,12 +66,12 @@ public static class MonitorChoices
     {
         if (monitor.IsPrimary)
         {
-            return "주";
+            return Strings.MonitorPositionPrimary;
         }
 
         if (primary is null)
         {
-            return "보조";
+            return Strings.MonitorPositionSecondary;
         }
 
         int right = monitor.Left + monitor.Width;
@@ -72,19 +81,19 @@ public static class MonitorChoices
 
         if (right <= primary.Left)
         {
-            return "왼쪽";
+            return Strings.MonitorPositionLeft;
         }
 
         if (monitor.Left >= primaryRight)
         {
-            return "오른쪽";
+            return Strings.MonitorPositionRight;
         }
 
         if (bottom <= primary.Top)
         {
-            return "위";
+            return Strings.MonitorPositionAbove;
         }
 
-        return monitor.Top >= primaryBottom ? "아래" : "보조";
+        return monitor.Top >= primaryBottom ? Strings.MonitorPositionBelow : Strings.MonitorPositionSecondary;
     }
 }

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="TrayMenuSettings" xml:space="preserve">
+    <value>Settings…</value>
+  </data>
+  <data name="TrayMenuRefreshNow" xml:space="preserve">
+    <value>Refresh now</value>
+  </data>
+  <data name="TrayMenuPauseRotation" xml:space="preserve">
+    <value>Pause rotation</value>
+  </data>
+  <data name="TrayMenuExit" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+  <data name="WidgetWindowTitle" xml:space="preserve">
+    <value>AI Usage Widget</value>
+  </data>
+  <data name="DetailFlyoutTitle" xml:space="preserve">
+    <value>AI Usage Details</value>
+  </data>
+  <data name="StartupFailedMessage" xml:space="preserve">
+    <value>Could not start the AI Usage widget.
+Log: {0}</value>
+  </data>
+  <data name="CopilotSignInButton" xml:space="preserve">
+    <value>Sign in to GitHub</value>
+  </data>
+  <data name="CopilotCopyButton" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="CopilotCopiedButton" xml:space="preserve">
+    <value>Copied</value>
+  </data>
+  <data name="CopilotOpenBrowserButton" xml:space="preserve">
+    <value>Open browser</value>
+  </data>
+  <data name="CopilotCancelButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="CopilotSignOutButton" xml:space="preserve">
+    <value>Sign out</value>
+  </data>
+  <data name="CopilotUnofficialApiNotice" xml:space="preserve">
+    <value>Uses an unofficial API</value>
+  </data>
+  <data name="CopilotVerifyingAccount" xml:space="preserve">
+    <value>Verifying your GitHub account…</value>
+  </data>
+  <data name="CopilotWaitingForCode" xml:space="preserve">
+    <value>Requesting a GitHub sign-in code…</value>
+  </data>
+  <data name="CopilotEnterCodeFormat" xml:space="preserve">
+    <value>Open {0} in your browser and enter the code below.</value>
+  </data>
+  <data name="CopilotSignInError" xml:space="preserve">
+    <value>An error occurred while signing in. Please try again in a moment.</value>
+  </data>
+  <data name="CopilotSignOutError" xml:space="preserve">
+    <value>Could not sign out.</value>
+  </data>
+  <data name="CopilotClipboardError" xml:space="preserve">
+    <value>Could not copy to the clipboard. Enter the code manually.</value>
+  </data>
+  <data name="CopilotBrowserOpenErrorFormat" xml:space="preserve">
+    <value>Could not open the browser. Go to {0} manually.</value>
+  </data>
+</root>

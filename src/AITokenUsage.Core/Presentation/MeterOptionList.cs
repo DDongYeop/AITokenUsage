@@ -1,11 +1,12 @@
 using AITokenUsage.Core.Models;
+using AITokenUsage.Core.Resources;
 
 namespace AITokenUsage.Core.Presentation;
 
 /// <summary>Items of the settings window's "1줄"/"2줄" drop-downs.</summary>
 public static class MeterOptionList
 {
-    public const string MissingSuffix = " (현재 데이터 없음)";
+    public static string MissingSuffix => Strings.MeterMissingSuffix;
 
     /// <summary>
     /// Static provider options first, then meters seen in the current view (by LongLabel),

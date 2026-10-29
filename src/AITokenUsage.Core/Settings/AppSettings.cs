@@ -1,3 +1,4 @@
+using AITokenUsage.Core.Localization;
 using AITokenUsage.Core.Models;
 
 namespace AITokenUsage.Core.Settings;
@@ -8,6 +9,10 @@ public sealed class AppSettings
     public const int CurrentVersion = 1;
     public const int MinRotationSeconds = 2;
     public const int MaxRotationSeconds = 60;
+
+    public const string LanguageAuto = "auto";
+    public const string LanguageKorean = "ko";
+    public const string LanguageEnglish = "en";
 
     public int Version { get; set; } = CurrentVersion;
 
@@ -39,12 +44,19 @@ public sealed class AppSettings
 
     public bool ShowTrayIcon { get; set; } = true;
 
+    /// <summary>auto | ko | en</summary>
+    public string Language { get; set; } = LanguageAuto;
+
+    /// <summary>위젯에 초기화까지 남은 시간 열 표시</summary>
+    public bool ShowResetTime { get; set; } = true;
+
     /// <summary>
     /// Repairs this instance in place and returns it:
     /// unknown/duplicate provider ids are dropped (first one wins, ids are lower-cased),
     /// missing providers are appended with defaults in canonical order, blank line keys get the
     /// provider defaults, RotationSeconds is clamped to 2..60, RefreshMinutes snaps to the nearest
-    /// of 2/5/10/15, undefined enum values fall back to their defaults and a blank monitor name becomes null.
+    /// of 2/5/10/15, undefined enum values fall back to their defaults, a blank monitor name becomes null
+    /// and an unknown Language becomes "auto".
     /// Existing ProviderSettings instances are kept (UI bindings stay valid).
     /// </summary>
     public AppSettings Normalize()
@@ -53,6 +65,7 @@ public sealed class AppSettings
         Providers = NormalizeProviders(Providers);
         RotationSeconds = Math.Clamp(RotationSeconds, MinRotationSeconds, MaxRotationSeconds);
         RefreshMinutes = NearestRefreshChoice(RefreshMinutes);
+        Language = LanguageResolver.Normalize(Language);
 
         if (!Enum.IsDefined(Placement))
         {
@@ -98,6 +111,8 @@ public sealed class AppSettings
         RefreshMinutes = RefreshMinutes,
         StartWithWindows = StartWithWindows,
         ShowTrayIcon = ShowTrayIcon,
+        Language = Language,
+        ShowResetTime = ShowResetTime,
     };
 
     private static List<ProviderSettings> NormalizeProviders(List<ProviderSettings>? providers)

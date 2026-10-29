@@ -9,6 +9,10 @@
     <AssemblyName>AITokenUsage</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+    <!-- Emits [assembly: NeutralResourcesLanguage("en")]: UiStrings.resx is English, so English UI skips the satellite probe. -->
+    <NeutralLanguage>en</NeutralLanguage>
+    <!-- WPF0001 (experimental theme API) is used by the settings window rewrite. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,5 +26,25 @@
   <ItemGroup>
     <ProjectReference Include="..\AITokenUsage.Core\AITokenUsage.Core.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Resources\UiStrings.resx">
+      <StronglyTypedFileName>$(IntermediateOutputPath)UiStrings.Designer.cs</StronglyTypedFileName>
+      <StronglyTypedLanguage>CSharp</StronglyTypedLanguage>
+      <StronglyTypedNamespace>AITokenUsage.Resources</StronglyTypedNamespace>
+      <StronglyTypedClassName>UiStrings</StronglyTypedClassName>
+      <PublicClass>true</PublicClass>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <!-- WPF compiles a temporary assembly for XAML type resolution before ResGen has produced UiStrings.Designer.cs, and it
+       ignores obj\ files in Compile except the ones MarkupCompilePass1 reports as generated. XAML and code-behind both
+       reference UiStrings, so run ResGen first and hand the designer file to that temporary assembly.
+       If a future WPF SDK renames _GeneratedCodeFiles, fall back to Microsoft.CodeAnalysis.ResxSourceGenerator or a checked-in designer file. -->
+  <Target Name="IncludeUiStringsInMarkupTempAssembly" BeforeTargets="GenerateTemporaryTargetAssembly" DependsOnTargets="ResGen">
+    <ItemGroup>
+      <_GeneratedCodeFiles Include="$(IntermediateOutputPath)UiStrings.Designer.cs" />
+    </ItemGroup>
+  </Target>
 
 </Project>

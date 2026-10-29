@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Windows;
 using System.Windows.Threading;
 using AITokenUsage.Core.Abstractions;
@@ -40,6 +41,11 @@ public sealed class AppHost : IAsyncDisposable
         // Startup only: settings are needed synchronously, before anything is attached to the taskbar.
         SettingsStore = new SettingsStore(AppPaths.SettingsFile, Log);
         Settings = SettingsStore.Load();
+
+        // Before any localized string is created below (UsageService seeds "loading" views in its constructor).
+        CultureInfo culture = LanguageBootstrap.Apply(Settings.Language);
+        Log.Info($"UI language: {culture.Name} (setting '{Settings.Language}')");
+
         _refreshMinutes = Settings.RefreshMinutes;
 
         _http = HttpClientFactory.Create();

@@ -1,6 +1,7 @@
 using System.Globalization;
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Presentation;
+using AITokenUsage.Core.Resources;
 using AITokenUsage.Core.Settings;
 
 namespace AITokenUsage.Core.Util;
@@ -10,9 +11,9 @@ public static class TrayTextFormatter
 {
     /// <summary>NotifyIcon.Text limit on .NET (longer strings throw).</summary>
     public const int MaxTooltipLength = 127;
-    public const string AppTitle = "AI 사용량";
+    public static string AppTitle => Strings.AppTitle;
     public const string NoValue = MeterSelector.MissingValue;
-    public const string StaleSuffix = " (이전 값)";
+    public static string StaleSuffix => Strings.TrayStaleSuffix;
     private const string Separator = " · ";
 
     /// <summary>Line 1 exactly as the widget shows it (MeterSelector, the shared rule).</summary>
@@ -65,13 +66,13 @@ public static class TrayTextFormatter
 
     public static string StatusText(ProviderStatus status) => status switch
     {
-        ProviderStatus.NotInstalled => "설치 안 됨",
-        ProviderStatus.SignedOut => "로그인 필요",
-        ProviderStatus.WaitingForCliRefresh => "갱신 대기",
-        ProviderStatus.Unsupported => "지원 안 됨",
-        ProviderStatus.RateLimited => "요청 제한",
-        ProviderStatus.Error => "오류",
-        _ => "불러오는 중…",
+        ProviderStatus.NotInstalled => Strings.StatusNotInstalled,
+        ProviderStatus.SignedOut => Strings.StatusSignedOut,
+        ProviderStatus.WaitingForCliRefresh => Strings.StatusWaitingForRefresh,
+        ProviderStatus.Unsupported => Strings.StatusNotSupported,
+        ProviderStatus.RateLimited => Strings.StatusRateLimited,
+        ProviderStatus.Error => Strings.StatusError,
+        _ => Strings.StatusLoading,
     };
 
     public static string Tooltip(ProviderView? view, ProviderSettings? lines, ValueMode mode)

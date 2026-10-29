@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using AITokenUsage.Core.Models;
+using AITokenUsage.Core.Resources;
 using AITokenUsage.Core.Util;
 
 namespace AITokenUsage.Core.Providers.Copilot;
@@ -11,11 +12,11 @@ namespace AITokenUsage.Core.Providers.Copilot;
 /// </summary>
 public static class CopilotUsageParser
 {
-    public static readonly IReadOnlyList<MeterOption> MeterOptions =
+    public static IReadOnlyList<MeterOption> MeterOptions =>
     [
-        new("monthly", "월간 사용량"),
-        new("reset", "리셋 날짜"),
-        new("completions", "코드 완성 (Free)"),
+        new("monthly", Strings.CopilotOptionMonthlyUsage),
+        new("reset", Strings.CopilotOptionResetDate),
+        new("completions", Strings.CopilotOptionCompletionsFree),
     ];
 
     private const string FreeSku = "free_limited_copilot";
@@ -41,10 +42,10 @@ public static class CopilotUsageParser
         var resetsAt = ResolveReset(root, primary, now);
         var planLabel = PlanLabel(root);
 
-        var monthlyLabel = tokenBased ? "월간 크레딧" : isFree && chat is not null ? "월간 채팅" : "월간 프리미엄 요청";
+        var monthlyLabel = tokenBased ? Strings.CopilotMonthlyCredits : isFree && chat is not null ? Strings.CopilotMonthlyChat : Strings.CopilotMonthlyPremium;
         var monthly = primary is { } snapshot
-            ? SnapshotMeter("monthly", "월", monthlyLabel, snapshot, resetsAt)
-            : isFree ? LegacyMeter(root, "chat", "monthly", "월", "월간 채팅", resetsAt) : null;
+            ? SnapshotMeter("monthly", Strings.LabelMonthShort, monthlyLabel, snapshot, resetsAt)
+            : isFree ? LegacyMeter(root, "chat", "monthly", Strings.LabelMonthShort, Strings.CopilotMonthlyChat, resetsAt) : null;
 
         var meters = new List<UsageMeter>();
         if (monthly is not null)
@@ -54,14 +55,14 @@ public static class CopilotUsageParser
 
         if (monthly is not null || planLabel is not null)
         {
-            meters.Add(new UsageMeter("reset", "↻", "리셋", null, resetsAt, TextOverride: ResetText(resetsAt, displayZone)));
+            meters.Add(new UsageMeter("reset", "↻", Strings.CopilotResetLong, null, resetsAt, TextOverride: ResetText(resetsAt, displayZone)));
         }
 
         if (isFree)
         {
             var completions = Snapshot(snapshots, "completions") is { } c
-                ? SnapshotMeter("completions", "완성", "코드 완성 (월)", c, resetsAt)
-                : LegacyMeter(root, "completions", "completions", "완성", "코드 완성 (월)", resetsAt);
+                ? SnapshotMeter("completions", Strings.LabelCompletionsShort, Strings.CopilotCompletionsLong, c, resetsAt)
+                : LegacyMeter(root, "completions", "completions", Strings.LabelCompletionsShort, Strings.CopilotCompletionsLong, resetsAt);
             if (completions is not null)
             {
                 meters.Add(completions);
@@ -125,9 +126,9 @@ public static class CopilotUsageParser
 
         if (unlimited)
         {
-            var text = Json.Bool(snapshot, "has_quota") == false ? "조직 한도 도달"
+            var text = Json.Bool(snapshot, "has_quota") == false ? Strings.CopilotOrgLimitReached
                 : creditsUsed is { } pooled ? CreditsText(pooled)
-                : "무제한";
+                : Strings.CopilotUnlimited;
             return new UsageMeter(key, shortLabel, longLabel, null, resetsAt, TextOverride: text);
         }
 
@@ -211,7 +212,8 @@ public static class CopilotUsageParser
     }
 
     private static string CreditsText(double credits) =>
-        $"{credits.ToString("0.##", CultureInfo.InvariantCulture)} 크레딧 사용";
+        string.Format(
+            CultureInfo.CurrentCulture, Strings.CopilotCreditsUsedFormat, credits.ToString("0.##", CultureInfo.InvariantCulture));
 
     private static string ResetText(DateTimeOffset resetsAt, TimeZoneInfo zone)
     {

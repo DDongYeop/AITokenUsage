@@ -1,6 +1,7 @@
 using AITokenUsage.Core.Abstractions;
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Providers;
+using AITokenUsage.Core.Resources;
 
 namespace AITokenUsage.Core.Polling;
 
@@ -17,8 +18,8 @@ namespace AITokenUsage.Core.Polling;
 /// </summary>
 public sealed class UsageService : IAsyncDisposable
 {
-    public const string LoadingMessage = "불러오는 중…";
-    public const string UnknownErrorMessage = "알 수 없는 오류";
+    public static string LoadingMessage => Strings.StatusLoading;
+    public static string UnknownErrorMessage => Strings.StatusUnknownError;
     public static readonly TimeSpan DebounceDelay = TimeSpan.FromSeconds(1.5);
     public static readonly TimeSpan MinimumDelay = TimeSpan.FromSeconds(30);
     public static readonly TimeSpan DefaultRefreshInterval = TimeSpan.FromMinutes(5);

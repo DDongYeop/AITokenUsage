@@ -4,10 +4,22 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>AITokenUsage.Core</RootNamespace>
     <AssemblyName>AITokenUsage.Core</AssemblyName>
+    <!-- Emits [assembly: NeutralResourcesLanguage("en")]: Strings.resx is English, so English UI skips the satellite probe. -->
+    <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="AITokenUsage.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Resources\Strings.resx">
+      <StronglyTypedFileName>$(IntermediateOutputPath)Strings.Designer.cs</StronglyTypedFileName>
+      <StronglyTypedLanguage>CSharp</StronglyTypedLanguage>
+      <StronglyTypedNamespace>AITokenUsage.Core.Resources</StronglyTypedNamespace>
+      <StronglyTypedClassName>Strings</StronglyTypedClassName>
+      <PublicClass>true</PublicClass>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

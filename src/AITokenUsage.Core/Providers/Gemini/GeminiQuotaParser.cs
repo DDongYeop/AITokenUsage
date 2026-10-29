@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AITokenUsage.Core.Models;
+using AITokenUsage.Core.Resources;
 using AITokenUsage.Core.Util;
 
 namespace AITokenUsage.Core.Providers.Gemini;
@@ -10,18 +11,18 @@ namespace AITokenUsage.Core.Providers.Gemini;
 /// </summary>
 public static class GeminiQuotaParser
 {
-    public static readonly IReadOnlyList<MeterOption> MeterOptions =
+    public static IReadOnlyList<MeterOption> MeterOptions =>
     [
-        new("pro", "Pro 일간"),
-        new("flash", "Flash 일간"),
-        new("flash-lite", "Flash-Lite 일간"),
+        new("pro", Strings.GeminiProDaily),
+        new("flash", Strings.GeminiFlashDaily),
+        new("flash-lite", Strings.GeminiFlashLiteDaily),
     ];
 
-    private static readonly (string Key, string ShortLabel, string LongLabel)[] Groups =
+    private static (string Key, string ShortLabel, string LongLabel)[] Groups() =>
     [
-        ("pro", "Pro", "Pro 일간"),
-        ("flash", "Fl", "Flash 일간"),
-        ("flash-lite", "Lt", "Flash-Lite 일간"),
+        ("pro", "Pro", Strings.GeminiProDaily),
+        ("flash", "Fl", Strings.GeminiFlashDaily),
+        ("flash-lite", "Lt", Strings.GeminiFlashLiteDaily),
     ];
 
     public static string? Classify(string modelId)
@@ -79,7 +80,7 @@ public static class GeminiQuotaParser
         }
 
         var meters = new List<UsageMeter>();
-        foreach (var (key, shortLabel, longLabel) in Groups)
+        foreach (var (key, shortLabel, longLabel) in Groups())
         {
             if (lowest.TryGetValue(key, out var value))
             {

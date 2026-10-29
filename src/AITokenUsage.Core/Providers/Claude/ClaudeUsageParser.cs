@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using AITokenUsage.Core.Models;
+using AITokenUsage.Core.Resources;
 using AITokenUsage.Core.Util;
 
 namespace AITokenUsage.Core.Providers.Claude;
@@ -19,12 +20,9 @@ public static partial class ClaudeUsageParser
     public const string WeeklyKey = "weekly";
     public const string ScopedKeyPrefix = "weekly:";
     public const string SessionShortLabel = "5h";
-    public const string SessionLongLabel = "현재 세션 (5시간)";
-    public const string WeeklyShortLabel = "주";
-    public const string WeeklyLongLabel = "주간 · 모든 모델";
-
-    private const string ScopedShortPrefix = "주·";
-    private const string ScopedLongPrefix = "주간 · ";
+    public static string SessionLongLabel => Strings.ClaudeSessionLong;
+    public static string WeeklyShortLabel => Strings.LabelWeekShort;
+    public static string WeeklyLongLabel => Strings.ClaudeWeeklyLong;
 
     private sealed record LimitRow(string Kind, double Percent, DateTimeOffset? ResetsAt, Severity? Severity, string? ScopeName);
 
@@ -178,8 +176,8 @@ public static partial class ClaudeUsageParser
 
         meters.Add(new UsageMeter(
             key,
-            ScopedShortPrefix + FirstTwoTextElements(name),
-            ScopedLongPrefix + name,
+            string.Format(CultureInfo.CurrentCulture, Strings.ClaudeScopedShortFormat, FirstTwoTextElements(name)),
+            string.Format(CultureInfo.CurrentCulture, Strings.ClaudeScopedLongFormat, name),
             percent,
             resetsAt,
             severity));
@@ -291,7 +289,7 @@ public static partial class ClaudeUsageParser
         string currency = string.IsNullOrWhiteSpace(rawCurrency) ? "USD" : rawCurrency.Trim().ToUpperInvariant();
 
         double used = (NumberOnly(extra, "used_credits") ?? 0) / divisor;
-        string line = "추가 사용 " + Money(used, currency, decimals);
+        string line = string.Format(CultureInfo.CurrentCulture, Strings.ClaudeExtraUsageFormat, Money(used, currency, decimals));
 
         if (NumberOnly(extra, "monthly_limit") is { } limitMinor)
         {
@@ -300,7 +298,7 @@ public static partial class ClaudeUsageParser
 
         if (Json.Bool(extra, "spend_limit_reached") == true)
         {
-            line += " · 한도 도달";
+            line += Strings.ClaudeExtraLimitReachedSuffix;
         }
 
         return line;

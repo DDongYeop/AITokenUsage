@@ -1,4 +1,5 @@
 using AITokenUsage.Core.Models;
+using AITokenUsage.Core.Resources;
 
 namespace AITokenUsage.Core.Providers.Codex;
 
@@ -13,15 +14,15 @@ public sealed record CodexWindowLabel(string Key, string ShortLabel, string Long
 /// </summary>
 public static class CodexWindowLabeler
 {
-    public static readonly CodexWindowLabel FiveHour = new("5h", "5h", "5시간 한도");
-    public static readonly CodexWindowLabel Daily = new("daily", "일", "일간 한도");
-    public static readonly CodexWindowLabel Weekly = new("weekly", "주", "주간 한도");
-    public static readonly CodexWindowLabel Monthly = new("monthly", "월", "월간 한도");
-    public static readonly CodexWindowLabel Annual = new("annual", "년", "연간 한도");
-    public static readonly CodexWindowLabel Primary = new("primary", "한도", "사용 한도");
-    public static readonly CodexWindowLabel Secondary = new("secondary", "보조", "보조 한도");
+    public static CodexWindowLabel FiveHour => new("5h", "5h", Strings.CodexWindow5hLong);
+    public static CodexWindowLabel Daily => new("daily", Strings.LabelDayShort, Strings.CodexWindowDailyLong);
+    public static CodexWindowLabel Weekly => new("weekly", Strings.LabelWeekShort, Strings.CodexWindowWeeklyLong);
+    public static CodexWindowLabel Monthly => new("monthly", Strings.LabelMonthShort, Strings.CodexWindowMonthlyLong);
+    public static CodexWindowLabel Annual => new("annual", Strings.LabelYearShort, Strings.CodexWindowAnnualLong);
+    public static CodexWindowLabel Primary => new("primary", Strings.LabelPrimaryShort, Strings.CodexWindowPrimaryLong);
+    public static CodexWindowLabel Secondary => new("secondary", Strings.LabelSecondaryShort, Strings.CodexWindowSecondaryLong);
 
-    private static readonly (long Minutes, CodexWindowLabel Label)[] Known =
+    private static (long Minutes, CodexWindowLabel Label)[] Known() =>
     [
         (300, FiveHour),
         (1440, Daily),
@@ -42,7 +43,7 @@ public static class CodexWindowLabeler
     {
         if (minutes is long m && m > 0)
         {
-            foreach (var (expected, label) in Known)
+            foreach (var (expected, label) in Known())
             {
                 // m within ±5% of expected, in integer math: 0.95e ≤ m ≤ 1.05e
                 if (m * 100 >= expected * 95 && m * 100 <= expected * 105)

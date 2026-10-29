@@ -1,4 +1,5 @@
 using AITokenUsage.Core.Models;
+using AITokenUsage.Core.Resources;
 using AITokenUsage.Core.Settings;
 using AITokenUsage.Core.Util;
 
@@ -7,9 +8,9 @@ namespace AITokenUsage.Core.Presentation;
 /// <summary>Builds the widget's two-line model from a provider view (spec §2.1 state table).</summary>
 public static class WidgetPanelBuilder
 {
-    public const string EmptyTitle = "AI 사용량";
-    public const string EmptyMessage = "우클릭하여 설정";
-    public const string NoDataMessage = "데이터 없음";
+    public static string EmptyTitle => Strings.AppTitle;
+    public static string EmptyMessage => Strings.WidgetEmptyMessage;
+    public static string NoDataMessage => Strings.StatusNoData;
 
     /// <summary>Shown when no provider is enabled: "AI 사용량 · 우클릭하여 설정".</summary>
     public static WidgetPanelModel Empty() =>
@@ -52,13 +53,15 @@ public static class WidgetPanelBuilder
         UsageSnapshot current = view.Current;
         return current.Status switch
         {
-            ProviderStatus.NotInstalled => "설치 안 됨",
-            ProviderStatus.SignedOut => "로그인 필요",
-            ProviderStatus.WaitingForCliRefresh => "갱신 대기",
+            ProviderStatus.NotInstalled => Strings.StatusNotInstalled,
+            ProviderStatus.SignedOut => Strings.StatusSignedOut,
+            ProviderStatus.WaitingForCliRefresh => Strings.StatusWaitingForRefresh,
             ProviderStatus.Unsupported =>
-                current.StatusMessage?.Contains("지원 종료", StringComparison.Ordinal) == true ? "지원 종료" : "지원 안 됨",
-            ProviderStatus.RateLimited => "요청 제한",
-            ProviderStatus.Error => "오류",
+                current.StatusMessage?.Contains(Strings.StatusDiscontinuedMarker, StringComparison.OrdinalIgnoreCase) == true
+                    ? Strings.StatusDiscontinued
+                    : Strings.StatusNotSupported,
+            ProviderStatus.RateLimited => Strings.StatusRateLimited,
+            ProviderStatus.Error => Strings.StatusError,
             _ => string.IsNullOrWhiteSpace(current.StatusMessage) ? NoDataMessage : current.StatusMessage.Trim(),
         };
     }

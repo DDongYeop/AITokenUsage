@@ -1,0 +1,372 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="LanguageNameAuto" xml:space="preserve">
+    <value>Automatic (Windows setting)</value>
+  </data>
+  <data name="StatusConnected" xml:space="preserve">
+    <value>Connected</value>
+  </data>
+  <data name="StatusNotInstalled" xml:space="preserve">
+    <value>Not installed</value>
+  </data>
+  <data name="StatusSignedOut" xml:space="preserve">
+    <value>Sign-in required</value>
+  </data>
+  <data name="StatusWaitingForRefresh" xml:space="preserve">
+    <value>Waiting for refresh</value>
+  </data>
+  <data name="StatusNotSupported" xml:space="preserve">
+    <value>Not supported</value>
+  </data>
+  <data name="StatusDiscontinued" xml:space="preserve">
+    <value>Discontinued</value>
+  </data>
+  <data name="StatusDiscontinuedMarker" xml:space="preserve">
+    <value>discontinued</value>
+  </data>
+  <data name="StatusRateLimited" xml:space="preserve">
+    <value>Rate limited</value>
+  </data>
+  <data name="StatusError" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="StatusNoData" xml:space="preserve">
+    <value>No data</value>
+  </data>
+  <data name="StatusLoading" xml:space="preserve">
+    <value>Loading…</value>
+  </data>
+  <data name="StatusUnknownError" xml:space="preserve">
+    <value>Unknown error</value>
+  </data>
+  <data name="StatusRetrySoon" xml:space="preserve">
+    <value>Try again shortly</value>
+  </data>
+  <data name="StatusRetryAfterClock" xml:space="preserve">
+    <value>retry after {0}</value>
+  </data>
+  <data name="StatusWaitingForCliRefresh" xml:space="preserve">
+    <value>Waiting for {0} to refresh its sign-in</value>
+  </data>
+  <data name="StatusUpdatedAgo" xml:space="preserve">
+    <value>Updated {0}</value>
+  </data>
+  <data name="StatusLastGoodValue" xml:space="preserve">
+    <value>Last good value</value>
+  </data>
+  <data name="ResetSoon" xml:space="preserve">
+    <value>Resets soon</value>
+  </data>
+  <data name="ResetToday" xml:space="preserve">
+    <value>Today</value>
+  </data>
+  <data name="ResetRelativeFormat" xml:space="preserve">
+    <value>in {0} · {1} {2}</value>
+  </data>
+  <data name="TimeFormat" xml:space="preserve">
+    <value>h:mm tt</value>
+  </data>
+  <data name="DateWithDayFormat" xml:space="preserve">
+    <value>{2} {0}/{1}</value>
+  </data>
+  <data name="AgoJustNow" xml:space="preserve">
+    <value>just now</value>
+  </data>
+  <data name="AgoMinutes" xml:space="preserve">
+    <value>{0}m ago</value>
+  </data>
+  <data name="AgoHours" xml:space="preserve">
+    <value>{0}h ago</value>
+  </data>
+  <data name="AgoDays" xml:space="preserve">
+    <value>{0}d ago</value>
+  </data>
+  <data name="DurationDaysHours" xml:space="preserve">
+    <value>{0}d {1}h</value>
+  </data>
+  <data name="DurationDays" xml:space="preserve">
+    <value>{0}d</value>
+  </data>
+  <data name="DurationHoursMinutes" xml:space="preserve">
+    <value>{0}h {1}m</value>
+  </data>
+  <data name="DurationHours" xml:space="preserve">
+    <value>{0}h</value>
+  </data>
+  <data name="DurationMinutes" xml:space="preserve">
+    <value>{0}m</value>
+  </data>
+  <data name="AppTitle" xml:space="preserve">
+    <value>AI Usage</value>
+  </data>
+  <data name="WidgetEmptyMessage" xml:space="preserve">
+    <value>Right-click for settings</value>
+  </data>
+  <data name="TrayStaleSuffix" xml:space="preserve">
+    <value> (stale)</value>
+  </data>
+  <data name="MeterMissingSuffix" xml:space="preserve">
+    <value> (no current data)</value>
+  </data>
+  <data name="MonitorPrimaryLabel" xml:space="preserve">
+    <value>Primary monitor</value>
+  </data>
+  <data name="MonitorNameFormat" xml:space="preserve">
+    <value>Monitor {0} ({1}×{2}, {3})</value>
+  </data>
+  <data name="MonitorDisconnectedFormat" xml:space="preserve">
+    <value>{0} (disconnected)</value>
+  </data>
+  <data name="MonitorPositionPrimary" xml:space="preserve">
+    <value>Primary</value>
+  </data>
+  <data name="MonitorPositionSecondary" xml:space="preserve">
+    <value>Secondary</value>
+  </data>
+  <data name="MonitorPositionLeft" xml:space="preserve">
+    <value>Left</value>
+  </data>
+  <data name="MonitorPositionRight" xml:space="preserve">
+    <value>Right</value>
+  </data>
+  <data name="MonitorPositionAbove" xml:space="preserve">
+    <value>Above</value>
+  </data>
+  <data name="MonitorPositionBelow" xml:space="preserve">
+    <value>Below</value>
+  </data>
+  <data name="LabelWeekShort" xml:space="preserve">
+    <value>Wk</value>
+  </data>
+  <data name="LabelMonthShort" xml:space="preserve">
+    <value>Mo</value>
+  </data>
+  <data name="LabelDayShort" xml:space="preserve">
+    <value>D</value>
+  </data>
+  <data name="LabelYearShort" xml:space="preserve">
+    <value>Yr</value>
+  </data>
+  <data name="LabelPrimaryShort" xml:space="preserve">
+    <value>Lim</value>
+  </data>
+  <data name="LabelSecondaryShort" xml:space="preserve">
+    <value>2nd</value>
+  </data>
+  <data name="LabelCompletionsShort" xml:space="preserve">
+    <value>Cmp</value>
+  </data>
+  <data name="MessageCredentialsUnreadable" xml:space="preserve">
+    <value>Couldn't read the credentials file — try again shortly</value>
+  </data>
+  <data name="MessageRateLimitedRetry" xml:space="preserve">
+    <value>Rate limited — try again shortly</value>
+  </data>
+  <data name="MessageNetworkRetry" xml:space="preserve">
+    <value>Network error — try again shortly</value>
+  </data>
+  <data name="MessageBadResponse" xml:space="preserve">
+    <value>Couldn't parse the response</value>
+  </data>
+  <data name="ClaudeSessionLong" xml:space="preserve">
+    <value>Current session (5h)</value>
+  </data>
+  <data name="ClaudeWeeklyLong" xml:space="preserve">
+    <value>Weekly · All models</value>
+  </data>
+  <data name="ClaudeScopedShortFormat" xml:space="preserve">
+    <value>Wk·{0}</value>
+  </data>
+  <data name="ClaudeScopedLongFormat" xml:space="preserve">
+    <value>Weekly · {0}</value>
+  </data>
+  <data name="ClaudeExtraUsageFormat" xml:space="preserve">
+    <value>Extra usage {0}</value>
+  </data>
+  <data name="ClaudeExtraLimitReachedSuffix" xml:space="preserve">
+    <value> · Limit reached</value>
+  </data>
+  <data name="ClaudeNotInstalled" xml:space="preserve">
+    <value>Not installed — install Claude Code, then run claude and /login</value>
+  </data>
+  <data name="ClaudeSignedOut" xml:space="preserve">
+    <value>Run claude in a terminal, then /login</value>
+  </data>
+  <data name="ClaudeNoUsageAccess" xml:space="preserve">
+    <value>This sign-in can't read usage</value>
+  </data>
+  <data name="ClaudeWaitingForCli" xml:space="preserve">
+    <value>Usage reloads automatically once Claude Code refreshes its sign-in</value>
+  </data>
+  <data name="ClaudeBadBody" xml:space="preserve">
+    <value>Couldn't parse the usage response</value>
+  </data>
+  <data name="ClaudeNoMeters" xml:space="preserve">
+    <value>The server reported no limits</value>
+  </data>
+  <data name="ClaudeServerErrorFormat" xml:space="preserve">
+    <value>Server error (HTTP {0})</value>
+  </data>
+  <data name="CodexApiKey" xml:space="preserve">
+    <value>API key sign-in — no plan limits</value>
+  </data>
+  <data name="CodexNotInstalled" xml:space="preserve">
+    <value>Not installed — install codex, then run codex login</value>
+  </data>
+  <data name="CodexSignedOut" xml:space="preserve">
+    <value>Sign-in required — run codex login in a terminal</value>
+  </data>
+  <data name="CodexWaitingForCli" xml:space="preserve">
+    <value>Waiting for Codex to refresh its sign-in — run codex in a terminal</value>
+  </data>
+  <data name="CodexUnsupportedLogin" xml:space="preserve">
+    <value>This sign-in method works once codex is installed</value>
+  </data>
+  <data name="CodexAuthUnreadable" xml:space="preserve">
+    <value>Couldn't read auth.json — try again shortly</value>
+  </data>
+  <data name="CodexFailed" xml:space="preserve">
+    <value>Couldn't load Codex usage</value>
+  </data>
+  <data name="CodexFromLogsFormat" xml:space="preserve">
+    <value>From logs · {0}</value>
+  </data>
+  <data name="CodexRateLimitedUntilFormat" xml:space="preserve">
+    <value>Rate limited — retry after {0}</value>
+  </data>
+  <data name="CodexWindow5hLong" xml:space="preserve">
+    <value>5-hour limit</value>
+  </data>
+  <data name="CodexWindowDailyLong" xml:space="preserve">
+    <value>Daily limit</value>
+  </data>
+  <data name="CodexWindowWeeklyLong" xml:space="preserve">
+    <value>Weekly limit</value>
+  </data>
+  <data name="CodexWindowMonthlyLong" xml:space="preserve">
+    <value>Monthly limit</value>
+  </data>
+  <data name="CodexWindowAnnualLong" xml:space="preserve">
+    <value>Annual limit</value>
+  </data>
+  <data name="CodexWindowPrimaryLong" xml:space="preserve">
+    <value>Usage limit</value>
+  </data>
+  <data name="CodexWindowSecondaryLong" xml:space="preserve">
+    <value>Secondary limit</value>
+  </data>
+  <data name="CopilotSignInRequired" xml:space="preserve">
+    <value>Sign in to GitHub in Settings</value>
+  </data>
+  <data name="CopilotNoSubscription" xml:space="preserve">
+    <value>No Copilot subscription</value>
+  </data>
+  <data name="CopilotTokenRejected" xml:space="preserve">
+    <value>Copilot usage can't be read with this GitHub account</value>
+  </data>
+  <data name="CopilotUnknownLogin" xml:space="preserve">
+    <value>Unknown account</value>
+  </data>
+  <data name="CopilotServerErrorFormat" xml:space="preserve">
+    <value>GitHub response error (HTTP {0})</value>
+  </data>
+  <data name="CopilotDeviceExpired" xml:space="preserve">
+    <value>The code expired. Try again</value>
+  </data>
+  <data name="CopilotDeviceDenied" xml:space="preserve">
+    <value>Sign-in was cancelled on GitHub</value>
+  </data>
+  <data name="CopilotDeviceDisabled" xml:space="preserve">
+    <value>Device code sign-in is disabled for this app on GitHub</value>
+  </data>
+  <data name="CopilotDeviceUnknown" xml:space="preserve">
+    <value>An unknown error occurred during GitHub sign-in</value>
+  </data>
+  <data name="CopilotOptionMonthlyUsage" xml:space="preserve">
+    <value>Monthly usage</value>
+  </data>
+  <data name="CopilotOptionResetDate" xml:space="preserve">
+    <value>Reset date</value>
+  </data>
+  <data name="CopilotOptionCompletionsFree" xml:space="preserve">
+    <value>Code completions (Free)</value>
+  </data>
+  <data name="CopilotMonthlyCredits" xml:space="preserve">
+    <value>Monthly credits</value>
+  </data>
+  <data name="CopilotMonthlyChat" xml:space="preserve">
+    <value>Monthly chat</value>
+  </data>
+  <data name="CopilotMonthlyPremium" xml:space="preserve">
+    <value>Monthly premium requests</value>
+  </data>
+  <data name="CopilotResetLong" xml:space="preserve">
+    <value>Reset</value>
+  </data>
+  <data name="CopilotCompletionsLong" xml:space="preserve">
+    <value>Code completions (monthly)</value>
+  </data>
+  <data name="CopilotOrgLimitReached" xml:space="preserve">
+    <value>Org limit reached</value>
+  </data>
+  <data name="CopilotUnlimited" xml:space="preserve">
+    <value>Unlimited</value>
+  </data>
+  <data name="CopilotCreditsUsedFormat" xml:space="preserve">
+    <value>{0} credits used</value>
+  </data>
+  <data name="GeminiApiKeyMode" xml:space="preserve">
+    <value>API key / Vertex — usage unavailable</value>
+  </data>
+  <data name="GeminiNotInstalled" xml:space="preserve">
+    <value>No Gemini CLI sign-in found — run gemini in a terminal and sign in</value>
+  </data>
+  <data name="GeminiSignInAgain" xml:space="preserve">
+    <value>Run gemini in a terminal and sign in again</value>
+  </data>
+  <data name="GeminiRefreshFailed" xml:space="preserve">
+    <value>Token refresh failed — try again shortly</value>
+  </data>
+  <data name="GeminiClientUnavailable" xml:space="preserve">
+    <value>gemini-cli not found, so the sign-in can't be refreshed — run gemini in a terminal</value>
+  </data>
+  <data name="GeminiConsumerShutdown" xml:space="preserve">
+    <value>Personal accounts discontinued (2026-06-18) — use Antigravity</value>
+  </data>
+  <data name="GeminiNoLicense" xml:space="preserve">
+    <value>No Code Assist license — usage unavailable</value>
+  </data>
+  <data name="GeminiProjectRequired" xml:space="preserve">
+    <value>GOOGLE_CLOUD_PROJECT must be set</value>
+  </data>
+  <data name="GeminiNotOnboarded" xml:space="preserve">
+    <value>Run gemini once in a terminal to finish setup</value>
+  </data>
+  <data name="GeminiNoQuotaData" xml:space="preserve">
+    <value>Usage data is empty</value>
+  </data>
+  <data name="GeminiServerErrorFormat" xml:space="preserve">
+    <value>Gemini server error (HTTP {0})</value>
+  </data>
+  <data name="GeminiProDaily" xml:space="preserve">
+    <value>Pro daily</value>
+  </data>
+  <data name="GeminiFlashDaily" xml:space="preserve">
+    <value>Flash daily</value>
+  </data>
+  <data name="GeminiFlashLiteDaily" xml:space="preserve">
+    <value>Flash-Lite daily</value>
+  </data>
+</root>

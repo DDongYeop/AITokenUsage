@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -5,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using AITokenUsage.Core.Abstractions;
 using AITokenUsage.Core.Models;
+using AITokenUsage.Core.Resources;
 
 namespace AITokenUsage.Core.Providers.Claude;
 
@@ -24,15 +26,15 @@ public sealed class ClaudeUsageProvider : IUsageProvider
 
     private static readonly TimeSpan VersionProbeInterval = TimeSpan.FromHours(1);
 
-    private const string MsgNotInstalled = "설치 안 됨 — Claude Code 설치 후 claude 실행해 /login";
-    private const string MsgSignedOut = "터미널에서 claude 실행 후 /login";
-    private const string MsgNoUsageAccess = "이 로그인은 사용량 조회 불가";
-    private const string MsgWaitingForCli = "Claude Code가 로그인을 갱신하면 자동으로 다시 불러옵니다";
-    private const string MsgUnreadable = "자격 증명 파일을 읽지 못함 — 잠시 후 다시 시도";
-    private const string MsgRateLimited = "요청 제한 — 잠시 후 다시 시도";
-    private const string MsgNetwork = "네트워크 오류 — 잠시 후 다시 시도";
-    private const string MsgBadBody = "사용량 응답 형식을 해석하지 못함";
-    private const string MsgNoMeters = "서버가 보고한 한도 없음";
+    private static string MsgNotInstalled => Strings.ClaudeNotInstalled;
+    private static string MsgSignedOut => Strings.ClaudeSignedOut;
+    private static string MsgNoUsageAccess => Strings.ClaudeNoUsageAccess;
+    private static string MsgWaitingForCli => Strings.ClaudeWaitingForCli;
+    private static string MsgUnreadable => Strings.MessageCredentialsUnreadable;
+    private static string MsgRateLimited => Strings.MessageRateLimitedRetry;
+    private static string MsgNetwork => Strings.MessageNetworkRetry;
+    private static string MsgBadBody => Strings.ClaudeBadBody;
+    private static string MsgNoMeters => Strings.ClaudeNoMeters;
 
     private readonly ProviderContext _ctx;
     private readonly ClaudeVersionProbe _versionProbe;
@@ -72,7 +74,7 @@ public sealed class ClaudeUsageProvider : IUsageProvider
 
     public IReadOnlyList<string> WatchPaths { get; }
 
-    public IReadOnlyList<MeterOption> StaticMeterOptions { get; } =
+    public IReadOnlyList<MeterOption> StaticMeterOptions =>
     [
         new MeterOption(ClaudeUsageParser.SessionKey, ClaudeUsageParser.SessionLongLabel),
         new MeterOption(ClaudeUsageParser.WeeklyKey, ClaudeUsageParser.WeeklyLongLabel),
@@ -180,7 +182,7 @@ public sealed class ClaudeUsageProvider : IUsageProvider
                 {
                     int code = (int)response.StatusCode;
                     _ctx.Log.Warn($"Claude usage: unexpected HTTP {code}.");
-                    return Status(ProviderStatus.Error, $"서버 오류 (HTTP {code})", plan);
+                    return Status(ProviderStatus.Error, string.Format(CultureInfo.CurrentCulture, Strings.ClaudeServerErrorFormat, code), plan);
                 }
             }
         }

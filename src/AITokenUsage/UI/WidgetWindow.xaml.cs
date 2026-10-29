@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using AITokenUsage.Resources;
 
 namespace AITokenUsage.UI;
 
@@ -34,7 +35,7 @@ public partial class WidgetWindow : Window
         _back = PanelB;
         _flyout = new DetailFlyoutController(vm.Host, vm.Theme, this);
         _flyout.PointerOverChanged += OnFlyoutPointerOverChanged;
-        _pauseItem = new MenuItem { Header = "자동 전환 일시정지", IsCheckable = true };
+        _pauseItem = new MenuItem { Header = UiStrings.TrayMenuPauseRotation, IsCheckable = true };
         Root.ContextMenu = BuildContextMenu();
 
         Root.MouseLeftButtonUp += OnLeftButtonUp;
@@ -55,15 +56,15 @@ public partial class WidgetWindow : Window
 
     private ContextMenu BuildContextMenu()
     {
-        var settings = new MenuItem { Header = "설정…" };
+        var settings = new MenuItem { Header = UiStrings.TrayMenuSettings };
         settings.Click += (_, _) => _vm.OpenSettings();
 
-        var refresh = new MenuItem { Header = "지금 새로고침" };
+        var refresh = new MenuItem { Header = UiStrings.TrayMenuRefreshNow };
         refresh.Click += (_, _) => _vm.RefreshNow();
 
         _pauseItem.Click += (_, _) => _vm.SetUserPaused(_pauseItem.IsChecked);
 
-        var exit = new MenuItem { Header = "종료" };
+        var exit = new MenuItem { Header = UiStrings.TrayMenuExit };
         exit.Click += (_, _) => _vm.Exit();
 
         var menu = new ContextMenu();

@@ -1,9 +1,11 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using AITokenUsage.Core.Providers.Copilot;
+using AITokenUsage.Resources;
 
 namespace AITokenUsage.UI;
 
@@ -88,7 +90,7 @@ public partial class CopilotSignInPanel : UserControl, IDisposable
                 try
                 {
                     string token = await Task.Run(() => flow.WaitForTokenAsync(code, cts.Token), cts.Token);
-                    ProgressText.Text = "GitHub 계정을 확인하는 중…";
+                    ProgressText.Text = UiStrings.CopilotVerifyingAccount;
                     await Task.Run(() => _copilot.SignInWithTokenAsync(token, cts.Token), cts.Token);
                     signedIn = true;
                 }
@@ -117,7 +119,7 @@ public partial class CopilotSignInPanel : UserControl, IDisposable
         catch (Exception ex)
         {
             _host.Log.Error("Copilot sign-in failed.", ex);
-            ShowError("로그인 중 오류가 발생했습니다. 잠시 후 다시 시도하세요.");
+            ShowError(UiStrings.CopilotSignInError);
         }
         finally
         {
@@ -148,7 +150,7 @@ public partial class CopilotSignInPanel : UserControl, IDisposable
         catch (Exception ex)
         {
             _host.Log.Error("Copilot sign-out failed.", ex);
-            ShowError("로그아웃하지 못했습니다.");
+            ShowError(UiStrings.CopilotSignOutError);
         }
         finally
         {
@@ -175,12 +177,12 @@ public partial class CopilotSignInPanel : UserControl, IDisposable
             // which is shared with explorer's input queue while the widget is attached. The clipboard needs STA, so it
             // stays on this thread; a locked clipboard just reports failure and the user can click again.
             System.Windows.Forms.Clipboard.SetDataObject(_code.UserCode, copy: true, retryTimes: 0, retryDelay: 0);
-            CopyButton.Content = "복사됨";
+            CopyButton.Content = UiStrings.CopilotCopiedButton;
         }
         catch (ExternalException ex)
         {
             _host.Log.Warn("Copying the GitHub device code to the clipboard failed.", ex);
-            ShowError("클립보드에 복사하지 못했습니다. 코드를 직접 입력하세요.");
+            ShowError(UiStrings.CopilotClipboardError);
         }
     }
 
@@ -209,7 +211,7 @@ public partial class CopilotSignInPanel : UserControl, IDisposable
                 {
                     if (!_disposed)
                     {
-                        ShowError($"브라우저를 열지 못했습니다. {url} 에 직접 접속하세요.");
+                        ShowError(string.Format(CultureInfo.CurrentCulture, UiStrings.CopilotBrowserOpenErrorFormat, url));
                     }
                 });
             }
@@ -230,9 +232,9 @@ public partial class CopilotSignInPanel : UserControl, IDisposable
 
     private void ShowWaitingForCode()
     {
-        ProgressText.Text = "GitHub 로그인 코드를 받는 중…";
+        ProgressText.Text = UiStrings.CopilotWaitingForCode;
         UserCodeText.Text = "";
-        CopyButton.Content = "복사";
+        CopyButton.Content = UiStrings.CopilotCopyButton;
         CopyButton.IsEnabled = false;
         OpenButton.IsEnabled = false;
     }
@@ -240,9 +242,9 @@ public partial class CopilotSignInPanel : UserControl, IDisposable
     private void ShowCode(DeviceCodeInfo code)
     {
         _code = code;
-        ProgressText.Text = $"브라우저에서 {code.VerificationUri.AbsoluteUri} 페이지를 열고 아래 코드를 입력하세요.";
+        ProgressText.Text = string.Format(CultureInfo.CurrentCulture, UiStrings.CopilotEnterCodeFormat, code.VerificationUri.AbsoluteUri);
         UserCodeText.Text = code.UserCode;
-        CopyButton.Content = "복사";
+        CopyButton.Content = UiStrings.CopilotCopyButton;
         CopyButton.IsEnabled = true;
         OpenButton.IsEnabled = true;
     }

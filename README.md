@@ -145,6 +145,8 @@ Gemini 토큰을 갱신하려면 Gemini CLI의 Google OAuth 클라이언트가 �
 - **값이 흐리게 보임**: 마지막 조회가 실패해 이전 값을 보여 주는 중입니다. 위젯에 마우스를 올려 상세 카드 아래쪽의 이유와 재시도 시각을 확인하세요(카드가 안 뜨면 **설정 → 위젯 표시**에서 "마우스를 올리면 상세 카드 표시"가 켜져 있는지 확인하세요).
 - **로그**: `%LOCALAPPDATA%\AITokenUsage\logs\app.log`
 
-## 저작권
+## 라이선스
 
 Copyright © 2026 [DDongYeop](https://github.com/DDongYeop)
+
+[MIT 라이선스](LICENSE)로 배포합니다. 저작권 표시와 라이선스 문구를 남기면 자유롭게 사용·수정·재배포할 수 있습니다.

@@ -64,6 +64,8 @@ Name: "startup"; Description: "{cm:StartWithWindows}"; GroupDescription: "{cm:Ot
 [Files]
 ; [InstallDelete]를 두지 않는다: 사용자가 고른 비어 있지 않은 폴더가 지워질 수 있고, self-contained 앱은 이전 버전의 잔여 파일이 있어도 문제가 없다.
 Source: "..\artifacts\publish\*"; DestDir: "{app}"; Excludes: "*.pdb"; Flags: ignoreversion recursesubdirs createallsubdirs
+; MIT 라이선스 조건: 배포본에 저작권 표시와 라이선스 전문을 함께 넣는다.
+Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\{cm:AppDisplayName}"; Filename: "{app}\{#AppExe}"

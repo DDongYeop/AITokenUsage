@@ -32,6 +32,12 @@
                       AutomationProperties.Name="{x:Static res:UiStrings.WidgetShowResetTimeHeader}" />
         </controls:SettingsCard>
 
+        <controls:SettingsCard Header="{x:Static res:UiStrings.WidgetShowDetailCardHeader}"
+                               Description="{x:Static res:UiStrings.WidgetShowDetailCardDescription}">
+            <CheckBox x:Name="ShowDetailCardBox" Style="{StaticResource ToggleSwitchStyle}"
+                      AutomationProperties.Name="{x:Static res:UiStrings.WidgetShowDetailCardHeader}" />
+        </controls:SettingsCard>
+
         <controls:SettingsCard Header="{x:Static res:UiStrings.WidgetTextColorHeader}">
             <ComboBox x:Name="TextColorBox" Width="260" DisplayMemberPath="Label"
                       AutomationProperties.Name="{x:Static res:UiStrings.WidgetTextColorHeader}" />

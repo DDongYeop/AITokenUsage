@@ -133,6 +133,12 @@ Log: {0}</value>
   <data name="WidgetShowResetTimeDescription" xml:space="preserve">
     <value>Turn off to make the widget narrower</value>
   </data>
+  <data name="WidgetShowDetailCardHeader" xml:space="preserve">
+    <value>Detail card on hover</value>
+  </data>
+  <data name="WidgetShowDetailCardDescription" xml:space="preserve">
+    <value>Shows every limit and its reset time when the pointer rests on the widget</value>
+  </data>
   <data name="WidgetTextColorHeader" xml:space="preserve">
     <value>Text color</value>
   </data>

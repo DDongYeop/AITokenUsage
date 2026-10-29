@@ -199,7 +199,18 @@ public sealed class SettingsStoreTests : IDisposable
 
         Assert.Equal("auto", settings.Language);
         Assert.True(settings.ShowResetTime);
+        Assert.True(settings.ShowDetailCard);
         Assert.Equal(8, settings.RotationSeconds);
+    }
+
+    [Fact]
+    public void SaveThenLoad_RoundTripsShowDetailCard()
+    {
+        _store.Save(new AppSettings { ShowDetailCard = false });
+
+        AppSettings loaded = new SettingsStore(_path, _log).Load();
+
+        Assert.False(loaded.ShowDetailCard);
     }
 
     [Fact]

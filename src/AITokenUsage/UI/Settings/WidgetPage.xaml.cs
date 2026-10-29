@@ -41,6 +41,7 @@ public partial class WidgetPage : SettingsPage
         UsedRadio.IsChecked = settings.ValueMode == ValueMode.Used;
         RemainingRadio.IsChecked = settings.ValueMode == ValueMode.Remaining;
         ShowResetTimeBox.IsChecked = settings.ShowResetTime;
+        ShowDetailCardBox.IsChecked = settings.ShowDetailCard;
         TextColorBox.ItemsSource = TextColorChoices;
         TextColorBox.SelectedItem = Find(TextColorChoices, settings.TextColor);
     }
@@ -66,6 +67,7 @@ public partial class WidgetPage : SettingsPage
         UsedRadio.Checked += (_, _) => Update(s => s.ValueMode = ValueMode.Used);
         RemainingRadio.Checked += (_, _) => Update(s => s.ValueMode = ValueMode.Remaining);
         HookToggle(ShowResetTimeBox, on => Update(s => s.ShowResetTime = on));
+        HookToggle(ShowDetailCardBox, on => Update(s => s.ShowDetailCard = on));
         TextColorBox.SelectionChanged += (_, _) =>
         {
             if (TextColorBox.SelectedItem is SettingsChoice { Value: TextColorMode mode })

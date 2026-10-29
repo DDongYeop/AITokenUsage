@@ -304,4 +304,15 @@ public class AppSettingsTests
         Assert.Equal("en", clone.Language);
         Assert.False(clone.ShowResetTime);
     }
+
+    [Fact]
+    public void ShowDetailCard_DefaultsToTrue() => Assert.True(new AppSettings().ShowDetailCard);
+
+    [Fact]
+    public void Clone_CopiesShowDetailCard()
+    {
+        var original = new AppSettings { ShowDetailCard = false };
+
+        Assert.False(original.Clone().ShowDetailCard);
+    }
 }

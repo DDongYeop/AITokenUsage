@@ -68,7 +68,7 @@ public sealed class DetailFlyoutController : IDisposable
 
         _overAnchor = true;
         _closeTimer.Stop();
-        if (!IsOpen && !_suppressed)
+        if (!IsOpen && CanOpen)
         {
             Restart(_openTimer);
         }
@@ -154,11 +154,14 @@ public sealed class DetailFlyoutController : IDisposable
     private void OnOpenTimer(object? sender, EventArgs e)
     {
         _openTimer.Stop();
-        if (!_disposed && _overAnchor && !_suppressed)
+        if (!_disposed && _overAnchor && CanOpen)
         {
             Open();
         }
     }
+
+    /// <summary>Not while the context menu is open, and only when the user keeps the hover card enabled.</summary>
+    private bool CanOpen => !_suppressed && _host.Settings.ShowDetailCard;
 
     /// <summary>
     /// The close decision trusts the real cursor, not the last WPF MouseEnter/MouseLeave. Those only say which window
@@ -325,7 +328,16 @@ public sealed class DetailFlyoutController : IDisposable
         }
     }
 
-    private void OnSettingsChanged(object? sender, EventArgs e) => RefreshIfOpen();
+    private void OnSettingsChanged(object? sender, EventArgs e)
+    {
+        if (!_host.Settings.ShowDetailCard)
+        {
+            CloseNow();
+            return;
+        }
+
+        RefreshIfOpen();
+    }
 
     private void OnCurrentChanged(object? sender, RotationChangedEventArgs e) => RefreshIfOpen();
 

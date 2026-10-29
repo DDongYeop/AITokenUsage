@@ -50,6 +50,9 @@ public sealed class AppSettings
     /// <summary>위젯에 초기화까지 남은 시간 열 표시</summary>
     public bool ShowResetTime { get; set; } = true;
 
+    /// <summary>위젯에 마우스를 올리면 상세 카드 표시</summary>
+    public bool ShowDetailCard { get; set; } = true;
+
     /// <summary>
     /// Repairs this instance in place and returns it:
     /// unknown/duplicate provider ids are dropped (first one wins, ids are lower-cased),
@@ -113,6 +116,7 @@ public sealed class AppSettings
         ShowTrayIcon = ShowTrayIcon,
         Language = Language,
         ShowResetTime = ShowResetTime,
+        ShowDetailCard = ShowDetailCard,
     };
 
     private static List<ProviderSettings> NormalizeProviders(List<ProviderSettings>? providers)

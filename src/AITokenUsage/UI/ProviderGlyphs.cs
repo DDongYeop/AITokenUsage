@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Media;
 using AITokenUsage.Core.Models;
+using AITokenUsage.Core.SystemUsage;
 using Path = System.Windows.Shapes.Path;
 
 namespace AITokenUsage.UI;
@@ -16,6 +17,9 @@ public static class ProviderGlyphs
     public static readonly Color GeminiColor = Color.FromRgb(0x42, 0x85, 0xF4);
     public static readonly Color CopilotColor = Color.FromRgb(0x89, 0x57, 0xE5);
     public static readonly Color NeutralColor = Color.FromRgb(0x8A, 0x8A, 0x8A);
+
+    /// <summary>The "PC" panel's neutral grey (design §3.1): its icon and normal bars.</summary>
+    public static readonly Color SystemColor = Color.FromRgb(0x8B, 0x94, 0x9E);
     public static readonly Color WarningColor = Color.FromRgb(0xF5, 0xA5, 0x24);
     public static readonly Color CriticalColor = Color.FromRgb(0xF0, 0x44, 0x38);
 
@@ -37,6 +41,10 @@ public static class ProviderGlyphs
     private static readonly Geometry CopilotGeometry =
         Frozen(Geometry.Parse("M7,1 L12.2,4 L12.2,10 L7,13 L1.8,10 L1.8,4 Z"));
 
+    /// <summary>A plain monitor: screen, neck and foot (not a brand logo).</summary>
+    private static readonly Geometry SystemGeometry =
+        Frozen(Geometry.Parse("M1.5,2 L12.5,2 L12.5,9.5 L1.5,9.5 Z M7,9.5 L7,12 M4.5,12 L9.5,12"));
+
     private static readonly Geometry NeutralGeometry =
         Frozen(Geometry.Parse("M2.5,12 L2.5,7.5 M7,12 L7,2.5 M11.5,12 L11.5,9"));
 
@@ -46,6 +54,7 @@ public static class ProviderGlyphs
         [ProviderIds.Codex] = FrozenBrush(CodexColor),
         [ProviderIds.Gemini] = FrozenBrush(GeminiColor),
         [ProviderIds.Copilot] = FrozenBrush(CopilotColor),
+        [SystemPanel.Id] = FrozenBrush(SystemColor),
     };
 
     private static readonly SolidColorBrush NeutralBrush = FrozenBrush(NeutralColor);
@@ -56,6 +65,7 @@ public static class ProviderGlyphs
         ProviderIds.Codex => CodexColor,
         ProviderIds.Gemini => GeminiColor,
         ProviderIds.Copilot => CopilotColor,
+        SystemPanel.Id => SystemColor,
         _ => NeutralColor,
     };
 
@@ -68,6 +78,7 @@ public static class ProviderGlyphs
         ProviderIds.Codex => CodexGeometry,
         ProviderIds.Gemini => GeminiGeometry,
         ProviderIds.Copilot => CopilotGeometry,
+        SystemPanel.Id => SystemGeometry,
         _ => NeutralGeometry,
     };
 

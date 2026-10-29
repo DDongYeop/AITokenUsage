@@ -139,6 +139,21 @@ Log: {0}</value>
   <data name="WidgetShowDetailCardDescription" xml:space="preserve">
     <value>Shows every limit and its reset time when the pointer rests on the widget</value>
   </data>
+  <data name="WidgetSystemMonitorHeader" xml:space="preserve">
+    <value>PC usage (CPU, memory)</value>
+  </data>
+  <data name="SystemMonitorOff" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="SystemMonitorRotationPanel" xml:space="preserve">
+    <value>As a rotating panel</value>
+  </data>
+  <data name="SystemMonitorAlwaysBeside" xml:space="preserve">
+    <value>Always beside the widget</value>
+  </data>
+  <data name="SystemMonitorCardOnly" xml:space="preserve">
+    <value>Detail card and tooltip only</value>
+  </data>
   <data name="WidgetTextColorHeader" xml:space="preserve">
     <value>Text color</value>
   </data>

@@ -176,6 +176,25 @@ public class SystemPanelTests
     }
 
     [Fact]
+    public void MemoryText_UnknownTotal_ShowsMissingValue()
+    {
+        var unknown = new SystemUsageSample(23, 0, 0, At);
+
+        Assert.Equal(MeterSelector.MissingValue, SystemPanel.MemoryText(unknown));
+        Assert.Equal("CPU 23% · 메모리 —", SystemPanel.CardLine(unknown));
+        Assert.Equal(MeterSelector.MissingValue, SystemPanel.MemoryText(new SystemUsageSample(23, 5 * Gib, -1, At)));
+    }
+
+    [Fact]
+    public void BuildCard_UnknownTotal_LeavesMemoryDetailEmpty()
+    {
+        CardRow memory = SystemPanel.BuildCard(new SystemUsageSample(23, 0, 0, At)).Rows[1];
+
+        Assert.Equal(MeterSelector.MissingValue, memory.Value);
+        Assert.Equal("", memory.ResetText);
+    }
+
+    [Fact]
     public void TooltipLine_ShowsCpuAndRamPercent()
     {
         Assert.Equal("PC CPU 23% · RAM 61%", SystemPanel.TooltipLine(Sample()));

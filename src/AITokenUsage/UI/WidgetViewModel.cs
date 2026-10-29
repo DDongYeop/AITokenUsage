@@ -3,6 +3,7 @@ using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Presentation;
 using AITokenUsage.Core.Rotation;
 using AITokenUsage.Core.Settings;
+using AITokenUsage.Core.SystemUsage;
 using AITokenUsage.Taskbar;
 
 namespace AITokenUsage.UI;
@@ -33,6 +34,7 @@ public sealed class WidgetViewModel : IDisposable
         Palette = ResolvePalette();
 
         _host.ViewChanged += OnViewChanged;
+        _host.SystemUsageChanged += OnSystemUsageChanged;
         _host.SettingsChanged += OnSettingsChanged;
         _host.Rotation.CurrentChanged += OnCurrentChanged;
         _theme.Changed += OnThemeChanged;
@@ -94,6 +96,12 @@ public sealed class WidgetViewModel : IDisposable
     {
         RotationController rotation = _host.Rotation;
         string? id = rotation.CurrentId;
+        if (id == SystemPanel.Id)
+        {
+            // The virtual PC panel has no UsageService view: it is built from the latest sample.
+            return SystemPanel.BuildWidgetModel(_host.SystemUsage, rotation.EligibleIds.Count, rotation.CurrentIndex);
+        }
+
         ProviderView? view = id is null ? null : _host.Usage.GetView(id);
         if (view is null)
         {
@@ -121,6 +129,7 @@ public sealed class WidgetViewModel : IDisposable
         _resetTimer.Stop();
         _resetTimer.Tick -= OnResetTick;
         _host.ViewChanged -= OnViewChanged;
+        _host.SystemUsageChanged -= OnSystemUsageChanged;
         _host.SettingsChanged -= OnSettingsChanged;
         _host.Rotation.CurrentChanged -= OnCurrentChanged;
         _theme.Changed -= OnThemeChanged;
@@ -153,6 +162,15 @@ public sealed class WidgetViewModel : IDisposable
     private void OnResetTick(object? sender, EventArgs e) => RaiseUpdated();
 
     private void OnViewChanged(object? sender, ProviderView view) => RaiseUpdated();
+
+    /// <summary>A new PC sample (every 2 s): redraw in place, without a slide, only while the PC panel is shown.</summary>
+    private void OnSystemUsageChanged(object? sender, EventArgs e)
+    {
+        if (_host.Rotation.CurrentId == SystemPanel.Id)
+        {
+            RaiseUpdated();
+        }
+    }
 
     private void OnSettingsChanged(object? sender, EventArgs e)
     {

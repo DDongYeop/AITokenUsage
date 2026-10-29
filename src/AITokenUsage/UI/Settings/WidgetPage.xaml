@@ -38,6 +38,11 @@
                       AutomationProperties.Name="{x:Static res:UiStrings.WidgetShowDetailCardHeader}" />
         </controls:SettingsCard>
 
+        <controls:SettingsCard Header="{x:Static res:UiStrings.WidgetSystemMonitorHeader}">
+            <ComboBox x:Name="SystemMonitorBox" Width="260" DisplayMemberPath="Label"
+                      AutomationProperties.Name="{x:Static res:UiStrings.WidgetSystemMonitorHeader}" />
+        </controls:SettingsCard>
+
         <controls:SettingsCard Header="{x:Static res:UiStrings.WidgetTextColorHeader}">
             <ComboBox x:Name="TextColorBox" Width="260" DisplayMemberPath="Label"
                       AutomationProperties.Name="{x:Static res:UiStrings.WidgetTextColorHeader}" />

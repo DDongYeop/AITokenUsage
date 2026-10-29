@@ -50,16 +50,23 @@ public static class SystemPanel
         CardRow[] rows =
         [
             ToCardRow(cpu, ""),
-            ToCardRow(ram, sample is null ? "" : MemoryText(sample)),
+            ToCardRow(ram, sample is null || sample.MemoryTotalBytes <= 0 ? "" : MemoryText(sample)),
         ];
 
         return new DetailCardModel(Id, DisplayName, null, rows, null, [Strings.SystemCardStatus], false);
     }
 
-    /// <summary>"19.5 / 32 GB": used with one decimal, total rounded to a whole number (GiB).</summary>
+    /// <summary>
+    /// "19.5 / 32 GB": used with one decimal, total rounded to a whole number (GiB).
+    /// A dash when the total is unknown (zero or less), never "0.0 / 0 GB".
+    /// </summary>
     public static string MemoryText(SystemUsageSample sample)
     {
         ArgumentNullException.ThrowIfNull(sample);
+        if (sample.MemoryTotalBytes <= 0)
+        {
+            return MeterSelector.MissingValue;
+        }
 
         string used = (sample.MemoryUsedBytes / BytesPerGib).ToString("0.0", CultureInfo.InvariantCulture);
         string total = Math.Round(sample.MemoryTotalBytes / BytesPerGib, MidpointRounding.AwayFromZero)

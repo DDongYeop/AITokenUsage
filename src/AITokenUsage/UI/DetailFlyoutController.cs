@@ -4,6 +4,7 @@ using System.Windows.Threading;
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Presentation;
 using AITokenUsage.Core.Rotation;
+using AITokenUsage.Core.SystemUsage;
 using AITokenUsage.Core.Taskbar;
 using AITokenUsage.Taskbar;
 
@@ -54,6 +55,7 @@ public sealed class DetailFlyoutController : IDisposable
         _hoverCheckTimer = CreateTimer(HoverCheckInterval, OnHoverCheck);
 
         _host.ViewChanged += OnViewChanged;
+        _host.SystemUsageChanged += OnSystemUsageChanged;
         _host.SettingsChanged += OnSettingsChanged;
         _host.Rotation.CurrentChanged += OnCurrentChanged;
         _theme.Changed += OnThemeChanged;
@@ -147,6 +149,7 @@ public sealed class DetailFlyoutController : IDisposable
 
         _disposed = true;
         _host.ViewChanged -= OnViewChanged;
+        _host.SystemUsageChanged -= OnSystemUsageChanged;
         _host.SettingsChanged -= OnSettingsChanged;
         _host.Rotation.CurrentChanged -= OnCurrentChanged;
         _theme.Changed -= OnThemeChanged;
@@ -331,13 +334,36 @@ public sealed class DetailFlyoutController : IDisposable
         return flyout;
     }
 
+    /// <summary>
+    /// The PC panel's own card when it is current; otherwise the AI card, with the PC line at the bottom in the
+    /// AlwaysBeside and CardOnly modes (design §3.4).
+    /// </summary>
     private DetailCardModel? BuildModel()
     {
         string? id = _host.Rotation.CurrentId;
+        if (id == SystemPanel.Id)
+        {
+            return SystemPanel.BuildCard(_host.SystemUsage);
+        }
+
         ProviderView? view = id is null ? null : _host.Usage.GetView(id);
-        return view is null
-            ? null
-            : DetailCardBuilder.Build(view, _host.Settings.ValueMode, _host.ProviderContext.Time.GetUtcNow(), TimeZoneInfo.Local);
+        if (view is null)
+        {
+            return null;
+        }
+
+        DetailCardModel card = DetailCardBuilder.Build(
+            view, _host.Settings.ValueMode, _host.ProviderContext.Time.GetUtcNow(), TimeZoneInfo.Local);
+        return _host.ShowsSystemLine ? card with { SystemLine = SystemPanel.CardLine(_host.SystemUsage) } : card;
+    }
+
+    /// <summary>A new PC sample: refresh the open card only when it shows PC values (the PC card or the PC line).</summary>
+    private void OnSystemUsageChanged(object? sender, EventArgs e)
+    {
+        if (_host.Rotation.CurrentId == SystemPanel.Id || _host.ShowsSystemLine)
+        {
+            RefreshIfOpen();
+        }
     }
 
     private void RefreshIfOpen()

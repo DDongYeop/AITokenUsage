@@ -7,6 +7,7 @@ using AITokenUsage.Core.Polling;
 using AITokenUsage.Core.Providers;
 using AITokenUsage.Core.Rotation;
 using AITokenUsage.Core.Settings;
+using AITokenUsage.Core.SystemUsage;
 using AITokenUsage.Taskbar;
 using AITokenUsage.UI;
 using AITokenUsage.UI.Settings;
@@ -25,6 +26,7 @@ public sealed class AppHost : IAsyncDisposable
     private readonly HttpClient _http;
     private readonly DispatcherTimer _rotationTimer;
     private readonly ProviderPathWatcher _pathWatcher;
+    private readonly SystemUsageSampler _systemSampler;
     private Task _backgroundChain = Task.CompletedTask;
     private int _refreshMinutes;
     private bool _started;
@@ -75,6 +77,10 @@ public sealed class AppHost : IAsyncDisposable
 
         _pathWatcher = new ProviderPathWatcher(Providers, Usage.NotifyPathChanged, Log);
 
+        // Created idle: Start/ApplySettings run it only while the SystemMonitor setting is not Off.
+        _systemSampler = new SystemUsageSampler(dispatcher, TimeProvider.System, Log);
+        _systemSampler.Sampled += OnSystemSampled;
+
         Shell = new ShellEventWindow(Log);
         Theme = new ThemeWatcher(dispatcher, Log);
         Shell.ImmersiveColorSetChanged += OnImmersiveColorSetChanged;
@@ -109,6 +115,15 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>UsageService.ViewChanged marshalled to the UI thread (after Rotation.UpdateProviders).</summary>
     public event EventHandler<ProviderView>? ViewChanged;
 
+    /// <summary>The latest PC measurement; null while the SystemMonitor setting is Off (or before the first reading).</summary>
+    public SystemUsageSample? SystemUsage { get; private set; }
+
+    /// <summary>
+    /// Raised on the UI thread after <see cref="SystemUsage"/> changed (every 2 s while measuring). The rotation list is
+    /// not rebuilt for it: the PC panel's id and status never change between samples.
+    /// </summary>
+    public event EventHandler? SystemUsageChanged;
+
     public void Start()
     {
         Dispatcher.VerifyAccess();
@@ -118,6 +133,7 @@ public sealed class AppHost : IAsyncDisposable
         }
 
         _started = true;
+        ApplySystemMonitor();
         ConfigureRotation();
         Usage.Start();
         _pathWatcher.Start();
@@ -138,7 +154,7 @@ public sealed class AppHost : IAsyncDisposable
     }
 
     /// <summary>
-    /// Normalize → refresh interval (reschedule when changed) → rotation → save snapshot (background)
+    /// Normalize → refresh interval (reschedule when changed) → PC sampler on/off → rotation → save snapshot (background)
     /// → startup registry (background) → SettingsChanged.
     /// </summary>
     public void ApplySettings()
@@ -163,6 +179,7 @@ public sealed class AppHost : IAsyncDisposable
             Usage.RescheduleAll();
         }
 
+        ApplySystemMonitor();
         ConfigureRotation();
 
         // Serialize a deep copy taken on the UI thread: the pool thread never reads the Settings object the UI edits.
@@ -243,10 +260,13 @@ public sealed class AppHost : IAsyncDisposable
 
     private bool IsShuttingDown => _shutdownRequested || Volatile.Read(ref _disposed) == 1;
 
-    /// <summary>Settings order ∩ Enabled, as current views.</summary>
+    /// <summary>
+    /// Settings order ∩ Enabled, as current views. With the RotationPanel PC mode the virtual "PC" panel
+    /// (<see cref="SystemPanel.Id"/>, status Ok, never in UsageService) follows the AIs at the end.
+    /// </summary>
     public IReadOnlyList<ProviderView> EnabledViewsInOrder()
     {
-        var result = new List<ProviderView>(Settings.Providers.Count);
+        var result = new List<ProviderView>(Settings.Providers.Count + 1);
         foreach (ProviderSettings provider in Settings.Providers)
         {
             if (provider.Enabled && Usage.GetView(provider.Id) is ProviderView view)
@@ -255,8 +275,16 @@ public sealed class AppHost : IAsyncDisposable
             }
         }
 
+        if (Settings.SystemMonitor == SystemMonitorMode.RotationPanel)
+        {
+            result.Add(SystemPanel.ToView(SystemUsage));
+        }
+
         return result;
     }
+
+    /// <summary>True when the PC line belongs on the AI detail card and tray tooltip (AlwaysBeside and CardOnly, design §3.4).</summary>
+    public bool ShowsSystemLine => Settings.SystemMonitor is SystemMonitorMode.AlwaysBeside or SystemMonitorMode.CardOnly;
 
     public async Task RefreshNowAsync()
     {
@@ -348,6 +376,8 @@ public sealed class AppHost : IAsyncDisposable
 
         // Everything before the first await runs synchronously on the caller (UI) thread.
         Taskbar?.Dispose();
+        _systemSampler.Sampled -= OnSystemSampled;
+        _systemSampler.Dispose();
         _rotationTimer.Stop();
         _rotationTimer.Tick -= OnRotationTick;
         Usage.ViewChanged -= OnUsageViewChanged;
@@ -385,6 +415,55 @@ public sealed class AppHost : IAsyncDisposable
         finally
         {
             Application.Current?.Shutdown();
+        }
+    }
+
+    /// <summary>Runs the PC sampler only while the SystemMonitor setting is not Off; Off also forgets the last sample.</summary>
+    private void ApplySystemMonitor()
+    {
+        if (Settings.SystemMonitor == SystemMonitorMode.Off)
+        {
+            if (_systemSampler.IsRunning)
+            {
+                _systemSampler.Stop();
+                Log.Info("system usage sampler stopped");
+            }
+
+            SystemUsage = null;
+            return;
+        }
+
+        if (!_systemSampler.IsRunning)
+        {
+            Log.Info($"system usage sampler started ({Settings.SystemMonitor})");
+            _systemSampler.Start();
+        }
+    }
+
+    private void OnSystemSampled(object? sender, SystemUsageSample sample)
+    {
+        // DispatcherTimer tick: already on the UI thread.
+        if (IsShuttingDown)
+        {
+            return;
+        }
+
+        SystemUsage = sample;
+        if (SystemUsageChanged is not EventHandler handlers)
+        {
+            return;
+        }
+
+        foreach (Delegate handler in handlers.GetInvocationList())
+        {
+            try
+            {
+                ((EventHandler)handler)(this, EventArgs.Empty);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("app host: a SystemUsageChanged subscriber failed", ex);
+            }
         }
     }
 

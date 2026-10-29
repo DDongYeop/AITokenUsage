@@ -1,9 +1,11 @@
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Interop;
 using System.Windows.Media;
 using AITokenUsage.Core.Presentation;
+using AITokenUsage.Core.SystemUsage;
 using AITokenUsage.Core.Taskbar;
 
 namespace AITokenUsage.UI;
@@ -62,7 +64,11 @@ public partial class DetailFlyout : Window
         ExtraText.Opacity = model.IsStale ? StaleOpacity : 1;
         ExtraText.Visibility = model.ExtraLine is null ? Visibility.Collapsed : Visibility.Visible;
 
-        Divider.Visibility = model.Rows.Count > 0 || model.ExtraLine is not null ? Visibility.Visible : Visibility.Collapsed;
+        RenderSystemLine(model.SystemLine, palette);
+
+        Divider.Visibility = model.Rows.Count > 0 || model.ExtraLine is not null || model.SystemLine is not null
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
         StatusPanel.Children.Clear();
         foreach (string line in model.StatusLines)
@@ -185,6 +191,24 @@ public partial class DetailFlyout : Window
             margin,
             gap);
         return true;
+    }
+
+    /// <summary>"PC  CPU 23% · 메모리 19.5 / 32 GB" under its own divider, above the status lines (design §3.4).</summary>
+    private void RenderSystemLine(string? line, WidgetPalette palette)
+    {
+        Visibility visibility = line is null ? Visibility.Collapsed : Visibility.Visible;
+        SystemDivider.Visibility = visibility;
+        SystemDivider.Background = palette.Track;
+        SystemLineText.Visibility = visibility;
+        SystemLineText.Inlines.Clear();
+        if (line is null)
+        {
+            return;
+        }
+
+        SystemLineText.Foreground = palette.Text;
+        SystemLineText.Inlines.Add(new Run(SystemPanel.DisplayName) { FontWeight = FontWeights.SemiBold });
+        SystemLineText.Inlines.Add(new Run("  " + line));
     }
 
     private static FrameworkElement BuildRow(CardRow row, WidgetPalette palette, string providerId)

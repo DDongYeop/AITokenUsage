@@ -6,7 +6,7 @@ using Microsoft.Win32;
 
 namespace AITokenUsage.UI.Settings;
 
-/// <summary>"Widget" page: monitor, position, value mode, time-until-reset column and text colour (v1.1 spec §4.3).</summary>
+/// <summary>"Widget" page: monitor, position, value mode, time-until-reset column, detail card, PC usage and text colour (v1.1 spec §4.3).</summary>
 public partial class WidgetPage : SettingsPage
 {
     private static readonly IReadOnlyList<SettingsChoice> PlacementChoices =
@@ -21,6 +21,14 @@ public partial class WidgetPage : SettingsPage
         new(TextColorMode.Auto, UiStrings.TextColorAuto),
         new(TextColorMode.Light, UiStrings.TextColorLight),
         new(TextColorMode.Dark, UiStrings.TextColorDark),
+    ];
+
+    private static readonly IReadOnlyList<SettingsChoice> SystemMonitorChoices =
+    [
+        new(SystemMonitorMode.Off, UiStrings.SystemMonitorOff),
+        new(SystemMonitorMode.RotationPanel, UiStrings.SystemMonitorRotationPanel),
+        new(SystemMonitorMode.AlwaysBeside, UiStrings.SystemMonitorAlwaysBeside),
+        new(SystemMonitorMode.CardOnly, UiStrings.SystemMonitorCardOnly),
     ];
 
     public WidgetPage(AppHost host)
@@ -42,6 +50,8 @@ public partial class WidgetPage : SettingsPage
         RemainingRadio.IsChecked = settings.ValueMode == ValueMode.Remaining;
         ShowResetTimeBox.IsChecked = settings.ShowResetTime;
         ShowDetailCardBox.IsChecked = settings.ShowDetailCard;
+        SystemMonitorBox.ItemsSource = SystemMonitorChoices;
+        SystemMonitorBox.SelectedItem = Find(SystemMonitorChoices, settings.SystemMonitor);
         TextColorBox.ItemsSource = TextColorChoices;
         TextColorBox.SelectedItem = Find(TextColorChoices, settings.TextColor);
     }
@@ -68,6 +78,13 @@ public partial class WidgetPage : SettingsPage
         RemainingRadio.Checked += (_, _) => Update(s => s.ValueMode = ValueMode.Remaining);
         HookToggle(ShowResetTimeBox, on => Update(s => s.ShowResetTime = on));
         HookToggle(ShowDetailCardBox, on => Update(s => s.ShowDetailCard = on));
+        SystemMonitorBox.SelectionChanged += (_, _) =>
+        {
+            if (SystemMonitorBox.SelectedItem is SettingsChoice { Value: SystemMonitorMode mode })
+            {
+                Update(s => s.SystemMonitor = mode);
+            }
+        };
         TextColorBox.SelectionChanged += (_, _) =>
         {
             if (TextColorBox.SelectedItem is SettingsChoice { Value: TextColorMode mode })

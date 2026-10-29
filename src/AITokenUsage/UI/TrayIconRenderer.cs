@@ -1,5 +1,6 @@
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Settings;
+using AITokenUsage.Core.SystemUsage;
 using AITokenUsage.Core.Util;
 using Drawing = System.Drawing;
 
@@ -22,6 +23,7 @@ internal static class TrayIconRenderer
         ProviderIds.Codex => unchecked((int)0xFF10A37F),
         ProviderIds.Gemini => unchecked((int)0xFF4285F4),
         ProviderIds.Copilot => unchecked((int)0xFF8957E5),
+        SystemPanel.Id => unchecked((int)0xFF8B949E),
         _ => NoDataArgb,
     };
 

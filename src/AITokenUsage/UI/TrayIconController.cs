@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Rotation;
 using AITokenUsage.Core.Settings;
+using AITokenUsage.Core.SystemUsage;
 using AITokenUsage.Core.Util;
 using AITokenUsage.Resources;
 using Drawing = System.Drawing;
@@ -40,6 +41,7 @@ public sealed partial class TrayIconController : IDisposable
         _notifyIcon.MouseClick += OnMouseClick;
 
         _host.ViewChanged += OnViewChanged;
+        _host.SystemUsageChanged += OnSystemUsageChanged;
         _host.SettingsChanged += OnSettingsChanged;
         _host.Rotation.CurrentChanged += OnRotationChanged;
 
@@ -56,6 +58,7 @@ public sealed partial class TrayIconController : IDisposable
 
         _disposed = true;
         _host.ViewChanged -= OnViewChanged;
+        _host.SystemUsageChanged -= OnSystemUsageChanged;
         _host.SettingsChanged -= OnSettingsChanged;
         _host.Rotation.CurrentChanged -= OnRotationChanged;
 
@@ -98,9 +101,24 @@ public sealed partial class TrayIconController : IDisposable
 
     private void TogglePause() => _host.Rotation.SetUserPaused(!_host.Rotation.IsUserPaused);
 
+    /// <summary>A new PC sample: update only when the icon or tooltip shows PC values.</summary>
+    private void OnSystemUsageChanged(object? sender, EventArgs e)
+    {
+        if (_host.Rotation.CurrentId == SystemPanel.Id || _host.ShowsSystemLine)
+        {
+            Update();
+        }
+    }
+
     private ProviderView? CurrentView()
     {
         string? id = _host.Rotation.CurrentId;
+        if (id == SystemPanel.Id)
+        {
+            // The virtual PC panel has no UsageService view.
+            return SystemPanel.ToView(_host.SystemUsage);
+        }
+
         ProviderView? view = id is null ? null : _host.Usage.GetView(id);
         return view ?? _host.EnabledViewsInOrder().FirstOrDefault();
     }
@@ -113,12 +131,18 @@ public sealed partial class TrayIconController : IDisposable
         }
 
         ProviderView? view = CurrentView();
-        ProviderSettings? lines = view is null
+        bool isSystem = view?.ProviderId == SystemPanel.Id;
+        ProviderSettings? lines = view is null || isSystem
             ? null
             : _host.Settings.Providers.FirstOrDefault(p => string.Equals(p.Id, view.ProviderId, StringComparison.Ordinal));
-        ValueMode mode = _host.Settings.ValueMode;
 
-        _notifyIcon.Text = TrayTextFormatter.Tooltip(view, lines, mode);
+        // PC values are always "used %" (the ValueMode setting applies to AI limits only); line 1 is CPU.
+        ValueMode mode = isSystem ? ValueMode.Used : _host.Settings.ValueMode;
+
+        _notifyIcon.Text = isSystem
+            ? SystemPanel.TooltipLine(_host.SystemUsage)
+            : TrayTextFormatter.Tooltip(
+                view, lines, mode, _host.ShowsSystemLine ? SystemPanel.TooltipLine(_host.SystemUsage) : null);
 
         UsageMeter? line1 = view is null ? null : TrayTextFormatter.SelectLine1(view, lines);
         TrayIconRenderer.IconSpec spec = TrayIconRenderer.CreateSpec(view, line1, mode);

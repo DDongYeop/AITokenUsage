@@ -31,6 +31,8 @@
                 </StackPanel>
                 <StackPanel x:Name="RowsPanel" />
                 <TextBlock x:Name="ExtraText" Margin="0,2,0,0" FontSize="12" Visibility="Collapsed" />
+                <Border x:Name="SystemDivider" Height="1" Margin="0,4,0,8" Visibility="Collapsed" />
+                <TextBlock x:Name="SystemLineText" FontSize="12" Visibility="Collapsed" />
                 <Border x:Name="Divider" Height="1" Margin="0,10,0,8" />
                 <StackPanel x:Name="StatusPanel" />
             </StackPanel>

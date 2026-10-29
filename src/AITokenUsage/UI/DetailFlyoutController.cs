@@ -31,6 +31,13 @@ public sealed class DetailFlyoutController : IDisposable
     private bool _overFlyout;
     private bool _suppressed;
     private bool _disposed;
+#if DEBUG
+    /// <summary>Debug builds only: "--pin-detail-card" opens the card shortly after startup and keeps it open (screen captures without real input).</summary>
+    private const string PinArgument = "--pin-detail-card";
+
+    private readonly bool _pinned = Environment.GetCommandLineArgs().Contains(PinArgument, StringComparer.Ordinal);
+    private DispatcherTimer? _pinTimer;
+#endif
 
     public DetailFlyoutController(AppHost host, ThemeWatcher theme, Window anchor)
     {
@@ -50,6 +57,19 @@ public sealed class DetailFlyoutController : IDisposable
         _host.SettingsChanged += OnSettingsChanged;
         _host.Rotation.CurrentChanged += OnCurrentChanged;
         _theme.Changed += OnThemeChanged;
+#if DEBUG
+        if (_pinned)
+        {
+            _pinTimer = CreateTimer(TimeSpan.FromSeconds(2), (_, _) =>
+            {
+                if (!_disposed && !IsOpen)
+                {
+                    Open();
+                }
+            });
+            _pinTimer.Start();
+        }
+#endif
     }
 
     public bool IsOpen => _flyout is { IsVisible: true };
@@ -134,6 +154,9 @@ public sealed class DetailFlyoutController : IDisposable
         _closeTimer.Stop();
         _clockTimer.Stop();
         _hoverCheckTimer.Stop();
+#if DEBUG
+        _pinTimer?.Stop();
+#endif
         _flyout?.Close();
         _flyout = null;
     }
@@ -177,6 +200,13 @@ public sealed class DetailFlyoutController : IDisposable
             return;
         }
 
+#if DEBUG
+        if (_pinned)
+        {
+            return;
+        }
+#endif
+
         if (SampleCursor() is FlyoutHoverState state)
         {
             ApplyPointer(state);
@@ -207,6 +237,13 @@ public sealed class DetailFlyoutController : IDisposable
         }
 
         _flyout.Reposition();
+#if DEBUG
+        if (_pinned)
+        {
+            return;
+        }
+#endif
+
         if (SampleCursor() is not FlyoutHoverState state)
         {
             return;

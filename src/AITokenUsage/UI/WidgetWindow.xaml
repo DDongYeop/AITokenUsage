@@ -21,9 +21,19 @@
             Height="40"
             HorizontalAlignment="Left"
             VerticalAlignment="Top">
-        <Grid x:Name="Stage" ClipToBounds="True">
-            <ui:ProviderPanel x:Name="PanelA" />
-            <ui:ProviderPanel x:Name="PanelB" Visibility="Hidden" Opacity="0" />
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Grid x:Name="Stage" Grid.Column="0" ClipToBounds="True">
+                <ui:ProviderPanel x:Name="PanelA" />
+                <ui:ProviderPanel x:Name="PanelB" Visibility="Hidden" Opacity="0" />
+            </Grid>
+
+            <!-- AlwaysBeside: fixed PC column outside the transition stage (Collapsed in the other modes). -->
+            <ui:SystemBesidePanel x:Name="SystemColumn" Grid.Column="1" Visibility="Collapsed" />
         </Grid>
     </Border>
 </Window>

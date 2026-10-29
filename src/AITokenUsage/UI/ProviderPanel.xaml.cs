@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using AITokenUsage.Core.Presentation;
+using AITokenUsage.Core.SystemUsage;
 using AITokenUsage.Core.Taskbar;
 
 namespace AITokenUsage.UI;
@@ -12,6 +13,15 @@ public partial class ProviderPanel : UserControl
 {
     public const double StaleOpacity = 0.55;
     public const double BarWidth = 44;
+
+    /// <summary>Row label size of AI panels ("5h", "7d", "Pro"); matches the 24 DIP label column in ProviderPanel.xaml.</summary>
+    private const double LabelFontSize = 10.5;
+
+    /// <summary>
+    /// The PC panel's labels "CPU"/"RAM" are wider than the AI ones and, at 10.5, fill the whole 24 DIP label column and touch
+    /// the bar. A smaller size on this panel only leaves a visible gap without changing the shared column layout.
+    /// </summary>
+    private const double SystemLabelFontSize = 9;
 
     private const double DotSize = 5;
     private const double DotSpacing = 4;
@@ -79,6 +89,7 @@ public partial class ProviderPanel : UserControl
         row.Container.Visibility = Visibility.Visible;
         row.Container.Opacity = model.Dimmed ? StaleOpacity : 1.0;
         row.Label.Text = model.Label;
+        row.Label.FontSize = providerId == SystemPanel.Id ? SystemLabelFontSize : LabelFontSize;
         row.Label.Foreground = palette.Muted;
         row.Gap.Width = new GridLength(showResetTime ? WidgetMetrics.ResetGapDip : 0);
         row.ResetColumn.Width = new GridLength(showResetTime ? WidgetMetrics.ResetColumnDip : 0);

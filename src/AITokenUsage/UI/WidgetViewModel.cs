@@ -49,6 +49,12 @@ public sealed class WidgetViewModel : IDisposable
     /// <summary>Whether the widget shows the time-to-reset column (and is therefore 218 instead of 176 DIP wide).</summary>
     public bool ShowResetTime => _host.Settings.ShowResetTime;
 
+    /// <summary>Whether the fixed CPU/RAM column sits beside the AI panel (AlwaysBeside); adds WidgetMetrics.SystemGapDip + SystemColumnDip to the width.</summary>
+    public bool SystemBeside => _host.Settings.SystemMonitor == SystemMonitorMode.AlwaysBeside;
+
+    /// <summary>The latest PC sample for the beside column (null before the first one, or while the monitor is Off).</summary>
+    public SystemUsageSample? SystemUsage => _host.SystemUsage;
+
     public ThemeWatcher Theme => _theme;
 
     public WidgetPanelModel CurrentModel { get; private set; }
@@ -62,6 +68,9 @@ public sealed class WidgetViewModel : IDisposable
 
     /// <summary>Same provider, new data, settings, dots or colours: redraw in place.</summary>
     public event EventHandler? Updated;
+
+    /// <summary>A new PC sample arrived while the beside column is shown: redraw only that column, not the AI panel.</summary>
+    public event EventHandler? SystemUsageUpdated;
 
     public void Next() => _host.Rotation.Next();
 
@@ -163,9 +172,23 @@ public sealed class WidgetViewModel : IDisposable
 
     private void OnViewChanged(object? sender, ProviderView view) => RaiseUpdated();
 
-    /// <summary>A new PC sample (every 2 s): redraw in place, without a slide, only while the PC panel is shown.</summary>
+    /// <summary>
+    /// A new PC sample (every 2 s). Beside mode: only the fixed column is redrawn. Otherwise the PC panel redraws in place
+    /// (no slide) while it is the shown one.
+    /// </summary>
     private void OnSystemUsageChanged(object? sender, EventArgs e)
     {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (SystemBeside)
+        {
+            SystemUsageUpdated?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
         if (_host.Rotation.CurrentId == SystemPanel.Id)
         {
             RaiseUpdated();

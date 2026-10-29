@@ -5,6 +5,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using AITokenUsage.Core.Abstractions;
+using AITokenUsage.Core.Settings;
 using AITokenUsage.Core.Taskbar;
 using AITokenUsage.UI;
 
@@ -531,7 +532,8 @@ public sealed class TaskbarHost : IDisposable
             return;
         }
 
-        double widthDip = WidgetMetrics.WidthDip(_host.Settings.ShowResetTime);
+        double widthDip = WidgetMetrics.WidthDip(
+            _host.Settings.ShowResetTime, _host.Settings.SystemMonitor == SystemMonitorMode.AlwaysBeside);
         if (TaskbarLayoutCalculator.Compute(geometry, _host.Settings.Placement, widthDip) is not PixelRect relative)
         {
             Hide(geometry.IsHorizontal ? "not enough room" : "vertical taskbar");

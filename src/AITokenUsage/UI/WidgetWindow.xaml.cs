@@ -48,10 +48,12 @@ public partial class WidgetWindow : Window
 
         _vm.ProviderSwitched += OnProviderSwitched;
         _vm.Updated += OnUpdated;
+        _vm.SystemUsageUpdated += OnSystemUsageUpdated;
         Closed += OnClosed;
 
         ResetPanels();
         _front.Render(_vm.CurrentModel, _vm.Palette, _vm.ShowResetTime);
+        RenderSystemColumn();
     }
 
     /// <summary>The DIP-sized content root; TaskbarHost sizes the HWND from it.</summary>
@@ -115,18 +117,35 @@ public partial class WidgetWindow : Window
     {
         ApplyWidth();
         _front.Render(_vm.CurrentModel, _vm.Palette, _vm.ShowResetTime);
+        RenderSystemColumn();
+    }
+
+    /// <summary>A new PC sample in AlwaysBeside mode: only the fixed column redraws; the AI panel and its transition are untouched.</summary>
+    private void OnSystemUsageUpdated(object? sender, EventArgs e) => RenderSystemColumn();
+
+    /// <summary>Shows the PC column in AlwaysBeside mode (and draws the latest sample), hides it otherwise.</summary>
+    private void RenderSystemColumn()
+    {
+        if (!_vm.SystemBeside)
+        {
+            SystemColumn.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        SystemColumn.Visibility = Visibility.Visible;
+        SystemColumn.Render(_vm.SystemUsage, _vm.Palette);
     }
 
     /// <summary>
-    /// Keeps the WPF content width in step with the ShowResetTime setting (176 or 218 DIP). TaskbarHost sizes the HWND
-    /// from the same WidgetMetrics value on its next layout, so the two agree. Root.Width is only seeded here before that
-    /// first layout (it is still NaN); afterwards TaskbarHost owns it (pixel width / DPI scale), and every ShowResetTime
+    /// Keeps the WPF content width in step with the ShowResetTime and PC-column settings (176 to 282 DIP). TaskbarHost sizes
+    /// the HWND from the same WidgetMetrics value on its next layout, so the two agree. Root.Width is only seeded here before
+    /// that first layout (it is still NaN); afterwards TaskbarHost owns it (pixel width / DPI scale), and every setting
     /// flip reaches it through TaskbarHost's own SettingsChanged layout, so writing the round DIP value here would only
     /// reintroduce a 1 px drift at fractional DPI.
     /// </summary>
     private void ApplyWidth()
     {
-        double width = WidgetMetrics.WidthDip(_vm.ShowResetTime);
+        double width = WidgetMetrics.WidthDip(_vm.ShowResetTime, _vm.SystemBeside);
         if (width == _widthDip)
         {
             return;
@@ -228,6 +247,7 @@ public partial class WidgetWindow : Window
     {
         _vm.ProviderSwitched -= OnProviderSwitched;
         _vm.Updated -= OnUpdated;
+        _vm.SystemUsageUpdated -= OnSystemUsageUpdated;
         _flyout.PointerOverChanged -= OnFlyoutPointerOverChanged;
         _flyout.Dispose();
         _vm.Dispose();

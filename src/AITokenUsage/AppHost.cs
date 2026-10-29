@@ -429,6 +429,7 @@ public sealed class AppHost : IAsyncDisposable
                 Log.Info("system usage sampler stopped");
             }
 
+            // No SystemUsageChanged here: ApplySettings raises SettingsChanged right after (the widget redraws then); Start has nothing shown yet.
             SystemUsage = null;
             return;
         }

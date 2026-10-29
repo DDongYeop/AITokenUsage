@@ -5,7 +5,8 @@ public static class WidgetMetrics
 {
     public const double HeightDip = 40;
     public const double NarrowWidthDip = 176;
-    public const double ResetColumnDip = 30;
+    /// <summary>Fits the widest compact text, "23h59m" (~36 DIP at 10 px Segoe UI).</summary>
+    public const double ResetColumnDip = 38;
 
     /// <summary>Gap between the value column and the reset column.</summary>
     public const double ResetGapDip = 4;

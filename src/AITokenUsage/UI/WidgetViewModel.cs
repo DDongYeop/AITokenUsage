@@ -44,7 +44,7 @@ public sealed class WidgetViewModel : IDisposable
 
     public AppHost Host => _host;
 
-    /// <summary>Whether the widget shows the time-to-reset column (and is therefore 210 instead of 176 DIP wide).</summary>
+    /// <summary>Whether the widget shows the time-to-reset column (and is therefore 218 instead of 176 DIP wide).</summary>
     public bool ShowResetTime => _host.Settings.ShowResetTime;
 
     public ThemeWatcher Theme => _theme;

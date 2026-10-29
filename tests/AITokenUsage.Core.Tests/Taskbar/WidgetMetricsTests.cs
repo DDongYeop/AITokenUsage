@@ -8,6 +8,6 @@ public class WidgetMetricsTests
     public void Width_depends_on_reset_column()
     {
         Assert.Equal(176, WidgetMetrics.WidthDip(showResetTime: false));
-        Assert.Equal(210, WidgetMetrics.WidthDip(showResetTime: true));
+        Assert.Equal(218, WidgetMetrics.WidthDip(showResetTime: true));
     }
 }

@@ -191,7 +191,9 @@ public partial class DetailFlyout : Window
     {
         var grid = new Grid { Margin = new Thickness(0, 0, 0, 10), Opacity = row.Dimmed ? StaleOpacity : 1 };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(BarWidth) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        // Star, not Auto: every row then spans the card's full width, so the % values line up on the right edge
+        // even when one row's reset text is shorter than the others.
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 

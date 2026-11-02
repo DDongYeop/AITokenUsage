@@ -111,7 +111,7 @@ public sealed class WidgetViewModel : IDisposable
             return SystemPanel.BuildWidgetModel(_host.SystemUsage, rotation.EligibleIds.Count, rotation.CurrentIndex);
         }
 
-        ProviderView? view = id is null ? null : _host.Usage.GetView(id);
+        ProviderView? view = id is null ? null : _host.LabeledView(id);
         if (view is null)
         {
             return WidgetPanelBuilder.Empty();

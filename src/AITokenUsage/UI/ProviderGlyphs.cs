@@ -59,7 +59,10 @@ public static class ProviderGlyphs
 
     private static readonly SolidColorBrush NeutralBrush = FrozenBrush(NeutralColor);
 
-    public static Color BrandColor(string? providerId) => providerId switch
+    /// <summary>Extra accounts ("claude#k3x9q2") look like their AI: marks and colours are chosen by kind.</summary>
+    private static string? KindOf(string? providerId) => providerId is null ? null : ProviderIds.KindOf(providerId);
+
+    public static Color BrandColor(string? providerId) => KindOf(providerId) switch
     {
         ProviderIds.Claude => ClaudeColor,
         ProviderIds.Codex => CodexColor,
@@ -70,9 +73,9 @@ public static class ProviderGlyphs
     };
 
     public static SolidColorBrush BrandBrush(string? providerId) =>
-        providerId is not null && BrandBrushes.TryGetValue(providerId, out SolidColorBrush? brush) ? brush : NeutralBrush;
+        KindOf(providerId) is string kind && BrandBrushes.TryGetValue(kind, out SolidColorBrush? brush) ? brush : NeutralBrush;
 
-    public static Geometry GetGeometry(string? providerId) => providerId switch
+    public static Geometry GetGeometry(string? providerId) => KindOf(providerId) switch
     {
         ProviderIds.Claude => ClaudeGeometry,
         ProviderIds.Codex => CodexGeometry,
@@ -83,7 +86,7 @@ public static class ProviderGlyphs
     };
 
     /// <summary>Gemini's star is filled; every other mark is a rounded stroke.</summary>
-    public static bool IsFilled(string? providerId) => providerId == ProviderIds.Gemini;
+    public static bool IsFilled(string? providerId) => KindOf(providerId) == ProviderIds.Gemini;
 
     /// <summary>
     /// Points an existing 14×14 Path at the provider's mark in its brand colour.
@@ -94,7 +97,7 @@ public static class ProviderGlyphs
         ArgumentNullException.ThrowIfNull(path);
         ArgumentNullException.ThrowIfNull(neutralBrush);
 
-        bool known = providerId is not null && BrandBrushes.ContainsKey(providerId);
+        bool known = KindOf(providerId) is string kind && BrandBrushes.ContainsKey(kind);
         Brush brush = known ? BrandBrush(providerId) : neutralBrush;
 
         path.Data = GetGeometry(providerId);

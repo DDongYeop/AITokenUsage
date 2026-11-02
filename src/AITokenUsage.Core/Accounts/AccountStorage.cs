@@ -18,14 +18,16 @@ public static class AccountStorage
 
     /// <summary>
     /// Names (without extension) from <paramref name="secretNames"/> that start with <see cref="ClaudeSecretPrefix"/>
-    /// and whose key belongs to no claude account in <paramref name="settingsIds"/>. Input order is kept.
+    /// followed by a valid key (<see cref="AccountIds.KeyLength"/> characters of [a-z0-9]) that belongs to no claude account
+    /// in <paramref name="settingsIds"/>. Input order is kept. A name with any other tail is never an orphan.
     /// </summary>
     public static IReadOnlyList<string> OrphanClaudeSecrets(IEnumerable<string> secretNames, IEnumerable<string> settingsIds) =>
         Orphans(secretNames, settingsIds, ClaudeSecretPrefix, "claude");
 
     /// <summary>
     /// Folder names from <paramref name="directoryNames"/> that start with <see cref="CodexHomePrefix"/>
-    /// and whose key belongs to no codex account in <paramref name="settingsIds"/>. Input order is kept.
+    /// followed by a valid key (<see cref="AccountIds.KeyLength"/> characters of [a-z0-9]) that belongs to no codex account
+    /// in <paramref name="settingsIds"/>. Input order is kept. A name with any other tail ("codex-notes") is never an orphan.
     /// </summary>
     public static IReadOnlyList<string> OrphanCodexHomes(IEnumerable<string> directoryNames, IEnumerable<string> settingsIds) =>
         Orphans(directoryNames, settingsIds, CodexHomePrefix, "codex");
@@ -46,7 +48,28 @@ public static class AccountStorage
         }
 
         return names
-            .Where(name => name.StartsWith(prefix, StringComparison.Ordinal) && !keys.Contains(name[prefix.Length..]))
+            .Where(name => name.StartsWith(prefix, StringComparison.Ordinal)
+                && IsValidKey(name.AsSpan(prefix.Length))
+                && !keys.Contains(name[prefix.Length..]))
             .ToList();
+    }
+
+    /// <summary>The same shape as the key of an account id: <see cref="AccountIds.KeyLength"/> characters of [a-z0-9].</summary>
+    private static bool IsValidKey(ReadOnlySpan<char> key)
+    {
+        if (key.Length != AccountIds.KeyLength)
+        {
+            return false;
+        }
+
+        foreach (char c in key)
+        {
+            if (c is not ((>= 'a' and <= 'z') or (>= '0' and <= '9')))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

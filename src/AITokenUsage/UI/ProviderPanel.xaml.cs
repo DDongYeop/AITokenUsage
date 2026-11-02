@@ -25,7 +25,7 @@ public partial class ProviderPanel : UserControl
 
     private const double DotSize = 5;
     private const double DotSpacing = 4;
-    private const double ProviderNameMaxWidth = 42;
+    private const double ProviderNameMaxWidth = 46;
     private const double EmptyTitleMaxWidth = 62;
 
     private readonly RowParts _row1;

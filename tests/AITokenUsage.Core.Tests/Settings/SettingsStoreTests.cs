@@ -123,6 +123,37 @@ public sealed class SettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void LastLoadFellBack_IsTrueOnlyWhenTheFileWasCorrupt()
+    {
+        Assert.False(_store.LastLoadFellBack);
+
+        _store.Load();
+        Assert.False(_store.LastLoadFellBack);
+
+        WriteRaw("{ this is not json");
+        _store.Load();
+        Assert.True(_store.LastLoadFellBack);
+
+        _store.Load();
+        Assert.False(_store.LastLoadFellBack);
+
+        _store.Save(new AppSettings());
+        _store.Load();
+        Assert.False(_store.LastLoadFellBack);
+    }
+
+    [Fact]
+    public void LastLoadFellBack_IsTrueWhenTheFileCannotBeRead()
+    {
+        WriteRaw("{}");
+        using var held = new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.None);
+
+        _store.Load();
+
+        Assert.True(_store.LastLoadFellBack);
+    }
+
+    [Fact]
     public void Load_IgnoresUnknownFields_AndKeepsDefaultsForMissingOnes()
     {
         WriteRaw("""

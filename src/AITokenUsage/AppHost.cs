@@ -2,8 +2,10 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Threading;
 using AITokenUsage.Core.Abstractions;
+using AITokenUsage.Core.Accounts;
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Polling;
+using AITokenUsage.Core.Presentation;
 using AITokenUsage.Core.Providers;
 using AITokenUsage.Core.Rotation;
 using AITokenUsage.Core.Settings;
@@ -31,6 +33,7 @@ public sealed class AppHost : IAsyncDisposable
     private int _refreshMinutes;
     private bool _started;
     private bool _shutdownRequested;
+    private readonly bool _settingsFellBack;
     private int _disposed;
 
     public AppHost(Dispatcher dispatcher)
@@ -61,7 +64,11 @@ public sealed class AppHost : IAsyncDisposable
             new WindowsCredentialStore(),
             new DpapiSecretStore(AppPaths.LocalDirectory),
             Log);
-        Providers = ProviderCatalog.CreateAll(ProviderContext);
+        _settingsFellBack = SettingsStore.LastLoadFellBack;
+        Providers = ProviderCatalog.CreateAll(
+            ProviderContext,
+            Settings.Providers.Select(p => p.Id).Where(AccountIds.IsAccountId),
+            AppPaths.AccountsDirectory);
 
         Usage = new UsageService(
             Providers,
@@ -146,6 +153,7 @@ public sealed class AppHost : IAsyncDisposable
                 AdoptInstallerStartupRegistration();
             }
         });
+        QueueAccountSweep();
         _ = Task.Run(LogTaskbarDiagnostics);
         Log.Info($"diagnostics: theme taskbarLight={Theme.IsTaskbarLight} appLight={Theme.IsAppLight}");
         Taskbar = new TaskbarHost(() => new WidgetWindow(new WidgetViewModel(this, Theme)), this, Shell);
@@ -261,26 +269,45 @@ public sealed class AppHost : IAsyncDisposable
     private bool IsShuttingDown => _shutdownRequested || Volatile.Read(ref _disposed) == 1;
 
     /// <summary>
-    /// Settings order ∩ Enabled, as current views. With the RotationPanel PC mode the virtual "PC" panel
+    /// Settings order ∩ Enabled, as current views, with the account tags applied (<see cref="AccountTags.Apply"/>: a tag
+    /// only when several enabled panels share an AI). With the RotationPanel PC mode the virtual "PC" panel
     /// (<see cref="SystemPanel.Id"/>, status Ok, never in UsageService) follows the AIs at the end.
     /// </summary>
     public IReadOnlyList<ProviderView> EnabledViewsInOrder()
     {
-        var result = new List<ProviderView>(Settings.Providers.Count + 1);
+        var enabled = new List<ProviderView>(Settings.Providers.Count);
         foreach (ProviderSettings provider in Settings.Providers)
         {
             if (provider.Enabled && Usage.GetView(provider.Id) is ProviderView view)
             {
-                result.Add(view);
+                enabled.Add(view);
             }
         }
 
+        var result = new List<ProviderView>(AccountTags.Apply(enabled));
         if (Settings.SystemMonitor == SystemMonitorMode.RotationPanel)
         {
             result.Add(SystemPanel.ToView(SystemUsage));
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// The view to show on screen for one panel: the tagged one from <see cref="EnabledViewsInOrder"/>, or the plain
+    /// UsageService view when the panel is not enabled (no tag). Null for an unknown id.
+    /// </summary>
+    public ProviderView? LabeledView(string providerId)
+    {
+        foreach (ProviderView view in EnabledViewsInOrder())
+        {
+            if (string.Equals(view.ProviderId, providerId, StringComparison.Ordinal))
+            {
+                return view;
+            }
+        }
+
+        return Usage.GetView(providerId);
     }
 
     /// <summary>True when the PC line belongs on the AI detail card and tray tooltip (AlwaysBeside and CardOnly, design §3.4).</summary>
@@ -482,6 +509,23 @@ public sealed class AppHost : IAsyncDisposable
             CancellationToken.None,
             TaskContinuationOptions.None,
             TaskScheduler.Default);
+    }
+
+    /// <summary>
+    /// Spec §6: after the extra accounts were created, clean up the leftovers of removed accounts in the background.
+    /// Skipped when the settings could not be read: the defaults then list no account, and every account's login
+    /// would look orphaned.
+    /// </summary>
+    private void QueueAccountSweep()
+    {
+        if (_settingsFellBack)
+        {
+            Log.Warn("account cleanup skipped: the settings file could not be read, so the account list is unknown");
+            return;
+        }
+
+        string[] settingsIds = Settings.Providers.Select(p => p.Id).ToArray();
+        QueueBackground(() => AccountDataSweeper.Sweep(settingsIds, Log));
     }
 
     private void RunSafely(Action work)

@@ -17,7 +17,7 @@ internal static class TrayIconRenderer
     public readonly record struct IconSpec(string Text, int Argb);
 
     /// <summary>Brand colors from spec §2.1 (Task 17's ProviderGlyphs uses the same values).</summary>
-    public static int BrandArgb(string providerId) => providerId switch
+    public static int BrandArgb(string providerId) => ProviderIds.KindOf(providerId) switch
     {
         ProviderIds.Claude => unchecked((int)0xFFD97757),
         ProviderIds.Codex => unchecked((int)0xFF10A37F),

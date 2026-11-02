@@ -62,6 +62,22 @@ public class AccountStorageTests
     }
 
     [Fact]
+    public void OrphanCodexHomes_ANameWithoutAValidKeyIsNeverAnOrphan()
+    {
+        string[] dirs = ["codex-notes", "codex-", "codex-abc", "codex-abcdefg", "codex-ABCDEF", "codex-ab-def", "codex-gone99"];
+
+        Assert.Equal(["codex-gone99"], AccountStorage.OrphanCodexHomes(dirs, []));
+    }
+
+    [Fact]
+    public void OrphanClaudeSecrets_ANameWithoutAValidKeyIsNeverAnOrphan()
+    {
+        string[] secrets = ["claude-account-", "claude-account-abc", "claude-account-abcdefg", "claude-account-ABCDEF", "claude-account-ab.def", "claude-account-old111"];
+
+        Assert.Equal(["claude-account-old111"], AccountStorage.OrphanClaudeSecrets(secrets, []));
+    }
+
+    [Fact]
     public void Orphans_IgnoreNonAccountSettingsIdsAndKeepInputOrder()
     {
         Assert.Equal(

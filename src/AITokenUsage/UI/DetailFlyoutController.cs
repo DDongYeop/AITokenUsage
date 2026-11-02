@@ -346,7 +346,7 @@ public sealed class DetailFlyoutController : IDisposable
             return SystemPanel.BuildCard(_host.SystemUsage);
         }
 
-        ProviderView? view = id is null ? null : _host.Usage.GetView(id);
+        ProviderView? view = id is null ? null : _host.LabeledView(id);
         if (view is null)
         {
             return null;

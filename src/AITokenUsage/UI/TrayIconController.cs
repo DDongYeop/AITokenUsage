@@ -137,7 +137,7 @@ public sealed partial class TrayIconController : IDisposable
             return SystemPanel.ToView(_host.SystemUsage);
         }
 
-        ProviderView? view = id is null ? null : _host.Usage.GetView(id);
+        ProviderView? view = id is null ? null : _host.LabeledView(id);
         return view ?? _host.EnabledViewsInOrder().FirstOrDefault();
     }
 

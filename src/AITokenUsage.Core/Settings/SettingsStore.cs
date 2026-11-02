@@ -38,6 +38,12 @@ public sealed class SettingsStore
     public string BackupPath => FilePath + ".bak";
 
     /// <summary>
+    /// True when the last <see cref="Load"/> fell back to defaults because the file was unreadable or corrupt
+    /// (a missing file is a normal first run and does not count). Such defaults are not the user's real choices.
+    /// </summary>
+    public bool LastLoadFellBack { get; private set; }
+
+    /// <summary>
     /// Missing file → defaults. Unreadable file → defaults (file left alone).
     /// Corrupt JSON → the file is moved to settings.json.bak and defaults are returned.
     /// The result is always normalized.
@@ -46,6 +52,7 @@ public sealed class SettingsStore
     {
         lock (_gate)
         {
+            LastLoadFellBack = false;
             string json;
             try
             {
@@ -59,6 +66,7 @@ public sealed class SettingsStore
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 _log.Warn("Settings file could not be read; using defaults for this session.", ex);
+                LastLoadFellBack = true;
                 return new AppSettings().Normalize();
             }
 
@@ -75,6 +83,7 @@ public sealed class SettingsStore
             catch (JsonException ex)
             {
                 _log.Warn("Settings file is corrupt; moving it to settings.json.bak and using defaults.", ex);
+                LastLoadFellBack = true;
                 BackUpCorruptFile();
                 return new AppSettings().Normalize();
             }

@@ -48,13 +48,13 @@ english.AppDisplayName=AI Usage
 english.StartWithWindows=Start with Windows
 english.OtherOptions=Other options:
 english.LaunchApp=Launch AI Usage
-english.DeleteUserData=Also delete settings and cache?%n%nThis removes the app's own data (including the Copilot sign-in it stored). AI CLI sign-in files are never touched.
+english.DeleteUserData=Also delete settings and cache?%n%nThis removes the app's own data (including the Copilot sign-in it stored and the sign-ins of added accounts). AI CLI sign-in files are never touched.
 #if HasKorean
 korean.AppDisplayName=AI 사용량
 korean.StartWithWindows=Windows 시작 시 자동 실행
 korean.OtherOptions=기타 옵션:
 korean.LaunchApp=AI 사용량 실행
-korean.DeleteUserData=설정과 캐시도 삭제할까요?%n%n앱이 저장한 데이터(앱에 저장된 Copilot 로그인 포함)를 지웁니다. AI CLI 로그인 파일은 건드리지 않습니다.
+korean.DeleteUserData=설정과 캐시도 삭제할까요?%n%n앱이 저장한 데이터(앱에 저장된 Copilot 로그인과 추가한 계정 로그인 포함)를 지웁니다. AI CLI 로그인 파일은 건드리지 않습니다.
 #endif
 
 [Tasks]

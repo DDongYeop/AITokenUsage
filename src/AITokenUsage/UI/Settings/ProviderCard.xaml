@@ -23,6 +23,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -30,8 +31,11 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="NameText" Grid.Row="0" Grid.ColumnSpan="2" FontSize="14" FontWeight="SemiBold"
                                TextTrimming="CharacterEllipsis" />
-                    <controls:StatusBadge x:Name="Badge" Grid.Row="1" Grid.Column="0" Margin="0,2,6,0" />
-                    <TextBlock x:Name="StatusText" Grid.Row="1" Grid.Column="1" Margin="0,2,0,0" FontSize="12"
+                    <!-- Extra account: its email. Built-in Claude/Codex beside an extra account: "Claude Code on this PC". -->
+                    <TextBlock x:Name="SubtitleText" Grid.Row="1" Grid.ColumnSpan="2" FontSize="12" Visibility="Collapsed"
+                               TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <controls:StatusBadge x:Name="Badge" Grid.Row="2" Grid.Column="0" Margin="0,2,6,0" />
+                    <TextBlock x:Name="StatusText" Grid.Row="2" Grid.Column="1" Margin="0,2,0,0" FontSize="12"
                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                 </Grid>
@@ -55,6 +59,24 @@
             <!-- How to connect: always shown (even collapsed) while there is something to guide. -->
             <Border x:Name="GuideHost" Margin="28,12,0,0" Visibility="Collapsed" />
 
+            <!-- Extra account, instead of the guide: [Sign in again] (accent while signed out), its progress and result. -->
+            <StackPanel x:Name="AccountPanel" Margin="28,12,0,0" Visibility="Collapsed">
+                <Button x:Name="ReloginButton" HorizontalAlignment="Left" MinWidth="0" Padding="12,4,12,4"
+                        Content="{x:Static res:UiStrings.AccountReloginButton}" />
+                <Grid x:Name="LoginProgressPanel" Visibility="Collapsed">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
+                               Text="{x:Static res:UiStrings.AccountReloginProgress}" />
+                    <Button x:Name="LoginCancelButton" Grid.Column="1" Margin="12,0,0,0" MinWidth="0" Padding="12,4,12,4"
+                            VerticalAlignment="Center" Content="{x:Static res:UiStrings.AccountCancelButton}" />
+                </Grid>
+                <TextBlock x:Name="LoginMessageText" Margin="0,6,0,0" FontSize="12" TextWrapping="Wrap" Visibility="Collapsed"
+                           AutomationProperties.LiveSetting="Assertive" />
+            </StackPanel>
+
             <!-- Expanded options: line drop-downs (label above), then reorder buttons. -->
             <Grid x:Name="OptionsPanel" Margin="28,12,0,0" Visibility="Collapsed">
                 <Grid.ColumnDefinitions>
@@ -75,11 +97,15 @@
                 <ComboBox x:Name="Line2Box" Grid.Row="1" Grid.Column="2" DisplayMemberPath="Label" SelectedValuePath="Key"
                           IsSynchronizedWithCurrentItem="False" />
 
-                <StackPanel Grid.Row="2" Grid.ColumnSpan="3" Margin="0,12,0,0" Orientation="Horizontal">
-                    <Button x:Name="UpButton" MinWidth="0" Padding="12,4,12,4" Content="{x:Static res:UiStrings.ProviderMoveUpButton}" />
-                    <Button x:Name="DownButton" MinWidth="0" Padding="12,4,12,4" Margin="8,0,0,0"
+                <DockPanel Grid.Row="2" Grid.ColumnSpan="3" Margin="0,12,0,0" LastChildFill="False">
+                    <Button x:Name="UpButton" DockPanel.Dock="Left" MinWidth="0" Padding="12,4,12,4"
+                            Content="{x:Static res:UiStrings.ProviderMoveUpButton}" />
+                    <Button x:Name="DownButton" DockPanel.Dock="Left" MinWidth="0" Padding="12,4,12,4" Margin="8,0,0,0"
                             Content="{x:Static res:UiStrings.ProviderMoveDownButton}" />
-                </StackPanel>
+                    <!-- Extra account only. -->
+                    <Button x:Name="RemoveButton" DockPanel.Dock="Right" MinWidth="0" Padding="12,4,12,4" Visibility="Collapsed"
+                            Content="{x:Static res:UiStrings.AccountRemoveButton}" />
+                </DockPanel>
             </Grid>
         </StackPanel>
     </Border>

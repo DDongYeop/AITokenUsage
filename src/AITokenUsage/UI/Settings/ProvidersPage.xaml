@@ -8,5 +8,7 @@
                    Text="{x:Static res:UiStrings.ProvidersPageDescription}" />
         <!-- One ProviderCard per AI, in the settings order (the widget's order). -->
         <StackPanel x:Name="CardsPanel" />
+        <!-- "Add account" (AccountsSection), built in code because it needs the host. -->
+        <ContentControl x:Name="AccountsHost" Focusable="False" IsTabStop="False" />
     </StackPanel>
 </local:SettingsPage>

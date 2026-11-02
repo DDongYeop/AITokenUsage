@@ -271,4 +271,64 @@ Log: {0}</value>
   <data name="GuideTerminalFailed" xml:space="preserve">
     <value>Couldn't open a terminal. Copy the command and run it yourself</value>
   </data>
+  <data name="AccountsHeader" xml:space="preserve">
+    <value>Add account</value>
+  </data>
+  <data name="AccountsDescription" xml:space="preserve">
+    <value>Show other accounts too, like work and personal. Added accounts sign in for this app only.</value>
+  </data>
+  <data name="AccountAddClaudeButton" xml:space="preserve">
+    <value>Add Claude account</value>
+  </data>
+  <data name="AccountAddCodexButton" xml:space="preserve">
+    <value>Add Codex account</value>
+  </data>
+  <data name="AccountClaudeMissing" xml:space="preserve">
+    <value>Install Claude Code to add a Claude account</value>
+  </data>
+  <data name="AccountCodexMissing" xml:space="preserve">
+    <value>Install Codex CLI to add a Codex account</value>
+  </data>
+  <data name="AccountAddProgress" xml:space="preserve">
+    <value>Finish signing in in the terminal. The account is added automatically</value>
+  </data>
+  <data name="AccountReloginProgress" xml:space="preserve">
+    <value>Finish signing in in the terminal. It applies automatically</value>
+  </data>
+  <data name="AccountCancelButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="AccountAddedNotice" xml:space="preserve">
+    <value>Added. Restart to show it on the widget</value>
+  </data>
+  <data name="AccountReloginDone" xml:space="preserve">
+    <value>Signed in again</value>
+  </data>
+  <data name="AccountFailedInvalidPath" xml:space="preserve">
+    <value>Couldn't use the sign-in folder. Its path can't contain characters like % ^ &amp;</value>
+  </data>
+  <data name="AccountFailedTerminal" xml:space="preserve">
+    <value>Couldn't open a terminal</value>
+  </data>
+  <data name="AccountFailedTimedOut" xml:space="preserve">
+    <value>Sign-in wasn't finished within 10 minutes, so it was stopped</value>
+  </data>
+  <data name="AccountFailedSave" xml:space="preserve">
+    <value>Couldn't read or save the sign-in. Try again</value>
+  </data>
+  <data name="AccountReloginButton" xml:space="preserve">
+    <value>Sign in again</value>
+  </data>
+  <data name="AccountRemoveButton" xml:space="preserve">
+    <value>Remove account</value>
+  </data>
+  <data name="AccountRemoveConfirmFormat" xml:space="preserve">
+    <value>Remove the {0} account? The app will restart.</value>
+  </data>
+  <data name="AccountDefaultClaude" xml:space="preserve">
+    <value>Claude Code on this PC</value>
+  </data>
+  <data name="AccountDefaultCodex" xml:space="preserve">
+    <value>Codex on this PC</value>
+  </data>
 </root>

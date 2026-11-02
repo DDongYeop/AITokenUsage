@@ -11,7 +11,7 @@ public static class AccountTags
     /// <summary>
     /// A new list in the same order. Only views whose kind (<see cref="ProviderIds.KindOf"/>) is claude or codex
     /// and that share their kind with at least one other view in the list get an <see cref="ProviderView.AccountTag"/>;
-    /// every other view is the same instance. Tag: Team → "팀"/"Team", Personal → "개인"/"Personal", Unknown → "#n".
+    /// every other view is the same instance. Tag: Team → "팀"/"Team", Personal → "개인"/"Solo", Unknown → "#n".
     /// When a tag repeats within a kind, the second and later ones get " n". n is the 1-based position among the views of that kind.
     /// </summary>
     public static IReadOnlyList<ProviderView> Apply(IReadOnlyList<ProviderView> enabledInOrder)

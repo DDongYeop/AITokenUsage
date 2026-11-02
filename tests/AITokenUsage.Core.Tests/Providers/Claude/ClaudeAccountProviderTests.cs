@@ -252,10 +252,10 @@ public class ClaudeAccountProviderTests
     [Theory]
     [InlineData(HttpStatusCode.TooManyRequests)]
     [InlineData(HttpStatusCode.ServiceUnavailable)]
-    public async Task Temporary_renewal_failure_is_a_network_error_and_retries_next_poll(HttpStatusCode status)
+    public async Task Temporary_renewal_failure_of_an_expired_token_is_a_network_error_and_retries_next_poll(HttpStatusCode status)
     {
         var h = new Harness();
-        h.Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(1)));
+        h.Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(-1)));
         h.Responses.Enqueue(() => Json(status, "{}"));
         ClaudeUsageProvider provider = h.CreateProvider();
 
@@ -272,10 +272,34 @@ public class ClaudeAccountProviderTests
     }
 
     [Fact]
-    public async Task Network_failure_while_renewing_is_a_network_error()
+    public async Task Temporary_renewal_failure_before_expiry_uses_the_current_token_and_retries_next_poll()
     {
         var h = new Harness();
         h.Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(1)));
+        h.Responses.Enqueue(() => Json(HttpStatusCode.ServiceUnavailable, "{}"));
+        h.Responses.Enqueue(Usage);
+        ClaudeUsageProvider provider = h.CreateProvider();
+
+        UsageSnapshot first = await provider.FetchAsync(CancellationToken.None);
+        Assert.Equal(ProviderStatus.Ok, first.Status);
+        Assert.Equal(new[] { HttpMethod.Post, HttpMethod.Get }, h.Sent.Select(s => s.Method));
+        Assert.Equal("Bearer " + AccessToken1, h.Sent[1].Authorization);
+        Assert.Equal(AccessToken1, h.Stored()!.AccessToken);
+
+        h.Responses.Enqueue(() => Renewed());
+        h.Responses.Enqueue(Usage);
+        UsageSnapshot next = await provider.FetchAsync(CancellationToken.None);
+        Assert.Equal(ProviderStatus.Ok, next.Status);
+        Assert.Equal(HttpMethod.Post, h.Sent[2].Method);
+        Assert.Equal("Bearer " + AccessToken2, h.Sent[3].Authorization);
+        h.AssertNoTokensLeaked(next);
+    }
+
+    [Fact]
+    public async Task Network_failure_while_renewing_is_a_network_error()
+    {
+        var h = new Harness();
+        h.Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(-1)));
         h.Responses.Enqueue(() => throw new HttpRequestException("No connection could be made."));
 
         UsageSnapshot snapshot = await h.CreateProvider().FetchAsync(CancellationToken.None);

@@ -213,7 +213,7 @@ public class AccountTagsEnglishTests
         IReadOnlyList<ProviderView> result =
             AccountTags.Apply([V("claude", "Team"), V("claude#k3x9q2", "Max 5x"), V("claude#a1b2c3", "Pro")]);
 
-        Assert.Equal(["Team", "Personal", "Personal 3"], result.Select(v => v.AccountTag));
+        Assert.Equal(["Team", "Solo", "Solo 3"], result.Select(v => v.AccountTag));
         Assert.Equal("Claude · Team", result[0].Title);
     }
 

@@ -42,7 +42,7 @@ public partial class ProviderCard : UserControl
     private bool _signedOut;
     private bool _loginRunning;
     private bool _loginBusy;
-    private bool _cliMissing;
+    private bool? _cliInstalled;
     private bool _loading;
 
     /// <param name="extra">Copilot only: the GitHub sign-in panel, shown while signed out or signed in with the app.</param>
@@ -130,12 +130,12 @@ public partial class ProviderCard : UserControl
     }
 
     /// <summary>
-    /// Extra account: the result of the page's PATH check for this AI's CLI. False turns [Sign in again] off and explains
-    /// why; null (not checked yet) leaves it on.
+    /// Extra account: the result of the page's PATH check for this AI's CLI (reported once the startup account clean-up
+    /// is done too). Only true turns [Sign in again] on; false also explains why; null (not checked yet) keeps it off.
     /// </summary>
     public void SetCliInstalled(bool? installed)
     {
-        _cliMissing = installed == false;
+        _cliInstalled = installed;
         CliMissingText.Text = ProviderIds.KindOf(_settings.Id) == ProviderIds.Codex
             ? UiStrings.AccountReloginCodexMissing
             : UiStrings.AccountReloginClaudeMissing;
@@ -288,8 +288,8 @@ public partial class ProviderCard : UserControl
 
         ReloginButton.Visibility = _loginRunning ? Visibility.Collapsed : Visibility.Visible;
         LoginProgressPanel.Visibility = _loginRunning ? Visibility.Visible : Visibility.Collapsed;
-        ReloginButton.IsEnabled = !_loginBusy && !_cliMissing;
-        CliMissingText.Visibility = _cliMissing && !_loginRunning ? Visibility.Visible : Visibility.Collapsed;
+        ReloginButton.IsEnabled = !_loginBusy && _cliInstalled == true;
+        CliMissingText.Visibility = _cliInstalled == false && !_loginRunning ? Visibility.Visible : Visibility.Collapsed;
         RemoveButton.IsEnabled = !_loginBusy;
 
         if (_signedOut)

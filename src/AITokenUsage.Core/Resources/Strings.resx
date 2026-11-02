@@ -421,7 +421,7 @@
     <value>Team</value>
   </data>
   <data name="AccountTagPersonal" xml:space="preserve">
-    <value>Personal</value>
+    <value>Solo</value>
   </data>
   <data name="AccountReauth" xml:space="preserve">
     <value>Sign in again in Settings</value>

@@ -29,12 +29,15 @@
 
 ### 2.2 로그인과 가져오기
 1. 설정 → AI 연결 → [Claude 계정 추가]를 누른다.
-2. 앱이 임시 폴더 `%LOCALAPPDATA%\AITokenUsage\login\claude-<키>`를 만든다. 그리고 터미널에서 다음 명령을 실행한다.
+2. 앱이 임시 폴더 `%LOCALAPPDATA%\AITokenUsage\login\claude-<키>`를 만든다. 그리고 `cmd.exe`(시스템 폴더의 전체 경로)를 셸 실행 없이(`UseShellExecute = false`, `CreateNoWindow = false`) 직접 띄운다. 작업 폴더는 사용자 프로필이다.
    ```
-   set "CLAUDE_SECURESTORAGE_CONFIG_DIR=" && set "CLAUDE_CONFIG_DIR=<임시 폴더>" && claude auth login
+   cmd.exe /c claude auth login || pause
    ```
-   - 첫 `set`은 사용자 환경에 그 변수가 있더라도 지운다(Claude Code는 그 변수를 먼저 본다).
-   - 경로에 `" % ^ & | < > ;` 중 하나라도 있으면 명령을 만들지 않고 오류를 보여 준다.
+   - 폴더 경로는 명령줄에 넣지 않고 자식 프로세스의 환경 변수로 넘긴다: `CLAUDE_SECURESTORAGE_CONFIG_DIR`은 지우고(사용자 환경에 있더라도. Claude Code는 그 변수를 먼저 본다), `CLAUDE_CONFIG_DIR=<임시 폴더>`를 넣는다. 따라서 따옴표 처리가 경로를 바꿀 수 없다(`wt.exe`를 거치면 명령줄을 다시 나누면서 따옴표가 사라진다).
+   - 앱에는 콘솔이 없으므로 cmd가 자기 콘솔 창을 연다(Windows 11 기본 터미널 설정이면 Windows Terminal에서 열린다).
+   - `/c … || pause`: 로그인에 성공하면 창이 닫히고, 실패하면 오류를 읽을 수 있게 창이 남는다.
+   - 경로가 비었거나, 제어 문자가 있거나, 전체 경로가 아니면 터미널을 띄우지 않고 오류를 보여 준다.
+   - 로그에는 "terminal opened for <종류> account login"만 남긴다. 경로와 환경 변수 값은 남기지 않는다.
 3. 앱은 1초마다 `<임시 폴더>\.credentials.json`을 확인한다(최대 10분, [취소] 가능).
    - `claudeAiOauth`에 `accessToken`과 `refreshToken`이 있고, `expiresAt`가 0보다 크고, `scopes`에 `user:profile`이 있으면 완료로 본다.
    - 완료를 보면 2초 더 기다린 뒤 가져온다. Claude Code가 `.claude.json`을 마저 쓸 시간이다.
@@ -53,7 +56,7 @@
   - `Content-Type: application/json`, `User-Agent: claude-code/<버전>`(사용량 요청과 같은 값)
   - 본문: `{"grant_type":"refresh_token","refresh_token":…,"client_id":"9d1c250a-e61b-44d9-88ed-5944d1962f5e","scope":<저장된 scopes를 공백으로 이은 값>}`
   - 저장된 scopes가 없으면 `user:profile user:inference user:sessions:claude_code user:mcp_servers user:file_upload`를 보낸다.
-  - 타임아웃은 30초다.
+  - 타임아웃은 30초다(공용 HttpClient의 15초 제한이 먼저 걸릴 수 있다).
 - 응답: `access_token`(필수), `refresh_token`(있으면 교체), `expires_in`(초, 필수), `refresh_token_expires_in`(초, 있으면 교체), `scope`(있으면 공백으로 나눠 교체)
   - `expiresAt`은 받은 시각 + `expires_in`이다.
   - **새 토큰은 사용량 요청을 보내기 전에 저장한다.** 저장에 실패하면 로그를 남기고 메모리의 새 토큰으로 계속한다.
@@ -64,6 +67,7 @@
   - 400·401 응답은 다시 로그인이 필요하다는 뜻이다(`invalid_grant` 등). 로그인 정보는 남겨 두고 상태를 **다시 로그인 필요**로 둔다. 이 상태에서는 사용자가 다시 로그인할 때까지 갱신을 다시 시도하지 않는다.
   - `refreshTokenExpiresAt`이 이미 지났으면 요청을 보내지 않고 바로 **다시 로그인 필요**로 둔다.
   - 429, 5xx, 네트워크 오류, 본문 오류는 일시 오류다. 토큰을 그대로 두고 다음 폴링 때 다시 시도한다.
+    - 일반 조회에서 지금 액세스 토큰이 아직 만료되지 않았으면(`expiresAt` > 지금) 그 토큰으로 조회를 계속한다. 이미 만료됐으면 일시 오류로 둔다. 401 뒤의 강제 갱신에는 적용하지 않는다(거부된 토큰이므로).
 - 한 계정의 갱신·조회는 공급자 잠금(`SemaphoreSlim`) 하나로 차례대로 실행한다.
 
 ### 2.4 사용량 조회
@@ -77,7 +81,8 @@
 ## 3. Codex 추가 계정 (Codex에게 갱신을 맡김)
 - 계정마다 전용 `CODEX_HOME`을 둔다: `%LOCALAPPDATA%\AITokenUsage\accounts\codex-<키>`
   - 이 폴더는 앱이 만들고 앱만 쓴다. 계정을 삭제하면 지운다(§6).
-- 로그인: 터미널에서 `set "CODEX_HOME=<폴더>" && codex login`을 실행한다. 경로 검사는 §2.2와 같다.
+- 로그인: §2.2와 같은 방식으로 `cmd.exe /c codex login || pause`를 띄우고, 환경 변수 `CODEX_HOME=<폴더>`를 넘긴다. 경로 검사도 §2.2와 같다.
+  - 새 계정의 폴더를 만들 때 `config.toml`이 없으면 `cli_auth_credentials_store = "file"` 한 줄로 만든다. 사용자의 Codex가 OS 키링에 저장하도록 설정돼 있어도 이 계정의 로그인은 `<폴더>\auth.json`에 남아야 앱이 읽을 수 있다. 이 파일은 앱 폴더에만 쓴다(`~/.codex`는 건드리지 않는다).
   - 완료 조건: `<폴더>\auth.json`이 ChatGPT 로그인으로 읽히고 `access_token`이 있다. 다시 로그인이면 시작할 때와 `access_token`이 달라야 한다.
 - 조회: `CodexUsageProvider`를 그 폴더의 `CodexPaths`로 만든다.
   - 앱은 여전히 Codex 토큰을 **갱신하지 않는다.** 토큰이 오래되면 지금처럼 `codex app-server`를 띄운다. 이때 환경 변수 `CODEX_HOME=<폴더>`를 넘기므로 Codex가 그 폴더의 토큰을 직접 갱신하고 저장한다.
@@ -92,11 +97,11 @@
   - 그 밖의 값이 있으면 Personal(`max`, `pro`, `plus`, `free`, `go` 등)이다.
   - 값이 없으면 Unknown이다.
 - **태그**: 같은 종류의 **켜진** 패널이 2개 이상일 때만 붙는다. 하나뿐이면 지금과 똑같이 보인다.
-  - Team이면 `팀` / `Team`, Personal이면 `개인` / `Personal`이다.
+  - Team이면 `팀` / `Team`, Personal이면 `개인` / `Solo`이다.
   - Unknown이면 `#n`이다. n은 그 종류 패널 가운데 설정 순서상 1부터 센 번호다.
   - 같은 종류 안에서 태그가 겹치면, 두 번째부터 뒤에 ` n`(위와 같은 번호)을 붙인다. 예: `개인`, `개인 2`
 - **표시 위치**
-  - 위젯 패널: 이름 자리에 태그만 보인다. 아이콘이 이미 AI 종류를 알려 준다. 이름 최대 폭은 42에서 46 DIP로 넓힌다("Personal" 46.1 DIP).
+  - 위젯 패널: 이름 자리에 태그만 보인다. 아이콘이 이미 AI 종류를 알려 준다. 이름 최대 폭은 42에서 46 DIP로 넓힌다.
   - 상세 카드 제목, 트레이 툴팁, 설정 카드 이름: `Claude · 팀`
   - 설정 카드(추가 계정): 이름 아래에 이메일을 흐린 글자로 보여 준다(Claude는 저장된 이메일, Codex는 `id_token`). 기본 계정에는 "이 PC의 Claude Code" / "이 PC의 Codex"를 보여 준다. 단, 같은 종류의 패널이 2개 이상일 때만이다.
 - 구현
@@ -119,6 +124,7 @@
   - `%LOCALAPPDATA%\AITokenUsage\login\` 전체(남은 임시 로그인 폴더)
   - 설정에 없는 키의 `claude-account-<키>.bin`
   - 설정에 없는 키의 `accounts\codex-<키>\`
+- 이 정리가 끝날 때까지 설정 화면의 [계정 추가]·[다시 로그인] 버튼은 꺼 둔다(`AppHost.AccountSweepCompleted`). 막 시작한 로그인의 폴더를 정리가 지우지 않게 하려는 것이다. 정리를 건너뛰면 바로 끝난 것으로 본다.
 - 삭제는 앱 폴더 안의 파일만 대상으로 한다. CLI의 기본 로그인 파일(`~/.claude`, `~/.codex`)은 절대 쓰거나 지우지 않는다.
 - 설치 제거기의 "설정과 캐시도 삭제"는 이미 `%LOCALAPPDATA%\AITokenUsage`를 지우므로 추가 계정도 함께 지워진다. 그 안내 문구에 "추가한 계정 로그인"을 넣는다.
 
@@ -144,7 +150,7 @@
   - 공급자(앱 소유): 만료 전 갱신 후 조회, 401 → 한 번 갱신 후 재시도, 다시 로그인 필요 상태 유지, 다시 로그인으로 새 토큰 적용
   - 공급자(CLI): 기존 테스트가 그대로 통과
   - Codex 계정: app-server에 `CODEX_HOME` 전달, 계정 폴더 경로, 로그인 파일 없음 → 다시 로그인 필요, 로그인 완료 판정
-  - 로그인 명령: Claude·Codex 명령 문자열, 금지 문자 거부
+  - 로그인 명령: Claude·Codex의 cmd 인수와 환경 변수(지울 변수 포함), 경로가 명령줄에 들어가지 않음, 빈 경로·제어 문자·전체 경로가 아닌 경로 거부
   - 태그: 2개 이상일 때만, Team/Personal/Unknown, 겹침 번호, `Title`/`ShortName`, 두 언어
   - 정리 대상 계산(설정에 없는 키 고르기)
 - **App**

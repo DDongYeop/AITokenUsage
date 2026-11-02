@@ -265,9 +265,9 @@ public class ClaudeOwnedCredentialSourceTests
     }
 
     [Fact]
-    public async Task Failed_renewal_keeps_the_stored_tokens_and_tries_again_next_time()
+    public async Task Failed_renewal_of_an_expired_token_keeps_the_stored_tokens_and_tries_again_next_time()
     {
-        Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(1)));
+        Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(-1)));
         _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.ServiceUnavailable, "{}"));
         _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.OK, TokenResponse()));
         ClaudeOwnedCredentialSource source = CreateSource();
@@ -280,6 +280,58 @@ public class ClaudeOwnedCredentialSourceTests
         Assert.Equal(ClaudeCredentialState.Ok, next.State);
         Assert.Equal(2, _http.Requests.Count);
         Assert.Contains($"\"refresh_token\":\"{RefreshToken1}\"", _http.RequestBodies[1], StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    public async Task Failed_renewal_before_expiry_returns_the_current_token_and_renews_again_next_time(HttpStatusCode status)
+    {
+        Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(1)));
+        _tokenResponses.Enqueue(() => StubHttpHandler.Json(status, "{}"));
+        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.OK, TokenResponse()));
+        ClaudeOwnedCredentialSource source = CreateSource();
+
+        ClaudeCredentialReadResult current = await source.ReadAsync(UserAgent, CancellationToken.None);
+        Assert.Equal(ClaudeCredentialState.Ok, current.State);
+        Assert.Equal(AccessToken1, current.Credentials!.AccessToken);
+        Assert.Equal(AccessToken1, Stored()!.AccessToken);
+        Assert.Single(_http.Requests);
+
+        ClaudeCredentialReadResult next = await source.ReadAsync(UserAgent, CancellationToken.None);
+        Assert.Equal(ClaudeCredentialState.Ok, next.State);
+        Assert.Equal(AccessToken2, next.Credentials!.AccessToken);
+        Assert.Equal(2, _http.Requests.Count);
+    }
+
+    [Fact]
+    public async Task Failed_renewal_before_expiry_is_not_counted_as_a_renewal_for_recover()
+    {
+        // No sticky flag: the token handed out was not renewed, so a 401 for it still forces one renewal.
+        Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(1)));
+        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.ServiceUnavailable, "{}"));
+        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.OK, TokenResponse()));
+        ClaudeOwnedCredentialSource source = CreateSource();
+        ClaudeCredentialReadResult read = await source.ReadAsync(UserAgent, CancellationToken.None);
+
+        ClaudeCredentialReadResult? recovered = await source.RecoverAsync(read.Credentials!, UserAgent, CancellationToken.None);
+
+        Assert.NotNull(recovered);
+        Assert.Equal(ClaudeCredentialState.Ok, recovered.State);
+        Assert.Equal(AccessToken2, recovered.Credentials!.AccessToken);
+        Assert.Equal(2, _http.Requests.Count);
+    }
+
+    [Fact]
+    public async Task Failed_renewal_at_the_exact_expiry_is_a_temporary_failure()
+    {
+        Store(Login(expiresAt: ClaudeTestData.Now));
+        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.ServiceUnavailable, "{}"));
+
+        ClaudeCredentialReadResult result = await CreateSource().ReadAsync(UserAgent, CancellationToken.None);
+
+        Assert.Equal(ClaudeCredentialState.RenewFailed, result.State);
+        Assert.Null(result.Credentials);
     }
 
     [Fact]

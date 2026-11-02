@@ -76,6 +76,12 @@ public sealed class ClaudeOwnedCredentialSource : IClaudeCredentialSource
                 {
                     _renewedInLastRead = _current.AccessToken;
                 }
+                else if (renewed.State == ClaudeCredentialState.RenewFailed && _current.ExpiresAt > _time.GetUtcNow())
+                {
+                    // A transient failure inside the refresh margin: the current token still works, so use it; the next
+                    // read tries to renew again.
+                    return new ClaudeCredentialReadResult(ClaudeCredentialState.Ok, _current.ToCredentials());
+                }
 
                 return renewed;
             }

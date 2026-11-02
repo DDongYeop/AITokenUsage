@@ -10,7 +10,7 @@ namespace AITokenUsage.Accounts;
 /// <summary>Why an account sign-in ended without a result.</summary>
 public enum AccountLoginFailure
 {
-    /// <summary>The sign-in folder path cannot go into the terminal command (a forbidden character, not a full path).</summary>
+    /// <summary>The sign-in folder path cannot be passed to the terminal (blank, a control character, not a full path).</summary>
     InvalidPath,
 
     /// <summary>The sign-in folder could not be prepared (an I/O or permission error).</summary>
@@ -44,6 +44,8 @@ public sealed class AccountLoginSession : IDisposable
     private const string ClaudeCredentialsFileName = ".credentials.json";
     private const string ClaudeAccountFileName = ".claude.json";
     private const string CodexAuthFileName = "auth.json";
+    private const string CodexConfigFileName = "config.toml";
+    private const string CodexFileStoreConfig = "cli_auth_credentials_store = \"file\"\n";
 
     /// <summary>
     /// The previous session's whole run, cleanup included. A new session waits for it so a re-login of the same account
@@ -202,10 +204,10 @@ public sealed class AccountLoginSession : IDisposable
             ? Path.Combine(AppPaths.LoginDirectory, ClaudeLoginFolderName())
             : Path.Combine(AppPaths.AccountsDirectory, AccountStorage.CodexHomeName(AccountId));
 
-        string? command = Path.IsPathFullyQualified(directory) ? AccountLoginCommand.Build(_kind, directory) : null;
+        AccountLoginCommand? command = AccountLoginCommand.Create(_kind, directory);
         if (command is null)
         {
-            Log.Warn($"account sign-in: the folder path cannot be used in a terminal command ({AccountId})");
+            Log.Warn($"account sign-in: the folder path cannot be passed to the terminal ({AccountId})");
             return AccountLoginFailure.InvalidPath;
         }
 
@@ -223,7 +225,7 @@ public sealed class AccountLoginSession : IDisposable
         }
 
         ct.ThrowIfCancellationRequested();
-        if (!await TerminalLauncher.Launch(command, Log))
+        if (!await TerminalLauncher.LaunchAccountLogin(_kind, command, Log))
         {
             return AccountLoginFailure.TerminalFailed;
         }
@@ -262,7 +264,8 @@ public sealed class AccountLoginSession : IDisposable
     private string ClaudeLoginFolderName() => "claude-" + AccountIds.KeyOf(AccountId);
 
     /// <summary>
-    /// Thread pool. Claude: an empty sign-in folder. Codex: the account folder (a new account starts empty); returns the
+    /// Thread pool. Claude: an empty sign-in folder. Codex: the account folder (a new account starts with only a
+    /// config.toml that keeps the login in auth.json); returns the
     /// access token already in it so "sign in again" waits for a different one.
     /// </summary>
     private string? PrepareDirectory(string directory)
@@ -273,8 +276,21 @@ public sealed class AccountLoginSession : IDisposable
         }
 
         Directory.CreateDirectory(directory);
-        if (_kind != ProviderIds.Codex || IsNew)
+        if (_kind != ProviderIds.Codex)
         {
+            return null;
+        }
+
+        if (IsNew)
+        {
+            // Keep the login in auth.json even when the user's Codex is set to the OS keyring: the widget reads the file,
+            // and a keyring entry would not be tied to this folder (spec §3). Written only into this new, app-owned folder.
+            string config = Path.Combine(directory, CodexConfigFileName);
+            if (!File.Exists(config))
+            {
+                File.WriteAllText(config, CodexFileStoreConfig);
+            }
+
             return null;
         }
 

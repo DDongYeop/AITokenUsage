@@ -64,15 +64,30 @@ public partial class AccountsSection : UserControl, IDisposable
         _ => UiStrings.AccountFailedSave,
     };
 
-    /// <summary>Looks for the claude and codex commands on PATH off the UI thread; the buttons stay off until then.</summary>
+    /// <summary>
+    /// Looks for the claude and codex commands on PATH off the UI thread and waits for the startup account clean-up
+    /// (<see cref="AppHost.AccountSweepCompleted"/>, which would delete a just-started sign-in's folder); the add buttons
+    /// here and [Sign in again] on the cards stay off until both are done.
+    /// </summary>
     public void CheckInstalled()
     {
         var processes = _host.ProviderContext.Processes;
-        _ = Task.Run(() =>
+        Task sweep = _host.AccountSweepCompleted;
+        _ = Task.Run(async () =>
         {
             bool claude = Find(processes, "claude");
             bool codex = Find(processes, "codex");
-            Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
+            try
+            {
+                await sweep.ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                // Not expected (the clean-up catches its own failures); the sign-in buttons still come on.
+                _host.Log.Warn("waiting for the account clean-up failed", ex);
+            }
+
+            _ = Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
             {
                 if (_disposed)
                 {

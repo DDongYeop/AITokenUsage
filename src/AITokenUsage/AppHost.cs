@@ -116,6 +116,13 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>Created in Start().</summary>
     public TaskbarHost? Taskbar { get; private set; }
 
+    /// <summary>
+    /// The startup clean-up of removed accounts' data (multi-account spec §6). It deletes the folders of accounts not in
+    /// the settings, which includes one a sign-in just started, so the settings page starts no sign-in before this
+    /// completes. Already completed when the clean-up is skipped (or before Start). Never faults. Read on the UI thread.
+    /// </summary>
+    public Task AccountSweepCompleted { get; private set; } = Task.CompletedTask;
+
     /// <summary>Raised on the UI thread at the end of ApplySettings.</summary>
     public event EventHandler? SettingsChanged;
 
@@ -526,6 +533,9 @@ public sealed class AppHost : IAsyncDisposable
 
         string[] settingsIds = Settings.Providers.Select(p => p.Id).ToArray();
         QueueBackground(() => AccountDataSweeper.Sweep(settingsIds, Log));
+
+        // RunSafely catches every failure, so this continuation always completes successfully.
+        AccountSweepCompleted = _backgroundChain;
     }
 
     private void RunSafely(Action work)

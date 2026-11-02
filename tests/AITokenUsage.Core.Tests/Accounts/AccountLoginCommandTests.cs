@@ -5,56 +5,60 @@ namespace AITokenUsage.Core.Tests.Accounts;
 public class AccountLoginCommandTests
 {
     [Fact]
-    public void Build_Claude_ClearsSecureStorageDirAndPointsConfigDirAtTheFolder()
+    public void Create_Claude_ClearsSecureStorageDirAndPointsConfigDirAtTheFolder()
     {
-        string? command = AccountLoginCommand.Build("claude", @"C:\Users\kim\AppData\Local\AITokenUsage\login\claude-k3x9q2");
+        const string Folder = @"C:\Users\kim\AppData\Local\AITokenUsage\login\claude-k3x9q2";
 
-        Assert.Equal(
-            "set \"CLAUDE_SECURESTORAGE_CONFIG_DIR=\" && set \"CLAUDE_CONFIG_DIR=C:\\Users\\kim\\AppData\\Local\\AITokenUsage\\login\\claude-k3x9q2\" && claude auth login",
-            command);
+        AccountLoginCommand? command = AccountLoginCommand.Create("claude", Folder);
+
+        Assert.NotNull(command);
+        Assert.Equal("/c claude auth login || pause", command.Arguments);
+        Assert.Equal(2, command.Environment.Count);
+        Assert.True(command.Environment.ContainsKey("CLAUDE_SECURESTORAGE_CONFIG_DIR"));
+        Assert.Null(command.Environment["CLAUDE_SECURESTORAGE_CONFIG_DIR"]);
+        Assert.Equal(Folder, command.Environment["CLAUDE_CONFIG_DIR"]);
     }
 
     [Fact]
-    public void Build_Codex_SetsCodexHome()
+    public void Create_Codex_SetsCodexHome()
     {
-        string? command = AccountLoginCommand.Build("codex", @"C:\Users\kim\AppData\Local\AITokenUsage\accounts\codex-a1b2c3");
+        const string Folder = @"C:\Users\kim\AppData\Local\AITokenUsage\accounts\codex-a1b2c3";
 
-        Assert.Equal(
-            "set \"CODEX_HOME=C:\\Users\\kim\\AppData\\Local\\AITokenUsage\\accounts\\codex-a1b2c3\" && codex login",
-            command);
+        AccountLoginCommand? command = AccountLoginCommand.Create("codex", Folder);
+
+        Assert.NotNull(command);
+        Assert.Equal("/c codex login || pause", command.Arguments);
+        Assert.Equal(Folder, Assert.Single(command.Environment, v => v.Key == "CODEX_HOME").Value);
+        Assert.Single(command.Environment);
     }
 
     [Fact]
-    public void Build_PathWithSpaces_StaysInsideTheQuotes()
+    public void Create_TheFolderNeverGoesIntoTheArguments()
     {
-        Assert.Equal(
-            "set \"CODEX_HOME=C:\\Users\\Kim Min Su\\AppData\\Local\\AITokenUsage\\accounts\\codex-a1b2c3\" && codex login",
-            AccountLoginCommand.Build("codex", @"C:\Users\Kim Min Su\AppData\Local\AITokenUsage\accounts\codex-a1b2c3"));
-        Assert.Contains(
-            "set \"CLAUDE_CONFIG_DIR=D:\\내 폴더\\login\\claude-k3x9q2\" &&",
-            AccountLoginCommand.Build("claude", @"D:\내 폴더\login\claude-k3x9q2"));
+        AccountLoginCommand? claude = AccountLoginCommand.Create("claude", @"C:\Users\kim\login\claude-k3x9q2");
+        AccountLoginCommand? codex = AccountLoginCommand.Create("codex", @"C:\Users\kim\accounts\codex-a1b2c3");
+
+        Assert.DoesNotContain("kim", claude!.Arguments, StringComparison.Ordinal);
+        Assert.DoesNotContain("kim", codex!.Arguments, StringComparison.Ordinal);
     }
 
     [Theory]
-    [InlineData("\"")]
-    [InlineData("%")]
-    [InlineData("^")]
-    [InlineData("&")]
-    [InlineData("|")]
-    [InlineData("<")]
-    [InlineData(">")]
-    [InlineData(";")]
-    public void Build_ForbiddenCharacterInPath_ReturnsNull(string bad)
+    [InlineData(@"C:\Users\Kim Min Su\AppData\Local\AITokenUsage\accounts\codex-a1b2c3")]
+    [InlineData(@"D:\내 폴더\accounts\codex-a1b2c3")]
+    [InlineData(@"C:\Users\a&b ""c"" 100%^|<>;\accounts\codex-a1b2c3")]
+    public void Create_SpacesAndShellCharactersInPath_AreKeptExactly(string directory)
     {
-        Assert.Contains(bad, AccountLoginCommand.ForbiddenCharacters, StringComparison.Ordinal);
-        Assert.Null(AccountLoginCommand.Build("claude", @"C:\Users\ki" + bad + @"m\login\claude-k3x9q2"));
-        Assert.Null(AccountLoginCommand.Build("codex", @"C:\Users\ki" + bad + @"m\accounts\codex-a1b2c3"));
+        // The value goes through the process environment, never a shell, so nothing is quoted, trimmed or refused.
+        Assert.Equal(directory, AccountLoginCommand.Create("codex", directory)!.Environment["CODEX_HOME"]);
+        Assert.Equal(directory, AccountLoginCommand.Create("claude", directory)!.Environment["CLAUDE_CONFIG_DIR"]);
     }
 
     [Fact]
-    public void ForbiddenCharacters_AreTheEightFromTheSpec()
+    public void Create_EnvironmentNamesIgnoreCase()
     {
-        Assert.Equal("\"%^&|<>;", AccountLoginCommand.ForbiddenCharacters);
+        AccountLoginCommand? command = AccountLoginCommand.Create("codex", @"C:\x");
+
+        Assert.Equal(@"C:\x", command!.Environment["codex_home"]);
     }
 
     [Theory]
@@ -62,24 +66,29 @@ public class AccountLoginCommandTests
     [InlineData("copilot")]
     [InlineData("claude#k3x9q2")]
     [InlineData("")]
-    public void Build_UnsupportedKind_ReturnsNull(string kind)
+    public void Create_UnsupportedKind_ReturnsNull(string kind)
     {
-        Assert.Null(AccountLoginCommand.Build(kind, @"C:\x"));
+        Assert.Null(AccountLoginCommand.Create(kind, @"C:\x"));
     }
 
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("C:\\a\nb")]
-    public void Build_BlankOrMultilineDirectory_ReturnsNull(string directory)
+    [InlineData("C:\\a\0b")]
+    [InlineData(@"login\claude-k3x9q2")]
+    [InlineData(@"\login\claude-k3x9q2")]
+    [InlineData(@"C:login\claude-k3x9q2")]
+    public void Create_BlankControlOrNotFullyQualifiedDirectory_ReturnsNull(string directory)
     {
-        Assert.Null(AccountLoginCommand.Build("claude", directory));
+        Assert.Null(AccountLoginCommand.Create("claude", directory));
+        Assert.Null(AccountLoginCommand.Create("codex", directory));
     }
 
     [Fact]
-    public void Build_NullArguments_Throw()
+    public void Create_NullArguments_Throw()
     {
-        Assert.Throws<ArgumentNullException>(() => AccountLoginCommand.Build(null!, @"C:\x"));
-        Assert.Throws<ArgumentNullException>(() => AccountLoginCommand.Build("claude", null!));
+        Assert.Throws<ArgumentNullException>(() => AccountLoginCommand.Create(null!, @"C:\x"));
+        Assert.Throws<ArgumentNullException>(() => AccountLoginCommand.Create("claude", null!));
     }
 }

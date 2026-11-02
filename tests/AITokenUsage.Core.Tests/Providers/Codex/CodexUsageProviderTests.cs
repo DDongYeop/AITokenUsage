@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using AITokenUsage.Core.Abstractions;
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Providers.Codex;
 using AITokenUsage.Core.Tests.Fakes;
@@ -398,5 +399,136 @@ public class CodexUsageProviderTests
         Assert.Empty(_requests);
         Assert.Equal(ProviderStatus.Unsupported, snapshot.Status);
         Assert.Equal("이 로그인 방식은 codex 설치 후 조회 가능", snapshot.StatusMessage);
+    }
+
+    private const string AccountId = "codex#a1b2c3";
+    private const string AccountsDir = @"C:\app\accounts";
+    private const string AccountHome = @"C:\app\accounts\codex-a1b2c3";
+    private const string AccountAuthPath = @"C:\app\accounts\codex-a1b2c3\auth.json";
+    private const string ReauthMessage = "다시 로그인하세요 · 설정 → AI 연결";
+
+    private readonly List<ProcessSpec> _startedSpecs = new();
+
+    private CodexUsageProvider CreateAccount() => CodexUsageProvider.ForAccount(
+        TestContexts.Create(_http, _time, _files, _env, _processes), AccountId, AccountsDir);
+
+    private void GivenAccountAuth(string json)
+    {
+        _files.AddDirectory(AccountHome);
+        _files.AddFile(AccountAuthPath, json, CodexTestData.FileTime);
+    }
+
+    private void GivenCodexInstalledRecordingSpecs(params string[] stdoutLines)
+    {
+        _processes.SetPath("codex", NpmShim);
+        _processes.OnInteractive(spec =>
+        {
+            _startedSpecs.Add(spec);
+            var process = new FakeInteractiveProcess();
+            foreach (var line in stdoutLines) process.EnqueueOutput(line);
+            return process;
+        });
+    }
+
+    [Fact]
+    public void ForAccount_UsesTheAccountHome_AndIsAnAccount()
+    {
+        _env.Set("CODEX_HOME", @"D:\should-be-ignored");
+
+        var provider = CreateAccount();
+
+        Assert.Equal(AccountId, provider.Id);
+        Assert.True(provider.IsAccount);
+        Assert.Equal("Codex", provider.DisplayName);
+        Assert.Equal(new[] { AccountAuthPath }, provider.WatchPaths);
+        Assert.Null(provider.AccountEmail);
+    }
+
+    [Fact]
+    public void BuiltInProvider_IsNotAnAccount() => Assert.False(CreateProvider().IsAccount);
+
+    [Theory]
+    [InlineData("codex")]
+    [InlineData("claude#a1b2c3")]
+    [InlineData("codex#toolong1")]
+    public void ForAccount_RejectsNonCodexAccountIds(string id)
+        => Assert.Throws<ArgumentException>(() => CodexUsageProvider.ForAccount(
+            TestContexts.Create(_http, _time, _files, _env, _processes), id, AccountsDir));
+
+    [Fact]
+    public async Task Account_NoAuthFile_NoCodex_IsSignedOutWithReauth_NotNotInstalled()
+    {
+        var snapshot = await CreateAccount().FetchAsync(CancellationToken.None);
+
+        Assert.Equal(ProviderStatus.SignedOut, snapshot.Status);
+        Assert.Equal(ReauthMessage, snapshot.StatusMessage);
+        Assert.Equal(AccountId, snapshot.ProviderId);
+    }
+
+    [Fact]
+    public async Task Account_NoAuthFile_AppServerAuthRequired_IsSignedOutWithReauth()
+    {
+        GivenCodexInstalledRecordingSpecs(InitializeOk, RateLimitsAuthRequired);
+
+        var snapshot = await CreateAccount().FetchAsync(CancellationToken.None);
+
+        Assert.Equal(ProviderStatus.SignedOut, snapshot.Status);
+        Assert.Equal(ReauthMessage, snapshot.StatusMessage);
+    }
+
+    [Fact]
+    public async Task Account_StaleToken_AppServerRunsWithTheAccountCodexHome()
+    {
+        GivenAccountAuth(CodexTestData.AuthJson(accessToken: CodexTestData.AccessJwt(CodexTestData.Now.AddMinutes(2))));
+        GivenCodexInstalledRecordingSpecs(InitializeOk, RateLimitsOk);
+
+        var snapshot = await CreateAccount().FetchAsync(CancellationToken.None);
+
+        Assert.Equal(ProviderStatus.Ok, snapshot.Status);
+        Assert.Equal(AccountId, snapshot.ProviderId);
+        var spec = Assert.Single(_startedSpecs);
+        Assert.Equal(AccountHome, spec.EnvironmentOverrides!["CODEX_HOME"]);
+    }
+
+    [Fact]
+    public async Task Account_FreshToken_CallsWhamWithTheAccountToken_AndReadsEmail()
+    {
+        var idToken = TestJwt.Create("""{"email":"second@example.com"}""");
+        GivenAccountAuth(CodexTestData.AuthJson(accessToken: "account-access-token", idToken: idToken));
+        GivenWham(_ => Json(HttpStatusCode.OK, Fixture.Read("codex/wham-plus.json")));
+        var provider = CreateAccount();
+
+        var snapshot = await provider.FetchAsync(CancellationToken.None);
+
+        Assert.Equal(ProviderStatus.Ok, snapshot.Status);
+        Assert.Equal("Bearer account-access-token", Assert.Single(_requests).Headers["Authorization"]);
+        Assert.Equal("second@example.com", provider.AccountEmail);
+    }
+
+    [Fact]
+    public async Task AccountEmail_BecomesNullWhenTheAuthFileGoesAway()
+    {
+        var idToken = TestJwt.Create("""{"email":"second@example.com"}""");
+        GivenAccountAuth(CodexTestData.AuthJson(accessToken: "account-access-token", idToken: idToken));
+        GivenWham(_ => Json(HttpStatusCode.OK, Fixture.Read("codex/wham-plus.json")));
+        var provider = CreateAccount();
+        await provider.FetchAsync(CancellationToken.None);
+        Assert.Equal("second@example.com", provider.AccountEmail);
+
+        _files.Remove(AccountAuthPath);
+        await provider.FetchAsync(CancellationToken.None);
+
+        Assert.Null(provider.AccountEmail);
+    }
+
+    [Fact]
+    public async Task BuiltIn_AppServerGetsNoEnvironmentOverrides()
+    {
+        GivenAuth(StaleAuth());
+        GivenCodexInstalledRecordingSpecs(InitializeOk, RateLimitsOk);
+
+        await CreateProvider().FetchAsync(CancellationToken.None);
+
+        Assert.Null(Assert.Single(_startedSpecs).EnvironmentOverrides);
     }
 }

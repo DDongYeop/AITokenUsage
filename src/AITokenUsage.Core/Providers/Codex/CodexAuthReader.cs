@@ -87,7 +87,10 @@ public sealed class CodexAuthReader
                 isFedramp,
                 planClaim,
                 Jwt.GetExpiry(accessToken),
-                ParseTimestamp(Json.Str(root, "last_refresh")));
+                ParseTimestamp(Json.Str(root, "last_refresh")))
+            {
+                Email = EmailFromJwt(idToken),
+            };
         }
     }
 
@@ -139,6 +142,11 @@ public sealed class CodexAuthReader
         }
         return null;
     }
+
+    private static string? EmailFromJwt(string? jwt)
+        => Jwt.TryReadPayload(jwt, out var payload) && payload.ValueKind == JsonValueKind.Object
+            ? NonEmpty(Json.Str(payload, "email"))
+            : null;
 
     private static JsonElement? AuthClaims(string? jwt)
         => Jwt.TryReadPayload(jwt, out var payload) && payload.ValueKind == JsonValueKind.Object

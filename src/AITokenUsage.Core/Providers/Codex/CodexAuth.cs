@@ -21,6 +21,9 @@ public sealed record CodexAuth(
     DateTimeOffset? AccessTokenExpiresAt,
     DateTimeOffset? LastRefresh)
 {
+    /// <summary>The id_token "email" claim. Never part of ToString.</summary>
+    public string? Email { get; init; }
+
     public static readonly TimeSpan ExpiryMargin = TimeSpan.FromMinutes(5);
     public static readonly TimeSpan LastRefreshMaxAge = TimeSpan.FromDays(8);
 

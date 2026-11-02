@@ -242,4 +242,27 @@ public class CodexAuthReaderTests
         public DateTime GetLastWriteTimeUtc(string path) => CodexTestData.FileTime;
         public IEnumerable<string> ReadLinesReverse(string path) => [];
     }
+
+    [Fact]
+    public void TryParse_ReadsEmailFromIdTokenPayload_AndToStringHidesIt()
+    {
+        var idToken = TestJwt.Create("""{"email":"work@example.com","exp":1793170800}""");
+        var auth = CodexAuthReader.TryParse(CodexTestData.AuthJson(idToken: idToken));
+
+        Assert.NotNull(auth);
+        Assert.Equal("work@example.com", auth.Email);
+        var text = auth.ToString();
+        Assert.DoesNotContain("work@example.com", text);
+        Assert.DoesNotContain(auth.AccessToken!, text);
+    }
+
+    [Fact]
+    public void TryParse_WithoutEmailClaimOrIdToken_HasNoEmail()
+    {
+        var noClaim = CodexAuthReader.TryParse(CodexTestData.AuthJson(idToken: TestJwt.Create("""{"exp":1793170800}""")));
+        var noIdToken = CodexAuthReader.TryParse(CodexTestData.AuthJson(authMode: "apikey", openAiApiKey: "sk-test", includeTokens: false));
+
+        Assert.Null(noClaim!.Email);
+        Assert.Null(noIdToken!.Email);
+    }
 }

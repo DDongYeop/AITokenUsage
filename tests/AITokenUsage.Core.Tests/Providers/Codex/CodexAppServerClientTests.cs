@@ -109,6 +109,32 @@ public class CodexAppServerClientTests
     }
 
     [Fact]
+    public void BuildSpec_WithCodexHome_SetsCodexHomeEnvironment()
+    {
+        var exe = CodexAppServerClient.BuildSpec(@"C:\Tools\codex\codex.exe", @"C:\app\accounts\codex-a1b2c3");
+        var shim = CodexAppServerClient.BuildSpec(@"C:\Users\test\AppData\Roaming\npm\codex.cmd", @"C:\app\accounts\codex-a1b2c3");
+
+        foreach (var spec in new[] { exe, shim })
+        {
+            var entry = Assert.Single(Assert.IsAssignableFrom<IReadOnlyDictionary<string, string?>>(spec.EnvironmentOverrides));
+            Assert.Equal("CODEX_HOME", entry.Key);
+            Assert.Equal(@"C:\app\accounts\codex-a1b2c3", entry.Value);
+        }
+    }
+
+    [Fact]
+    public async Task ReadRateLimits_PassesCodexHomeToTheStartedProcess_OnlyWhenGiven()
+    {
+        var withHome = CreateClient(ProcessWith(InitializeOk, """{"id":2,"result":{"rateLimits":null}}"""));
+        await withHome.ReadRateLimitsAsync(NpmShim, @"C:\app\accounts\codex-a1b2c3", CancellationToken.None);
+        Assert.Equal(@"C:\app\accounts\codex-a1b2c3", _started[0].EnvironmentOverrides!["CODEX_HOME"]);
+
+        var plain = CreateClient(ProcessWith(InitializeOk, """{"id":2,"result":{"rateLimits":null}}"""));
+        await plain.ReadRateLimitsAsync(NpmShim, CancellationToken.None);
+        Assert.Null(_started[^1].EnvironmentOverrides);
+    }
+
+    [Fact]
     public async Task ReadRateLimits_StartsTheResolvedSpec()
     {
         var client = CreateClient(ProcessWith(InitializeOk, """{"id":2,"result":{"rateLimits":null}}"""));

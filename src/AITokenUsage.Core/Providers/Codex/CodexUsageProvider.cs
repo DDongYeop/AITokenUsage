@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using AITokenUsage.Core.Abstractions;
+using AITokenUsage.Core.Accounts;
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Resources;
 
@@ -10,6 +11,7 @@ namespace AITokenUsage.Core.Providers.Codex;
 /// Codex (ChatGPT plan) usage. Order: apikey → Unsupported; fresh token → wham/usage
 /// (401 → re-read auth.json, retry once only if the token changed); otherwise app-server
 /// (at most once per 15 min) → rollout logs → status. Never refreshes or writes auth.json.
+/// An extra account (<see cref="ForAccount"/>) runs app-server with its own CODEX_HOME, which renews and saves its token.
 /// </summary>
 public sealed class CodexUsageProvider : IUsageProvider
 {
@@ -35,10 +37,26 @@ public sealed class CodexUsageProvider : IUsageProvider
     private CodexAppServerOutcome? _lastAppServerOutcome;
     private UsageSnapshot? _lastAppServerSnapshot;
 
+    private string? _accountEmail;
+
     public CodexUsageProvider(ProviderContext ctx)
+        : this(ctx, ProviderIds.Codex, CodexPaths.Resolve(ctx.Env), false)
     {
+    }
+
+    /// <param name="ctx">External dependencies.</param>
+    /// <param name="id">Panel id: "codex" or an account id such as "codex#a1b2c3".</param>
+    /// <param name="paths">Where auth.json, config.toml and sessions live.</param>
+    /// <param name="isAccount">True for an extra account: app-server runs with this CODEX_HOME and a missing login means "sign in again".</param>
+    public CodexUsageProvider(ProviderContext ctx, string id, CodexPaths paths, bool isAccount)
+    {
+        ArgumentNullException.ThrowIfNull(ctx);
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        ArgumentNullException.ThrowIfNull(paths);
         _ctx = ctx;
-        _paths = CodexPaths.Resolve(ctx.Env);
+        Id = id;
+        IsAccount = isAccount;
+        _paths = paths;
         _authReader = new CodexAuthReader(ctx.Files);
         _client = new CodexUsageClient(ctx.Http, ctx.Time);
         _appServer = new CodexAppServerClient(ctx.Processes, ctx.Time, ctx.Log);
@@ -46,7 +64,25 @@ public sealed class CodexUsageProvider : IUsageProvider
         WatchPaths = [_paths.AuthFile];
     }
 
-    public string Id => ProviderIds.Codex;
+    /// <summary>An extra Codex account (<paramref name="accountId"/> like "codex#a1b2c3") with its own CODEX_HOME under <paramref name="accountsDirectory"/>.</summary>
+    public static CodexUsageProvider ForAccount(ProviderContext ctx, string accountId, string accountsDirectory)
+    {
+        ArgumentNullException.ThrowIfNull(ctx);
+        ArgumentException.ThrowIfNullOrWhiteSpace(accountsDirectory);
+        if (!AccountIds.IsAccountId(accountId) || ProviderIds.KindOf(accountId) != ProviderIds.Codex)
+        {
+            throw new ArgumentException($"Not a Codex account id: '{accountId}'.", nameof(accountId));
+        }
+
+        var home = Path.Combine(accountsDirectory, AccountStorage.CodexHomeName(accountId));
+        return new CodexUsageProvider(ctx, accountId, new CodexPaths(home), true);
+    }
+
+    public string Id { get; }
+    public bool IsAccount { get; }
+
+    /// <summary>The email in the last auth.json read; null when it was missing or unreadable. Read from the UI thread.</summary>
+    public string? AccountEmail => Volatile.Read(ref _accountEmail);
     public string DisplayName => "Codex";
     public TimeSpan MinInterval => TimeSpan.FromMinutes(1);
     public IReadOnlyList<string> WatchPaths { get; }
@@ -82,6 +118,7 @@ public sealed class CodexUsageProvider : IUsageProvider
         var now = _ctx.Time.GetUtcNow();
         var read = await _authReader.ReadAsync(_paths.AuthFile, ct).ConfigureAwait(false);
         var auth = read.Auth;
+        Volatile.Write(ref _accountEmail, auth?.Email);
         if (auth?.Mode == CodexAuthMode.ApiKey)
             return UsageSnapshot.WithStatus(Id, ProviderStatus.Unsupported, now, MessageApiKey);
 
@@ -139,7 +176,7 @@ public sealed class CodexUsageProvider : IUsageProvider
             if (!throttled)
             {
                 _lastAppServerAttempt = now;
-                var result = await _appServer.ReadRateLimitsAsync(codexPath, ct).ConfigureAwait(false);
+                var result = await _appServer.ReadRateLimitsAsync(codexPath, IsAccount ? _paths.Home : null, ct).ConfigureAwait(false);
                 _lastAppServerOutcome = result.Outcome;
                 if (result.Outcome == CodexAppServerOutcome.Ok)
                 {
@@ -162,14 +199,15 @@ public sealed class CodexUsageProvider : IUsageProvider
             return cachedServerSnapshot;
 
         if (codexPath is not null && _lastAppServerOutcome == CodexAppServerOutcome.AuthRequired)
-            return UsageSnapshot.WithStatus(Id, ProviderStatus.SignedOut, now, MessageSignedOut);
+            return SignedOut(now);
 
         return reason switch
         {
+            Reason.NoAuthFile when IsAccount => SignedOut(now),
             Reason.NoAuthFile when codexPath is null =>
                 UsageSnapshot.WithStatus(Id, ProviderStatus.NotInstalled, now, MessageNotInstalled),
             Reason.NoAuthFile =>
-                UsageSnapshot.WithStatus(Id, ProviderStatus.SignedOut, now, MessageSignedOut),
+                SignedOut(now),
             Reason.StaleToken or Reason.Unauthorized =>
                 UsageSnapshot.WithStatus(Id, ProviderStatus.WaitingForCliRefresh, now, MessageWaitingForCli),
             Reason.NoAccessToken when codexPath is null =>
@@ -181,6 +219,10 @@ public sealed class CodexUsageProvider : IUsageProvider
             _ => UsageSnapshot.WithStatus(Id, ProviderStatus.Error, now, MessageFailed),
         };
     }
+
+    // An extra account has no terminal to run `codex login` in: it is signed in again from the settings.
+    private UsageSnapshot SignedOut(DateTimeOffset now)
+        => UsageSnapshot.WithStatus(Id, ProviderStatus.SignedOut, now, IsAccount ? Strings.AccountReauth : MessageSignedOut);
 
     private UsageSnapshot? TryParseWham(string body, CodexAuth auth, DateTimeOffset now)
     {

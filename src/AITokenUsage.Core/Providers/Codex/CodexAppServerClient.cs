@@ -21,6 +21,7 @@ public sealed record CodexAppServerResult(CodexAppServerOutcome Outcome, string?
 public sealed class CodexAppServerClient
 {
     public const string CommandName = "codex";
+    public const string CodexHomeVariable = "CODEX_HOME";
     public static readonly TimeSpan InitializeTimeout = TimeSpan.FromSeconds(8);
     public static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(3);
     public static readonly TimeSpan ProcessTimeout = TimeSpan.FromSeconds(20);
@@ -49,21 +50,30 @@ public sealed class CodexAppServerClient
         _log = log;
     }
 
-    /// <summary>codex.exe/.com runs directly; codex.cmd (npm shim) or anything else runs through cmd.exe /d /c codex.</summary>
-    public static ProcessSpec BuildSpec(string codexPath)
+    /// <summary>
+    /// codex.exe/.com runs directly; codex.cmd (npm shim) or anything else runs through cmd.exe /d /c codex.
+    /// <paramref name="codexHome"/> (an extra account's own folder) becomes the CODEX_HOME of the process; null passes nothing.
+    /// </summary>
+    public static ProcessSpec BuildSpec(string codexPath, string? codexHome = null)
     {
+        IReadOnlyDictionary<string, string?>? environment = string.IsNullOrWhiteSpace(codexHome)
+            ? null
+            : new Dictionary<string, string?> { [CodexHomeVariable] = codexHome };
         var extension = Path.GetExtension(codexPath);
         if (extension.Equals(".exe", StringComparison.OrdinalIgnoreCase) || extension.Equals(".com", StringComparison.OrdinalIgnoreCase))
-            return new ProcessSpec(codexPath, AppServerArguments, null, ProcessTimeout);
-        return new ProcessSpec("cmd.exe", ["/d", "/c", CommandName, .. AppServerArguments], null, ProcessTimeout);
+            return new ProcessSpec(codexPath, AppServerArguments, environment, ProcessTimeout);
+        return new ProcessSpec("cmd.exe", ["/d", "/c", CommandName, .. AppServerArguments], environment, ProcessTimeout);
     }
 
-    public async Task<CodexAppServerResult> ReadRateLimitsAsync(string codexPath, CancellationToken ct)
+    public Task<CodexAppServerResult> ReadRateLimitsAsync(string codexPath, CancellationToken ct)
+        => ReadRateLimitsAsync(codexPath, null, ct);
+
+    public async Task<CodexAppServerResult> ReadRateLimitsAsync(string codexPath, string? codexHome, CancellationToken ct)
     {
         IInteractiveProcess process;
         try
         {
-            process = _processes.StartInteractive(BuildSpec(codexPath));
+            process = _processes.StartInteractive(BuildSpec(codexPath, codexHome));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

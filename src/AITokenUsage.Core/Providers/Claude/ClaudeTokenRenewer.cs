@@ -67,14 +67,14 @@ public sealed class ClaudeTokenRenewer
             return new ClaudeRenewResult(ClaudeRenewOutcome.ReauthRequired, null);
         }
 
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeout.CancelAfter(Timeout);
+        using var timeout = new CancellationTokenSource(Timeout, _time);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeout.Token);
 
         try
         {
             using HttpRequestMessage request = CreateRequest(current, userAgent);
             using HttpResponseMessage response = await _http
-                .SendAsync(request, HttpCompletionOption.ResponseContentRead, timeout.Token)
+                .SendAsync(request, HttpCompletionOption.ResponseContentRead, linked.Token)
                 .ConfigureAwait(false);
             int code = (int)response.StatusCode;
 
@@ -90,7 +90,7 @@ public sealed class ClaudeTokenRenewer
                 return new ClaudeRenewResult(ClaudeRenewOutcome.Failed, null);
             }
 
-            string body = await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false);
+            string body = await response.Content.ReadAsStringAsync(linked.Token).ConfigureAwait(false);
             if (Interpret(body, current, _time.GetUtcNow()) is not { } renewed)
             {
                 _log.Warn($"Claude token renewal: unusable response body (HTTP {code}).");

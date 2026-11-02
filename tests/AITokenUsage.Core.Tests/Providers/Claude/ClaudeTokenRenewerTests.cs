@@ -160,6 +160,39 @@ public class ClaudeTokenRenewerTests
     }
 
     [Fact]
+    public async Task Pending_request_times_out_after_thirty_seconds_on_the_injected_clock()
+    {
+        var handler = new PendingHandler();
+        var renewer = new ClaudeTokenRenewer(new HttpClient(handler), _time, _log);
+
+        Task<ClaudeRenewResult> renewal = renewer.RenewAsync(Login(), UserAgent, CancellationToken.None);
+        await handler.Started.WaitAsync(TimeSpan.FromSeconds(10));
+
+        _time.Advance(TimeSpan.FromSeconds(29));
+        Assert.False(renewal.IsCompleted);
+
+        _time.Advance(TimeSpan.FromSeconds(1));
+        ClaudeRenewResult result = await renewal.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal(ClaudeRenewOutcome.Failed, result.Outcome);
+        Assert.Contains("timeout", _log.AllText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Caller_cancellation_of_a_pending_request_is_thrown()
+    {
+        var handler = new PendingHandler();
+        var renewer = new ClaudeTokenRenewer(new HttpClient(handler), _time, _log);
+        using var cts = new CancellationTokenSource();
+
+        Task<ClaudeRenewResult> renewal = renewer.RenewAsync(Login(), UserAgent, cts.Token);
+        await handler.Started.WaitAsync(TimeSpan.FromSeconds(10));
+        cts.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => renewal.WaitAsync(TimeSpan.FromSeconds(10)));
+    }
+
+    [Fact]
     public async Task Caller_cancellation_is_thrown()
     {
         Respond(() => StubHttpHandler.Json(HttpStatusCode.OK, TokenResponse()));
@@ -200,5 +233,20 @@ public class ClaudeTokenRenewerTests
 
         Assert.Equal(ClaudeRenewOutcome.ReauthRequired, result.Outcome);
         Assert.Empty(_http.Requests);
+    }
+
+    /// <summary>A request that never answers until its cancellation token fires.</summary>
+    private sealed class PendingHandler : HttpMessageHandler
+    {
+        private readonly TaskCompletionSource _started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task Started => _started.Task;
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            _started.TrySetResult();
+            await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
+            throw new InvalidOperationException("unreachable");
+        }
     }
 }

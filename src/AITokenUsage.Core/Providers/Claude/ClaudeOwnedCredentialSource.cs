@@ -201,9 +201,10 @@ public sealed class ClaudeOwnedCredentialSource : IClaudeCredentialSource
         switch (result.Outcome)
         {
             case ClaudeRenewOutcome.Renewed when result.Credentials is { } renewed:
-                // Saved before any usage request uses it: the old refresh token is spent now.
-                Save(renewed, "renewed login");
+                // The old refresh token is spent now: keep the new one in memory first, then save it.
+                // Both happen before the usage request, which is sent only after this method returns.
                 SetCurrent(renewed);
+                Save(renewed, "renewed login");
                 return new ClaudeCredentialReadResult(ClaudeCredentialState.Ok, renewed.ToCredentials());
 
             case ClaudeRenewOutcome.ReauthRequired:

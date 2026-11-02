@@ -389,6 +389,52 @@ public class ClaudeOwnedCredentialSourceTests
         Assert.Equal(expected, recovered!.State);
     }
 
+    [Fact]
+    public async Task Recover_after_a_replace_returns_the_new_token_without_renewing()
+    {
+        Store(Login());
+        ClaudeOwnedCredentialSource source = CreateSource();
+        ClaudeCredentialReadResult read = await source.ReadAsync(UserAgent, CancellationToken.None);
+        await source.ReplaceAsync(Login(AccessToken3, RefreshToken3), CancellationToken.None);
+
+        ClaudeCredentialReadResult? recovered = await source.RecoverAsync(read.Credentials!, UserAgent, CancellationToken.None);
+
+        Assert.NotNull(recovered);
+        Assert.Equal(ClaudeCredentialState.Ok, recovered.State);
+        Assert.Equal(AccessToken3, recovered.Credentials!.AccessToken);
+        Assert.Empty(_http.Requests);
+    }
+
+    [Fact]
+    public async Task Recover_while_sign_in_is_required_does_not_renew()
+    {
+        Store(Login());
+        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.BadRequest, """{"error":"invalid_grant"}"""));
+        ClaudeOwnedCredentialSource source = CreateSource();
+        ClaudeCredentialReadResult read = await source.ReadAsync(UserAgent, CancellationToken.None);
+        ClaudeCredentialReadResult? refused = await source.RecoverAsync(read.Credentials!, UserAgent, CancellationToken.None);
+        Assert.Equal(ClaudeCredentialState.ReauthRequired, refused!.State);
+        Assert.Single(_http.Requests);
+
+        ClaudeCredentialReadResult? again = await source.RecoverAsync(read.Credentials!, UserAgent, CancellationToken.None);
+
+        Assert.NotNull(again);
+        Assert.Equal(ClaudeCredentialState.ReauthRequired, again.State);
+        Assert.Null(again.Credentials);
+        Assert.Single(_http.Requests);
+    }
+
+    [Fact]
+    public async Task Recover_with_no_saved_login_needs_sign_in_without_http()
+    {
+        ClaudeOwnedCredentialSource source = CreateSource();
+
+        ClaudeCredentialReadResult? recovered = await source.RecoverAsync(Login().ToCredentials(), UserAgent, CancellationToken.None);
+
+        Assert.Equal(ClaudeCredentialState.ReauthRequired, recovered!.State);
+        Assert.Empty(_http.Requests);
+    }
+
     /// <summary>An in-memory secret store that can be told to fail.</summary>
     private sealed class ThrowingSecretStore : ISecretStore
     {

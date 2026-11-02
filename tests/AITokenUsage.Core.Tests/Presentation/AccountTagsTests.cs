@@ -220,6 +220,6 @@ public class AccountTagsEnglishTests
     [Fact]
     public void Reauth_MessageIsEnglish()
     {
-        Assert.Equal("Sign in again · Settings → AI connections", Strings.AccountReauth);
+        Assert.Equal("Sign in again in Settings", Strings.AccountReauth);
     }
 }

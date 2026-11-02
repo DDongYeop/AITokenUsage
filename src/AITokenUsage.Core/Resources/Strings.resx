@@ -424,6 +424,6 @@
     <value>Personal</value>
   </data>
   <data name="AccountReauth" xml:space="preserve">
-    <value>Sign in again · Settings → AI connections</value>
+    <value>Sign in again in Settings</value>
   </data>
 </root>

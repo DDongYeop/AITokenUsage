@@ -342,4 +342,112 @@ public class AppSettingsTests
 
         Assert.Equal(SystemMonitorMode.CardOnly, original.Clone().SystemMonitor);
     }
+
+    [Fact]
+    public void Normalize_KeepsAccountIds_InPlace_AndAppendsMissingDefaultsAfterThem()
+    {
+        var settings = new AppSettings
+        {
+            Providers =
+            [
+                new ProviderSettings { Id = "claude", Enabled = true, Line1Key = "session", Line2Key = "weekly" },
+                new ProviderSettings { Id = "claude#k3x9q2", Enabled = false, Line1Key = "weekly", Line2Key = "session" },
+                new ProviderSettings { Id = "codex#a1b2c3" },
+            ],
+        };
+
+        settings.Normalize();
+
+        Assert.Equal(["claude", "claude#k3x9q2", "codex#a1b2c3", "codex", "gemini", "copilot"], Ids(settings));
+        Assert.False(settings.Providers[1].Enabled);
+        Assert.Equal(("weekly", "session"), (settings.Providers[1].Line1Key, settings.Providers[1].Line2Key));
+    }
+
+    [Fact]
+    public void Normalize_AccountIds_AreTrimmedAndLowerCased()
+    {
+        var settings = new AppSettings
+        {
+            Providers = [new ProviderSettings { Id = "  Claude#K3X9Q2 " }],
+        };
+
+        settings.Normalize();
+
+        Assert.Equal("claude#k3x9q2", settings.Providers[0].Id);
+    }
+
+    [Fact]
+    public void Normalize_AccountIds_BlankLinesGetTheKindDefaults()
+    {
+        var settings = new AppSettings
+        {
+            Providers =
+            [
+                new ProviderSettings { Id = "claude#k3x9q2", Line1Key = "", Line2Key = " " },
+                new ProviderSettings { Id = "codex#a1b2c3", Line1Key = null!, Line2Key = null! },
+            ],
+        };
+
+        settings.Normalize();
+
+        Assert.Equal(("session", "weekly"), (settings.Providers[0].Line1Key, settings.Providers[0].Line2Key));
+        Assert.Equal(("5h", "weekly"), (settings.Providers[1].Line1Key, settings.Providers[1].Line2Key));
+    }
+
+    [Theory]
+    [InlineData("gemini#k3x9q2")]
+    [InlineData("claude#k3x9q")]
+    [InlineData("claude#k3x9q22")]
+    [InlineData("claude#k3x9q_")]
+    [InlineData("claude#")]
+    [InlineData("system")]
+    public void Normalize_DropsMalformedAccountIds(string id)
+    {
+        var settings = new AppSettings
+        {
+            Providers = [new ProviderSettings { Id = "claude#k3x9q2" }, new ProviderSettings { Id = id }],
+        };
+
+        settings.Normalize();
+
+        Assert.Equal(["claude#k3x9q2", "claude", "codex", "gemini", "copilot"], Ids(settings));
+    }
+
+    [Fact]
+    public void Normalize_DropsDuplicateAccountIds_FirstWins()
+    {
+        var settings = new AppSettings
+        {
+            Providers =
+            [
+                new ProviderSettings { Id = "claude#k3x9q2", Enabled = false },
+                new ProviderSettings { Id = "CLAUDE#k3x9q2", Enabled = true },
+                new ProviderSettings { Id = "claude#a1b2c3" },
+            ],
+        };
+
+        settings.Normalize();
+
+        Assert.Equal(["claude#k3x9q2", "claude#a1b2c3", "claude", "codex", "gemini", "copilot"], Ids(settings));
+        Assert.False(settings.Providers[0].Enabled);
+    }
+
+    [Fact]
+    public void Clone_CopiesAccountEntries()
+    {
+        var original = new AppSettings().Normalize();
+        original.Providers.Insert(1, new ProviderSettings { Id = "claude#k3x9q2", Enabled = false, Line1Key = "weekly", Line2Key = "session" });
+
+        AppSettings clone = original.Clone();
+
+        Assert.Equal(Ids(original), Ids(clone));
+        Assert.NotSame(original.Providers[1], clone.Providers[1]);
+        Assert.False(clone.Providers[1].Enabled);
+    }
+
+    [Fact]
+    public void Version_StaysOne()
+    {
+        Assert.Equal(1, AppSettings.CurrentVersion);
+    }
 }

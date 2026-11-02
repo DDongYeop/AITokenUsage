@@ -34,6 +34,24 @@ public class ProviderDefaultsTests
         Assert.Equal("session", second[0].Line1Key);
     }
 
+    [Theory]
+    [InlineData("claude#k3x9q2", "session", "weekly")]
+    [InlineData("codex#a1b2c3", "5h", "weekly")]
+    public void DefaultLines_AccountIdsUseTheirKindsLines(string id, string line1, string line2)
+    {
+        Assert.Equal((line1, line2), ProviderDefaults.DefaultLines(id));
+    }
+
+    [Fact]
+    public void CreateDefault_AccountId_KeepsTheIdAndKindLines()
+    {
+        ProviderSettings settings = ProviderDefaults.CreateDefault("codex#a1b2c3");
+
+        Assert.Equal("codex#a1b2c3", settings.Id);
+        Assert.True(settings.Enabled);
+        Assert.Equal(("5h", "weekly"), (settings.Line1Key, settings.Line2Key));
+    }
+
     [Fact]
     public void RefreshChoices_Are2_5_10_15()
     {

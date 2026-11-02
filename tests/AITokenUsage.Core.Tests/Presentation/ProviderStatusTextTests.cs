@@ -147,4 +147,45 @@ public class ProviderStatusTextTests
         Assert.Equal("Copilot", ProviderStatusText.CliName(ProviderIds.Copilot));
         Assert.Equal("other", ProviderStatusText.CliName("other"));
     }
+
+    [Fact]
+    public void CliName_AccountIdsUseTheirKind()
+    {
+        Assert.Equal("Claude Code", ProviderStatusText.CliName("claude#k3x9q2"));
+        Assert.Equal("Codex", ProviderStatusText.CliName("codex#a1b2c3"));
+    }
+
+    [Fact]
+    public void Settings_AccountSignedOut_ShowsTheSnapshotMessageAlone()
+    {
+        const string reauth = "다시 로그인하세요 · 설정 → AI 연결";
+        ProviderView view = View(Status("claude#k3x9q2", ProviderStatus.SignedOut, reauth));
+
+        Assert.Equal(reauth, ProviderStatusText.ForSettings(view, Now, Kst));
+        Assert.Equal([reauth], ProviderStatusText.ForCard(view, Now, Kst));
+    }
+
+    [Fact]
+    public void Settings_AccountSignedOutWithoutMessage_ShowsSignInRequired()
+    {
+        ProviderView view = View(Status("codex#a1b2c3", ProviderStatus.SignedOut));
+
+        Assert.Equal("로그인 필요", ProviderStatusText.ForSettings(view, Now, Kst));
+    }
+
+    [Fact]
+    public void Settings_BaseProviderSignedOut_StillGetsThePrefix()
+    {
+        ProviderView view = View(Status("claude", ProviderStatus.SignedOut, "터미널에서 claude 실행 후 /login"));
+
+        Assert.Equal("로그인 필요 — 터미널에서 claude 실행 후 /login", ProviderStatusText.ForSettings(view, Now, Kst));
+    }
+
+    [Fact]
+    public void Settings_AccountWaitingForCli_NamesTheKindsCli()
+    {
+        ProviderView view = View(Status("claude#k3x9q2", ProviderStatus.WaitingForCliRefresh));
+
+        Assert.Contains("Claude Code", ProviderStatusText.ForSettings(view, Now, Kst));
+    }
 }

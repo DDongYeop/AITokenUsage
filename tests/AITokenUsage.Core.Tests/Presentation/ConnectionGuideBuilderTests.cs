@@ -176,6 +176,17 @@ public class ConnectionGuideBuilderTests
 [UseCulture("en-US")]
 public class ConnectionGuideBuilderEnglishTests
 {
+    [Theory]
+    [InlineData("claude#k3x9q2", ProviderStatus.SignedOut)]
+    [InlineData("claude#k3x9q2", ProviderStatus.NotInstalled)]
+    [InlineData("claude#k3x9q2", ProviderStatus.WaitingForCliRefresh)]
+    [InlineData("codex#a1b2c3", ProviderStatus.SignedOut)]
+    [InlineData("codex#a1b2c3", ProviderStatus.NotInstalled)]
+    public void Build_AccountIds_ReturnNull(string providerId, ProviderStatus status)
+    {
+        Assert.Null(ConnectionGuideBuilder.Build(providerId, status, "msg"));
+    }
+
     [Fact]
     public void Build_CodexSignedOut_FirstStepTextIsEnglish()
     {

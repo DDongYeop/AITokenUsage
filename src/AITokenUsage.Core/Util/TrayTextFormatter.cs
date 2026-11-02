@@ -104,7 +104,7 @@ public static class TrayTextFormatter
             string status = string.IsNullOrWhiteSpace(view.Current.StatusMessage)
                 ? StatusText(view.Current.Status)
                 : view.Current.StatusMessage;
-            text = view.DisplayName + Separator + status;
+            text = view.Title + Separator + status;
         }
         else
         {
@@ -121,7 +121,7 @@ public static class TrayTextFormatter
                 parts.Add(Describe(line2, mode));
             }
 
-            text = view.DisplayName + " " + string.Join(Separator, parts);
+            text = view.Title + " " + string.Join(Separator, parts);
             if (view.IsStale)
             {
                 text += StaleSuffix;

@@ -1,4 +1,5 @@
 using System.Globalization;
+using AITokenUsage.Core.Accounts;
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Resources;
 
@@ -17,10 +18,16 @@ public static class ConnectionGuideBuilder
     private const string GeminiCommand = "gemini";
 
     /// <summary>
-    /// Null when there is nothing to guide: connected, rate-limited, errors, and combinations the spec does not cover.
+    /// Null when there is nothing to guide: connected, rate-limited, errors, extra accounts, and combinations the spec does not cover.
     /// </summary>
     public static ConnectionGuide? Build(string providerId, ProviderStatus status, string? statusMessage)
     {
+        // Extra accounts get their actions (sign in again, delete) from the settings card instead of a guide.
+        if (AccountIds.IsAccountId(providerId))
+        {
+            return null;
+        }
+
         return providerId switch
         {
             ProviderIds.Claude => status switch

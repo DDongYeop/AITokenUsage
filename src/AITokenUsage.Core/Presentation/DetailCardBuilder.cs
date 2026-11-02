@@ -22,7 +22,7 @@ public static class DetailCardBuilder
 
         return new DetailCardModel(
             view.ProviderId,
-            view.DisplayName,
+            view.Title,
             view.DisplayPlan,
             rows,
             string.IsNullOrWhiteSpace(extra) ? null : extra.Trim(),

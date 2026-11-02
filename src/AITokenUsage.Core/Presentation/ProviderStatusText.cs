@@ -1,4 +1,5 @@
 using System.Globalization;
+using AITokenUsage.Core.Accounts;
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Resources;
 using AITokenUsage.Core.Util;
@@ -19,7 +20,7 @@ public static class ProviderStatusText
     private const string Dash = " — ";
 
     /// <summary>The tool whose login the app waits for: "Claude Code", "Codex", "Gemini CLI", "Copilot".</summary>
-    public static string CliName(string providerId) => providerId switch
+    public static string CliName(string providerId) => ProviderIds.KindOf(providerId) switch
     {
         ProviderIds.Claude => "Claude Code",
         ProviderIds.Codex => "Codex",
@@ -57,7 +58,8 @@ public static class ProviderStatusText
             case ProviderStatus.NotInstalled:
                 return message ?? NotInstalled;
             case ProviderStatus.SignedOut:
-                return Prefixed(SignInRequired, message);
+                // Extra accounts: the provider's own message ("sign in again · Settings") replaces the generic prefix.
+                return AccountIds.IsAccountId(view.ProviderId) && message is not null ? message : Prefixed(SignInRequired, message);
             case ProviderStatus.WaitingForCliRefresh:
                 return string.Format(CultureInfo.CurrentCulture, Strings.StatusWaitingForCliRefresh, CliName(view.ProviderId));
             case ProviderStatus.Unsupported:

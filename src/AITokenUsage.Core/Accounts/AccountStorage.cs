@@ -1,0 +1,52 @@
+namespace AITokenUsage.Core.Accounts;
+
+/// <summary>
+/// Where an extra account keeps its files inside the app folder, and which leftovers belong to no account any more (spec §6).
+/// Pure name arithmetic: nothing here touches the disk.
+/// </summary>
+public static class AccountStorage
+{
+    /// <summary>Claude accounts: the secret store name is this prefix + the key ("claude-account-k3x9q2").</summary>
+    public const string ClaudeSecretPrefix = "claude-account-";
+
+    /// <summary>Codex accounts: the CODEX_HOME folder name is this prefix + the key ("codex-a1b2c3").</summary>
+    public const string CodexHomePrefix = "codex-";
+
+    public static string ClaudeSecretName(string accountId) => ClaudeSecretPrefix + AccountIds.KeyOf(accountId);
+
+    public static string CodexHomeName(string accountId) => CodexHomePrefix + AccountIds.KeyOf(accountId);
+
+    /// <summary>
+    /// Names (without extension) from <paramref name="secretNames"/> that start with <see cref="ClaudeSecretPrefix"/>
+    /// and whose key belongs to no claude account in <paramref name="settingsIds"/>. Input order is kept.
+    /// </summary>
+    public static IReadOnlyList<string> OrphanClaudeSecrets(IEnumerable<string> secretNames, IEnumerable<string> settingsIds) =>
+        Orphans(secretNames, settingsIds, ClaudeSecretPrefix, "claude");
+
+    /// <summary>
+    /// Folder names from <paramref name="directoryNames"/> that start with <see cref="CodexHomePrefix"/>
+    /// and whose key belongs to no codex account in <paramref name="settingsIds"/>. Input order is kept.
+    /// </summary>
+    public static IReadOnlyList<string> OrphanCodexHomes(IEnumerable<string> directoryNames, IEnumerable<string> settingsIds) =>
+        Orphans(directoryNames, settingsIds, CodexHomePrefix, "codex");
+
+    private static List<string> Orphans(IEnumerable<string> names, IEnumerable<string> settingsIds, string prefix, string kind)
+    {
+        ArgumentNullException.ThrowIfNull(names);
+        ArgumentNullException.ThrowIfNull(settingsIds);
+
+        // The same key under another kind does not keep this kind's files alive; file systems ignore case.
+        var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string id in settingsIds)
+        {
+            if (AccountIds.IsAccountId(id) && id.StartsWith(kind + AccountIds.Separator, StringComparison.Ordinal))
+            {
+                keys.Add(AccountIds.KeyOf(id));
+            }
+        }
+
+        return names
+            .Where(name => name.StartsWith(prefix, StringComparison.Ordinal) && !keys.Contains(name[prefix.Length..]))
+            .ToList();
+    }
+}

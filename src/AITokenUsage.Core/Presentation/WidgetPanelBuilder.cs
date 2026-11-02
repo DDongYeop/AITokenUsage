@@ -31,7 +31,7 @@ public static class WidgetPanelBuilder
         if (first is null)
         {
             return new WidgetPanelModel(
-                view.ProviderId, view.DisplayName, false, WidgetRow.Message(ShortStatus(view)), null, dotCount, dotIndex);
+                view.ProviderId, view.ShortName, false, WidgetRow.Message(ShortStatus(view)), null, dotCount, dotIndex);
         }
 
         bool stale = view.IsStale;
@@ -43,7 +43,7 @@ public static class WidgetPanelBuilder
             row2 = WidgetRow.Message(ShortStatus(view));
         }
 
-        return new WidgetPanelModel(view.ProviderId, view.DisplayName, stale, row1, row2, dotCount, dotIndex);
+        return new WidgetPanelModel(view.ProviderId, view.ShortName, stale, row1, row2, dotCount, dotIndex);
     }
 
     /// <summary>Two-to-five character status for the widget (spec §2.1 "상태별 위젯 표시").</summary>

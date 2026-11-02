@@ -1,3 +1,4 @@
+using AITokenUsage.Core.Accounts;
 using AITokenUsage.Core.Localization;
 using AITokenUsage.Core.Models;
 
@@ -58,7 +59,7 @@ public sealed class AppSettings
 
     /// <summary>
     /// Repairs this instance in place and returns it:
-    /// unknown/duplicate provider ids are dropped (first one wins, ids are lower-cased),
+    /// unknown/duplicate provider ids are dropped (first one wins, ids are lower-cased; extra account ids like "claude#k3x9q2" are kept),
     /// missing providers are appended with defaults in canonical order, blank line keys get the
     /// provider defaults, RotationSeconds is clamped to 2..60, RefreshMinutes snaps to the nearest
     /// of 2/5/10/15, undefined enum values fall back to their defaults, a blank monitor name becomes null
@@ -141,7 +142,7 @@ public sealed class AppSettings
             }
 
             string id = (provider.Id ?? "").Trim().ToLowerInvariant();
-            if (!ProviderIds.All.Contains(id) || !seen.Add(id))
+            if (!(ProviderIds.All.Contains(id) || AccountIds.IsAccountId(id)) || !seen.Add(id))
             {
                 continue;
             }

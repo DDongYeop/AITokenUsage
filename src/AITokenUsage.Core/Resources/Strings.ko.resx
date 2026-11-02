@@ -417,4 +417,13 @@
   <data name="SystemCardStatus" xml:space="preserve">
     <value>2초마다 갱신</value>
   </data>
+  <data name="AccountTagTeam" xml:space="preserve">
+    <value>팀</value>
+  </data>
+  <data name="AccountTagPersonal" xml:space="preserve">
+    <value>개인</value>
+  </data>
+  <data name="AccountReauth" xml:space="preserve">
+    <value>다시 로그인하세요 · 설정 → AI 연결</value>
+  </data>
 </root>

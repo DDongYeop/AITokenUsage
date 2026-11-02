@@ -63,6 +63,9 @@
             <StackPanel x:Name="AccountPanel" Margin="28,12,0,0" Visibility="Collapsed">
                 <Button x:Name="ReloginButton" HorizontalAlignment="Left" MinWidth="0" Padding="12,4,12,4"
                         Content="{x:Static res:UiStrings.AccountReloginButton}" />
+                <!-- The CLI of this AI is not on PATH: [Sign in again] is off. -->
+                <TextBlock x:Name="CliMissingText" Margin="0,6,0,0" FontSize="12" TextWrapping="Wrap" Visibility="Collapsed"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                 <Grid x:Name="LoginProgressPanel" Visibility="Collapsed">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />

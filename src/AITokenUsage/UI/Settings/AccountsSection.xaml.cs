@@ -15,10 +15,13 @@ namespace AITokenUsage.UI.Settings;
 public partial class AccountsSection : UserControl, IDisposable
 {
     private readonly AppHost _host;
-    private bool _claudeInstalled;
-    private bool _codexInstalled;
+    private bool? _claudeInstalled;
+    private bool? _codexInstalled;
     private bool _busy;
     private bool _disposed;
+
+    /// <summary>An account was added in this window: the "restart to show it" notice stays through later sign-ins.</summary>
+    private bool _restartPending;
 
     public AccountsSection(AppHost host)
     {
@@ -38,10 +41,24 @@ public partial class AccountsSection : UserControl, IDisposable
 
     public event EventHandler? CancelRequested;
 
+    /// <summary>The PATH check finished (see <see cref="IsInstalled"/>); the page passes it on to the account cards.</summary>
+    public event EventHandler? InstalledChecked;
+
+    /// <summary>
+    /// Whether the CLI of <paramref name="kind"/> ("claude"/"codex") is on PATH; null until the background check finished.
+    /// </summary>
+    public bool? IsInstalled(string kind) => kind switch
+    {
+        ProviderIds.Claude => _claudeInstalled,
+        ProviderIds.Codex => _codexInstalled,
+        _ => null,
+    };
+
     /// <summary>The message for a failed sign-in (also used by the provider cards).</summary>
     public static string FailureText(AccountLoginFailure failure) => failure switch
     {
         AccountLoginFailure.InvalidPath => UiStrings.AccountFailedInvalidPath,
+        AccountLoginFailure.FolderFailed => UiStrings.AccountFailedFolder,
         AccountLoginFailure.TerminalFailed => UiStrings.AccountFailedTerminal,
         AccountLoginFailure.TimedOut => UiStrings.AccountFailedTimedOut,
         _ => UiStrings.AccountFailedSave,
@@ -67,6 +84,7 @@ public partial class AccountsSection : UserControl, IDisposable
                 ClaudeMissingText.Visibility = claude ? Visibility.Collapsed : Visibility.Visible;
                 CodexMissingText.Visibility = codex ? Visibility.Collapsed : Visibility.Visible;
                 UpdateButtons();
+                InstalledChecked?.Invoke(this, EventArgs.Empty);
             }));
         });
 
@@ -91,36 +109,46 @@ public partial class AccountsSection : UserControl, IDisposable
         UpdateButtons();
     }
 
+    /// <summary>An earlier "added … restart" notice stays visible alongside the new progress (see _restartPending).</summary>
     public void ShowProgress()
     {
-        AddedNotice.Visibility = Visibility.Collapsed;
         ShowError(null);
         ProgressPanel.Visibility = Visibility.Visible;
+        UpdateAddedNotice();
     }
 
-    /// <summary>Cancelled: back to the start.</summary>
-    public void HideProgress() => ProgressPanel.Visibility = Visibility.Collapsed;
+    /// <summary>Cancelled: back to the start (with the restart notice if an earlier add is waiting for it).</summary>
+    public void HideProgress()
+    {
+        ProgressPanel.Visibility = Visibility.Collapsed;
+        UpdateAddedNotice();
+    }
 
     public void ShowAdded()
     {
+        _restartPending = true;
         ProgressPanel.Visibility = Visibility.Collapsed;
         ShowError(null);
         RestartButton.IsEnabled = true;
-        AddedNotice.Visibility = Visibility.Visible;
+        UpdateAddedNotice();
     }
 
     public void ShowFailure(AccountLoginFailure failure)
     {
         ProgressPanel.Visibility = Visibility.Collapsed;
         ShowError(FailureText(failure));
+        UpdateAddedNotice();
     }
+
+    private void UpdateAddedNotice() =>
+        AddedNotice.Visibility = _restartPending ? Visibility.Visible : Visibility.Collapsed;
 
     public void Dispose() => _disposed = true;
 
     private void UpdateButtons()
     {
-        AddClaudeButton.IsEnabled = _claudeInstalled && !_busy;
-        AddCodexButton.IsEnabled = _codexInstalled && !_busy;
+        AddClaudeButton.IsEnabled = _claudeInstalled == true && !_busy;
+        AddCodexButton.IsEnabled = _codexInstalled == true && !_busy;
     }
 
     private void ShowError(string? message)

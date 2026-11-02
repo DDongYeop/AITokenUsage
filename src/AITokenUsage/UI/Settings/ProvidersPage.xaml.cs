@@ -43,6 +43,7 @@ public partial class ProvidersPage : SettingsPage
         _accounts = new AccountsSection(host);
         _accounts.AddRequested += OnAddRequested;
         _accounts.CancelRequested += OnCancelLoginRequested;
+        _accounts.InstalledChecked += OnInstalledChecked;
         AccountsHost.Content = _accounts;
 
         _statusTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher) { Interval = StatusRefreshInterval };
@@ -73,6 +74,7 @@ public partial class ProvidersPage : SettingsPage
         EndSession(cancel: true);
         _accounts.AddRequested -= OnAddRequested;
         _accounts.CancelRequested -= OnCancelLoginRequested;
+        _accounts.InstalledChecked -= OnInstalledChecked;
         _accounts.Dispose();
 
         foreach (ProviderCard card in _cards)
@@ -270,6 +272,23 @@ public partial class ProvidersPage : SettingsPage
         session.Start();
     }
 
+    /// <summary>[Sign in again] needs the same CLI as adding: the section's PATH check result goes to the account cards.</summary>
+    private void OnInstalledChecked(object? sender, EventArgs e)
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        foreach (ProviderCard card in _cards)
+        {
+            if (AccountIds.IsAccountId(card.ProviderId))
+            {
+                card.SetCliInstalled(_accounts.IsInstalled(ProviderIds.KindOf(card.ProviderId)));
+            }
+        }
+    }
+
     private void OnCancelLoginRequested(object? sender, EventArgs e)
     {
         if (_session is null)
@@ -278,6 +297,14 @@ public partial class ProvidersPage : SettingsPage
         }
 
         ProviderCard? card = _sessionCard;
+        if (_session.HasAdded)
+        {
+            // Too late to cancel: the account is already in the settings. Show it as added (restart notice).
+            EndSession(cancel: false);
+            _accounts.ShowAdded();
+            return;
+        }
+
         EndSession(cancel: true);
         if (card is null)
         {

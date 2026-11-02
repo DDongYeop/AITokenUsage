@@ -290,10 +290,10 @@ Log: {0}</value>
     <value>Install Codex CLI to add a Codex account</value>
   </data>
   <data name="AccountAddProgress" xml:space="preserve">
-    <value>Finish signing in in the terminal. The account is added automatically</value>
+    <value>Complete the sign-in in the terminal. The account is added automatically</value>
   </data>
   <data name="AccountReloginProgress" xml:space="preserve">
-    <value>Finish signing in in the terminal. It applies automatically</value>
+    <value>Complete the sign-in in the terminal. It applies automatically</value>
   </data>
   <data name="AccountCancelButton" xml:space="preserve">
     <value>Cancel</value>
@@ -311,7 +311,7 @@ Log: {0}</value>
     <value>Couldn't open a terminal</value>
   </data>
   <data name="AccountFailedTimedOut" xml:space="preserve">
-    <value>Sign-in wasn't finished within 10 minutes, so it was stopped</value>
+    <value>Sign-in timed out after 10 minutes.</value>
   </data>
   <data name="AccountFailedSave" xml:space="preserve">
     <value>Couldn't read or save the sign-in. Try again</value>
@@ -330,5 +330,14 @@ Log: {0}</value>
   </data>
   <data name="AccountDefaultCodex" xml:space="preserve">
     <value>Codex on this PC</value>
+  </data>
+  <data name="AccountFailedFolder" xml:space="preserve">
+    <value>Couldn't prepare the sign-in folder. Try again in a moment.</value>
+  </data>
+  <data name="AccountReloginClaudeMissing" xml:space="preserve">
+    <value>Install Claude Code to sign in again</value>
+  </data>
+  <data name="AccountReloginCodexMissing" xml:space="preserve">
+    <value>Install Codex CLI to sign in again</value>
   </data>
 </root>

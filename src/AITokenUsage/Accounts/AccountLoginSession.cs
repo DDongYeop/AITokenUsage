@@ -10,8 +10,11 @@ namespace AITokenUsage.Accounts;
 /// <summary>Why an account sign-in ended without a result.</summary>
 public enum AccountLoginFailure
 {
-    /// <summary>The sign-in folder path cannot go into the terminal command, or the folder could not be prepared.</summary>
+    /// <summary>The sign-in folder path cannot go into the terminal command (a forbidden character, not a full path).</summary>
     InvalidPath,
+
+    /// <summary>The sign-in folder could not be prepared (an I/O or permission error).</summary>
+    FolderFailed,
 
     /// <summary>No terminal could be started.</summary>
     TerminalFailed,
@@ -28,7 +31,8 @@ public enum AccountLoginFailure
 /// terminal and polls the folder until the login appears. A new account is then added to the settings (shown after a
 /// restart); a re-login hands the new login to the running provider.
 /// Created and started on the UI thread; <see cref="Completed"/> and <see cref="Failed"/> are raised there.
-/// After <see cref="Cancel"/> (or <see cref="Dispose"/>) no event is raised. File work runs on the thread pool.
+/// After <see cref="Cancel"/> (or <see cref="Dispose"/>) no event is raised, unless the new account was already added
+/// (<see cref="HasAdded"/>): then <see cref="Completed"/> still follows. File work runs on the thread pool.
 /// Never logs tokens or file contents.
 /// </summary>
 public sealed class AccountLoginSession : IDisposable
@@ -73,6 +77,12 @@ public sealed class AccountLoginSession : IDisposable
 
     /// <summary>True when the sign-in adds a new account; false for "sign in again".</summary>
     public bool IsNew { get; }
+
+    /// <summary>
+    /// True once a new account is in the settings. From then on the sign-in counts as done: <see cref="Completed"/> is
+    /// raised even after <see cref="Cancel"/>, and a page cancelling now should show the "added" result.
+    /// </summary>
+    public bool HasAdded { get; private set; }
 
     /// <summary>The login was saved (and a new account added to the settings).</summary>
     public event EventHandler? Completed;
@@ -162,7 +172,8 @@ public sealed class AccountLoginSession : IDisposable
             Log.Warn($"account sign-in ended: {reason} ({AccountId})");
         }
 
-        if (_cancelled)
+        // A new account already in the settings stays added: a late Cancel does not hide that (the restart notice must show).
+        if (_cancelled && !HasAdded)
         {
             return;
         }
@@ -208,7 +219,7 @@ public sealed class AccountLoginSession : IDisposable
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             Log.Warn($"account sign-in: preparing the folder failed ({ex.GetType().Name})");
-            return AccountLoginFailure.InvalidPath;
+            return AccountLoginFailure.FolderFailed;
         }
 
         ct.ThrowIfCancellationRequested();
@@ -373,6 +384,7 @@ public sealed class AccountLoginSession : IDisposable
     private void AddToSettings()
     {
         AccountSettingsEditor.Add(_host.Settings.Providers, AccountId);
+        HasAdded = true;
         try
         {
             _host.ApplySettings();
@@ -412,23 +424,22 @@ public sealed class AccountLoginSession : IDisposable
             return;
         }
 
-        bool delete = _kind == ProviderIds.Claude || (IsNew && !completed);
+        // An added Codex account's folder is its store, whatever else happened.
+        bool delete = _kind == ProviderIds.Claude || (IsNew && !completed && !HasAdded);
         if (!delete)
         {
             return;
         }
 
-        await Task.Run(() =>
+        try
         {
-            try
-            {
-                DeleteDirectory(directory);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                Log.Warn($"account sign-in: deleting the sign-in folder failed ({ex.GetType().Name})");
-            }
-        });
+            await Task.Run(() => DeleteDirectory(directory));
+        }
+        catch (Exception ex)
+        {
+            // Any failure (I/O, permission, a bad path): log the type only; the startup sweep removes leftovers.
+            Log.Warn($"account sign-in: deleting the sign-in folder failed ({ex.GetType().Name})");
+        }
     }
 
     /// <summary>A link (junction or symlink) is removed itself, never followed.</summary>

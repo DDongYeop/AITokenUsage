@@ -42,6 +42,7 @@ public partial class ProviderCard : UserControl
     private bool _signedOut;
     private bool _loginRunning;
     private bool _loginBusy;
+    private bool _cliMissing;
     private bool _loading;
 
     /// <param name="extra">Copilot only: the GitHub sign-in panel, shown while signed out or signed in with the app.</param>
@@ -125,6 +126,19 @@ public partial class ProviderCard : UserControl
     public void SetLoginBusy(bool busy)
     {
         _loginBusy = busy;
+        UpdateAccountButtons();
+    }
+
+    /// <summary>
+    /// Extra account: the result of the page's PATH check for this AI's CLI. False turns [Sign in again] off and explains
+    /// why; null (not checked yet) leaves it on.
+    /// </summary>
+    public void SetCliInstalled(bool? installed)
+    {
+        _cliMissing = installed == false;
+        CliMissingText.Text = ProviderIds.KindOf(_settings.Id) == ProviderIds.Codex
+            ? UiStrings.AccountReloginCodexMissing
+            : UiStrings.AccountReloginClaudeMissing;
         UpdateAccountButtons();
     }
 
@@ -262,7 +276,8 @@ public partial class ProviderCard : UserControl
 
     /// <summary>
     /// [Sign in again] is hidden while this card's sign-in runs (the progress line shows instead), off while another
-    /// sign-in runs, and accent-styled while the account is signed out. [Remove account] is off during any sign-in.
+    /// sign-in runs or the CLI is missing, and accent-styled while the account is signed out. [Remove account] is off
+    /// during any sign-in.
     /// </summary>
     private void UpdateAccountButtons()
     {
@@ -273,7 +288,8 @@ public partial class ProviderCard : UserControl
 
         ReloginButton.Visibility = _loginRunning ? Visibility.Collapsed : Visibility.Visible;
         LoginProgressPanel.Visibility = _loginRunning ? Visibility.Visible : Visibility.Collapsed;
-        ReloginButton.IsEnabled = !_loginBusy;
+        ReloginButton.IsEnabled = !_loginBusy && !_cliMissing;
+        CliMissingText.Visibility = _cliMissing && !_loginRunning ? Visibility.Visible : Visibility.Collapsed;
         RemoveButton.IsEnabled = !_loginBusy;
 
         if (_signedOut)

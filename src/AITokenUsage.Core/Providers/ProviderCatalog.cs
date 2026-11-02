@@ -17,7 +17,7 @@ public static class ProviderCatalog
     /// <summary>
     /// The four built-in providers, then one provider per extra account in <paramref name="accountIds"/> order.
     /// Ids that are not account ids and repeated ids are skipped. Codex accounts keep their CODEX_HOME
-    /// folders under <paramref name="accountsDirectory"/>.
+    /// folders under <paramref name="accountsDirectory"/>, which must be non-empty when codex account ids are given.
     /// </summary>
     public static IReadOnlyList<IUsageProvider> CreateAll(ProviderContext ctx, IEnumerable<string> accountIds, string accountsDirectory)
     {

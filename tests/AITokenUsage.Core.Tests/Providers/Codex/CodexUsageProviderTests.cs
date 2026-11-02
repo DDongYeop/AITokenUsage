@@ -463,10 +463,11 @@ public class CodexUsageProviderTests
         Assert.Equal(ProviderStatus.SignedOut, snapshot.Status);
         Assert.Equal(ReauthMessage, snapshot.StatusMessage);
         Assert.Equal(AccountId, snapshot.ProviderId);
+        Assert.Empty(_processes.Calls);
     }
 
     [Fact]
-    public async Task Account_NoAuthFile_AppServerAuthRequired_IsSignedOutWithReauth()
+    public async Task Account_NoAuthFile_CodexInstalled_IsSignedOutWithReauth_WithoutStartingAppServer()
     {
         GivenCodexInstalledRecordingSpecs(InitializeOk, RateLimitsAuthRequired);
 
@@ -474,6 +475,25 @@ public class CodexUsageProviderTests
 
         Assert.Equal(ProviderStatus.SignedOut, snapshot.Status);
         Assert.Equal(ReauthMessage, snapshot.StatusMessage);
+        Assert.Empty(_processes.Calls);
+        Assert.Empty(_startedSpecs);
+    }
+
+    [Fact]
+    public async Task Account_NoAuthFile_LeftoverRolloutLog_IsStillSignedOutWithReauth()
+    {
+        var sessions = AccountHome + @"\sessions";
+        _files.AddDirectory(sessions);
+        _files.AddFile(
+            sessions + @"\2026\10\28\rollout-2026-10-28T11-40-00-00000000-0000-4000-8000-000000000001.jsonl",
+            Fixture.Read("codex/rollout-d.jsonl"), CodexTestData.FileTime);
+        GivenCodexInstalledRecordingSpecs(InitializeOk, RateLimitsOk);
+
+        var snapshot = await CreateAccount().FetchAsync(CancellationToken.None);
+
+        Assert.Equal(ProviderStatus.SignedOut, snapshot.Status);
+        Assert.Equal(ReauthMessage, snapshot.StatusMessage);
+        Assert.Empty(_processes.Calls);
     }
 
     [Fact]

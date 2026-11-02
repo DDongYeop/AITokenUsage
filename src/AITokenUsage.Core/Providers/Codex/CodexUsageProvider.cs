@@ -125,7 +125,12 @@ public sealed class CodexUsageProvider : IUsageProvider
         Reason reason;
         int? httpStatus = null;
         if (read.Status == CodexAuthReadStatus.Unreadable) reason = Reason.AuthUnreadable;
-        else if (auth is null) reason = Reason.NoAuthFile;
+        else if (auth is null)
+        {
+            // An extra account without a login has nothing to ask: no app-server, no old logs.
+            if (IsAccount) return SignedOut(now);
+            reason = Reason.NoAuthFile;
+        }
         else if (!auth.HasAccessToken) reason = Reason.NoAccessToken;
         else if (!auth.IsFresh(now)) reason = Reason.StaleToken;
         else
@@ -203,7 +208,6 @@ public sealed class CodexUsageProvider : IUsageProvider
 
         return reason switch
         {
-            Reason.NoAuthFile when IsAccount => SignedOut(now),
             Reason.NoAuthFile when codexPath is null =>
                 UsageSnapshot.WithStatus(Id, ProviderStatus.NotInstalled, now, MessageNotInstalled),
             Reason.NoAuthFile =>

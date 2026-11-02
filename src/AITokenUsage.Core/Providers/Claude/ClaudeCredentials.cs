@@ -7,9 +7,15 @@ public enum ClaudeCredentialState
     SignedOut,
     MissingProfileScope,
     Unreadable,
+
+    /// <summary>The widget-owned login is missing, broken or refused by the token endpoint: sign in again.</summary>
+    ReauthRequired,
+
+    /// <summary>Renewing the widget-owned login failed for now (network, 429, 5xx, bad body). The tokens are kept.</summary>
+    RenewFailed,
 }
 
-/// <summary>The subset of claudeAiOauth the widget needs. Read-only: never written back.</summary>
+/// <summary>The values one usage request needs. Claude Code's own file is read-only: never written back.</summary>
 public sealed record ClaudeCredentials(
     string AccessToken,
     DateTimeOffset? ExpiresAt,

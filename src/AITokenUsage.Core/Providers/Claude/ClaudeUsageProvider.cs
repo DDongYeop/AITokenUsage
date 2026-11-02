@@ -5,14 +5,16 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using AITokenUsage.Core.Abstractions;
+using AITokenUsage.Core.Accounts;
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Resources;
 
 namespace AITokenUsage.Core.Providers.Claude;
 
 /// <summary>
-/// Reads Claude Code's OAuth login (read-only) and calls GET /api/oauth/usage.
-/// Never refreshes or writes tokens, never logs tokens, headers or bodies.
+/// Calls GET /api/oauth/usage with the login from an <see cref="IClaudeCredentialSource"/>.
+/// The built-in panel reads Claude Code's login read-only and never refreshes or writes it; an extra account
+/// (<see cref="ForAccount"/>) uses the widget-owned login, which renews itself. Never logs tokens, headers or bodies.
 /// </summary>
 public sealed class ClaudeUsageProvider : IUsageProvider
 {
@@ -36,10 +38,10 @@ public sealed class ClaudeUsageProvider : IUsageProvider
     private static string MsgBadBody => Strings.ClaudeBadBody;
     private static string MsgNoMeters => Strings.ClaudeNoMeters;
 
+    private static string MsgReauth => Strings.AccountReauth;
+
     private readonly ProviderContext _ctx;
     private readonly ClaudeVersionProbe _versionProbe;
-    private readonly ClaudeCredentialReader _reader;
-    private readonly string _credentialsPath;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     private string? _version;
@@ -52,27 +54,64 @@ public sealed class ClaudeUsageProvider : IUsageProvider
     private ProviderStatus _heldStatus;
     private string? _heldMessage;
 
+    /// <summary>The built-in Claude panel: Claude Code's own login, read-only.</summary>
     public ClaudeUsageProvider(ProviderContext ctx)
-        : this(ctx, new ClaudeVersionProbe(ctx.Env))
+        : this(ctx, ProviderIds.Claude, CliSource(ctx), null)
     {
     }
 
+    /// <summary>The built-in Claude panel with a given version probe (tests).</summary>
     public ClaudeUsageProvider(ProviderContext ctx, ClaudeVersionProbe versionProbe)
+        : this(ctx, ProviderIds.Claude, CliSource(ctx), versionProbe)
     {
-        _ctx = ctx;
-        _versionProbe = versionProbe;
-        _reader = new ClaudeCredentialReader(ctx.Files);
-        _credentialsPath = ClaudePaths.ResolveCredentialsPath(ctx.Env);
-        WatchPaths = [_credentialsPath];
     }
 
-    public string Id => ProviderIds.Claude;
+    /// <param name="ctx">External dependencies.</param>
+    /// <param name="id">Panel id: "claude" or an account id such as "claude#k3x9q2".</param>
+    /// <param name="source">Where the login comes from.</param>
+    /// <param name="versionProbe">Picks the claude-code/&lt;version&gt; User-Agent; defaults to probing this PC.</param>
+    public ClaudeUsageProvider(ProviderContext ctx, string id, IClaudeCredentialSource source, ClaudeVersionProbe? versionProbe = null)
+    {
+        ArgumentNullException.ThrowIfNull(ctx);
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        ArgumentNullException.ThrowIfNull(source);
+        _ctx = ctx;
+        Id = id;
+        Source = source;
+        _versionProbe = versionProbe ?? new ClaudeVersionProbe(ctx.Env);
+    }
+
+    /// <summary>An extra Claude account (<paramref name="accountId"/> like "claude#k3x9q2") with its widget-owned login.</summary>
+    public static ClaudeUsageProvider ForAccount(ProviderContext ctx, string accountId)
+    {
+        ArgumentNullException.ThrowIfNull(ctx);
+        if (!AccountIds.IsAccountId(accountId) || ProviderIds.KindOf(accountId) != ProviderIds.Claude)
+        {
+            throw new ArgumentException($"Not a Claude account id: '{accountId}'.", nameof(accountId));
+        }
+
+        var source = new ClaudeOwnedCredentialSource(
+            ctx.Secrets,
+            AccountStorage.ClaudeSecretName(accountId),
+            new ClaudeTokenRenewer(ctx.Http, ctx.Time, ctx.Log),
+            ctx.Time,
+            ctx.Log);
+        return new ClaudeUsageProvider(ctx, accountId, source);
+    }
+
+    public string Id { get; }
 
     public string DisplayName => "Claude";
 
     public TimeSpan MinInterval => TimeSpan.FromMinutes(2);
 
-    public IReadOnlyList<string> WatchPaths { get; }
+    public IReadOnlyList<string> WatchPaths => Source.WatchPaths;
+
+    /// <summary>Where the login comes from: Claude Code's file or the widget-owned login of an extra account.</summary>
+    public IClaudeCredentialSource Source { get; }
+
+    /// <summary>The extra account's email once its login was loaded; null for the built-in panel.</summary>
+    public string? AccountEmail => (Source as ClaudeOwnedCredentialSource)?.Email;
 
     public IReadOnlyList<MeterOption> StaticMeterOptions =>
     [
@@ -85,13 +124,15 @@ public sealed class ClaudeUsageProvider : IUsageProvider
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            ClaudeCredentialReadResult read = await _reader.ReadAsync(_credentialsPath, ct).ConfigureAwait(false);
+            // The token endpoint and the usage endpoint get the same User-Agent.
+            string userAgent = "claude-code/" + UserAgentVersion(_ctx.Time.GetUtcNow());
+            ClaudeCredentialReadResult read = await Source.ReadAsync(userAgent, ct).ConfigureAwait(false);
             if (read.State != ClaudeCredentialState.Ok || read.Credentials is null)
             {
                 return FromCredentialState(read.State);
             }
 
-            return await QueryAsync(read.Credentials, allowAuthRetry: true, ct).ConfigureAwait(false);
+            return await QueryAsync(read.Credentials, userAgent, allowAuthRetry: true, ct).ConfigureAwait(false);
         }
         finally
         {
@@ -99,7 +140,7 @@ public sealed class ClaudeUsageProvider : IUsageProvider
         }
     }
 
-    private async Task<UsageSnapshot> QueryAsync(ClaudeCredentials credentials, bool allowAuthRetry, CancellationToken ct)
+    private async Task<UsageSnapshot> QueryAsync(ClaudeCredentials credentials, string userAgent, bool allowAuthRetry, CancellationToken ct)
     {
         DateTimeOffset now = _ctx.Time.GetUtcNow();
         string? plan = ClaudeUsageParser.FormatPlanLabel(credentials.SubscriptionType, credentials.RateLimitTier);
@@ -110,7 +151,7 @@ public sealed class ClaudeUsageProvider : IUsageProvider
             return Status(_heldStatus, _heldMessage, plan);
         }
 
-        if (credentials.ExpiresAt is { } expiresAt && expiresAt - now < RefreshMargin)
+        if (!Source.RenewsItself && credentials.ExpiresAt is { } expiresAt && expiresAt - now < RefreshMargin)
         {
             // Claude Code renews the login under its own lock; the file watcher re-queries when it does.
             return Status(ProviderStatus.WaitingForCliRefresh, MsgWaitingForCli, plan);
@@ -119,7 +160,7 @@ public sealed class ClaudeUsageProvider : IUsageProvider
         HttpResponseMessage response;
         try
         {
-            response = await SendAsync(credentials.AccessToken, now, ct).ConfigureAwait(false);
+            response = await SendAsync(credentials.AccessToken, userAgent, ct).ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
         {
@@ -144,20 +185,28 @@ public sealed class ClaudeUsageProvider : IUsageProvider
                     _ctx.Log.Info("Claude usage: HTTP 401.");
                     if (allowAuthRetry)
                     {
-                        ClaudeCredentialReadResult reread = await _reader.ReadAsync(_credentialsPath, ct).ConfigureAwait(false);
-                        if (reread.State != ClaudeCredentialState.Ok || reread.Credentials is null)
+                        // CLI: re-read the file. Widget-owned: renew once, unless this fetch just did.
+                        ClaudeCredentialReadResult? recovered = await Source.RecoverAsync(credentials, userAgent, ct).ConfigureAwait(false);
+                        if (recovered is not null)
                         {
-                            return FromCredentialState(reread.State);
-                        }
+                            if (recovered.State != ClaudeCredentialState.Ok || recovered.Credentials is null)
+                            {
+                                return FromCredentialState(recovered.State);
+                            }
 
-                        if (!string.Equals(reread.Credentials.AccessToken, credentials.AccessToken, StringComparison.Ordinal))
-                        {
-                            return await QueryAsync(reread.Credentials, allowAuthRetry: false, ct).ConfigureAwait(false);
+                            if (!string.Equals(recovered.Credentials.AccessToken, credentials.AccessToken, StringComparison.Ordinal))
+                            {
+                                return await QueryAsync(recovered.Credentials, userAgent, allowAuthRetry: false, ct).ConfigureAwait(false);
+                            }
                         }
                     }
 
-                    Hold(tokenHash, now, ProviderStatus.WaitingForCliRefresh, MsgWaitingForCli);
-                    return Status(ProviderStatus.WaitingForCliRefresh, MsgWaitingForCli, plan);
+                    // Same token (or the retry was refused too): do not send it again for an hour.
+                    (ProviderStatus heldStatus, string heldMessage) = Source.RenewsItself
+                        ? (ProviderStatus.SignedOut, MsgReauth)
+                        : (ProviderStatus.WaitingForCliRefresh, MsgWaitingForCli);
+                    Hold(tokenHash, now, heldStatus, heldMessage);
+                    return Status(heldStatus, heldMessage, plan);
                 }
 
                 case HttpStatusCode.Forbidden:
@@ -188,12 +237,12 @@ public sealed class ClaudeUsageProvider : IUsageProvider
         }
     }
 
-    private async Task<HttpResponseMessage> SendAsync(string accessToken, DateTimeOffset now, CancellationToken ct)
+    private async Task<HttpResponseMessage> SendAsync(string accessToken, string userAgent, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, UsageUrl);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         request.Headers.TryAddWithoutValidation("anthropic-beta", OAuthBetaHeader);
-        request.Headers.TryAddWithoutValidation("User-Agent", "claude-code/" + UserAgentVersion(now));
+        request.Headers.TryAddWithoutValidation("User-Agent", userAgent);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         return await _ctx.Http.SendAsync(request, HttpCompletionOption.ResponseContentRead, ct).ConfigureAwait(false);
     }
@@ -235,6 +284,10 @@ public sealed class ClaudeUsageProvider : IUsageProvider
                 return Status(ProviderStatus.SignedOut, MsgSignedOut, null);
             case ClaudeCredentialState.MissingProfileScope:
                 return Status(ProviderStatus.Unsupported, MsgNoUsageAccess, null);
+            case ClaudeCredentialState.ReauthRequired:
+                return Status(ProviderStatus.SignedOut, MsgReauth, null);
+            case ClaudeCredentialState.RenewFailed:
+                return Status(ProviderStatus.Error, MsgNetwork, null);
             default:
                 _ctx.Log.Warn("Claude credentials file could not be read or parsed after retries.");
                 return Status(ProviderStatus.Error, MsgUnreadable, null);
@@ -278,6 +331,12 @@ public sealed class ClaudeUsageProvider : IUsageProvider
         }
 
         return _version;
+    }
+
+    private static ClaudeCliCredentialSource CliSource(ProviderContext ctx)
+    {
+        ArgumentNullException.ThrowIfNull(ctx);
+        return new ClaudeCliCredentialSource(ctx.Files, ClaudePaths.ResolveCredentialsPath(ctx.Env));
     }
 
     private static string HashToken(string token) =>

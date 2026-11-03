@@ -5,25 +5,29 @@ namespace AITokenUsage;
 
 /// <summary>
 /// Single instance via a named mutex. A second instance signals the named event (first instance opens settings)
-/// and exits. Create and dispose on the UI thread: the mutex is owned by the thread that created it.
+/// and exits. The installer signals the exit event (installer\AITokenUsage.iss) to close the app before it replaces
+/// the files. Create and dispose on the UI thread: the mutex is owned by the thread that created it.
 /// </summary>
 public sealed class SingleInstance : IDisposable
 {
     public const string MutexName = @"Local\AITokenUsage.SingleInstance";
     public const string ShowSettingsEventName = @"Local\AITokenUsage.ShowSettings";
+    public const string ExitEventName = @"Local\AITokenUsage.Exit";
 
     private static readonly TimeSpan RetryInterval = TimeSpan.FromMilliseconds(200);
 
     private readonly Mutex _mutex;
     private readonly EventWaitHandle _showSettings;
+    private readonly EventWaitHandle _exit;
     private readonly ManualResetEvent _stop = new(false);
     private Thread? _listener;
     private bool _disposed;
 
-    private SingleInstance(Mutex mutex, EventWaitHandle showSettings)
+    private SingleInstance(Mutex mutex, EventWaitHandle showSettings, EventWaitHandle exit)
     {
         _mutex = mutex;
         _showSettings = showSettings;
+        _exit = exit;
     }
 
     /// <summary>Returns the owner object for the first instance; for a second instance signals the first and returns null.</summary>
@@ -62,7 +66,8 @@ public sealed class SingleInstance : IDisposable
         var showSettings = new EventWaitHandle(false, EventResetMode.AutoReset, ShowSettingsEventName);
         if (createdNew)
         {
-            return new SingleInstance(mutex, showSettings);
+            // Only the owner opens the exit event: the installer treats "the event exists" as "this app can close itself".
+            return new SingleInstance(mutex, showSettings, new EventWaitHandle(false, EventResetMode.AutoReset, ExitEventName));
         }
 
         if (signalFirstInstanceOnTimeout)
@@ -75,8 +80,8 @@ public sealed class SingleInstance : IDisposable
         return null;
     }
 
-    /// <summary>Waits for the signal on a background thread and invokes the callback on the dispatcher.</summary>
-    public void StartListening(Dispatcher dispatcher, Action onShowSettings)
+    /// <summary>Waits for the signals on a background thread and invokes the matching callback on the dispatcher.</summary>
+    public void StartListening(Dispatcher dispatcher, Action onShowSettings, Action onExit)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (_listener is not null)
@@ -84,7 +89,7 @@ public sealed class SingleInstance : IDisposable
             return;
         }
 
-        _listener = new Thread(() => Listen(dispatcher, onShowSettings))
+        _listener = new Thread(() => Listen(dispatcher, onShowSettings, onExit))
         {
             IsBackground = true,
             Name = "AITokenUsage.SingleInstance",
@@ -105,6 +110,7 @@ public sealed class SingleInstance : IDisposable
         if (stopped)
         {
             _showSettings.Dispose();
+            _exit.Dispose();
             _stop.Dispose();
         }
 
@@ -120,17 +126,18 @@ public sealed class SingleInstance : IDisposable
         _mutex.Dispose();
     }
 
-    private void Listen(Dispatcher dispatcher, Action onShowSettings)
+    private void Listen(Dispatcher dispatcher, Action onShowSettings, Action onExit)
     {
-        WaitHandle[] handles = [_stop, _showSettings];
-        while (WaitHandle.WaitAny(handles) == 1)
+        WaitHandle[] handles = [_stop, _showSettings, _exit];
+        int signalled;
+        while ((signalled = WaitHandle.WaitAny(handles)) != 0)
         {
             if (dispatcher.HasShutdownStarted)
             {
                 return;
             }
 
-            dispatcher.BeginInvoke(DispatcherPriority.Normal, onShowSettings);
+            dispatcher.BeginInvoke(DispatcherPriority.Normal, signalled == 1 ? onShowSettings : onExit);
         }
     }
 }

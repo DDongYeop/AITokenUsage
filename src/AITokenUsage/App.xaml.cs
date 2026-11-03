@@ -40,7 +40,7 @@ public partial class App : Application
             // AppHost applies the UI language itself (LanguageBootstrap.Apply) right after loading the settings.
             _host = new AppHost(Dispatcher);
             HookGlobalExceptionHandlers(_host.Log);
-            _instance.StartListening(Dispatcher, _host.OpenSettings);
+            _instance.StartListening(Dispatcher, _host.OpenSettings, _host.Shutdown);
             _tray = new TrayIconController(_host);
             _host.Start();
         }

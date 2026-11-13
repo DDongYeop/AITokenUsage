@@ -27,7 +27,8 @@ public sealed record ClaudeRenewResult(ClaudeRenewOutcome Outcome, ClaudeOwnedCr
 /// <summary>
 /// Renews a widget-owned Claude login with Claude Code's public OAuth client (spec §2.3).
 /// Only <see cref="ClaudeOwnedCredentialSource"/> may use it: Claude Code's own login is never refreshed by the widget,
-/// because refresh tokens rotate and are single-use. Logs only the outcome and HTTP status code.
+/// because refresh tokens rotate and are single-use. Logs only the outcome and HTTP status code, plus for a failed
+/// request the endpoint's error identifier and a few response headers (never the message or the rest of the body).
 /// </summary>
 public sealed class ClaudeTokenRenewer
 {
@@ -36,6 +37,11 @@ public sealed class ClaudeTokenRenewer
     public const string DefaultScope = "user:profile user:inference user:sessions:claude_code user:mcp_servers user:file_upload";
 
     public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
+
+    private const int MaxFailureValueLength = 48;
+
+    /// <summary>Response headers worth a place in the failure log: they tell a rate limit from a blocked client.</summary>
+    private static readonly string[] FailureHeaders = ["retry-after", "server", "cf-mitigated", "x-should-retry"];
 
     private readonly HttpClient _http;
     private readonly TimeProvider _time;
@@ -86,7 +92,8 @@ public sealed class ClaudeTokenRenewer
 
             if (!response.IsSuccessStatusCode)
             {
-                _log.Warn($"Claude token renewal: failed (HTTP {code}).");
+                string failureBody = await response.Content.ReadAsStringAsync(linked.Token).ConfigureAwait(false);
+                _log.Warn($"Claude token renewal: failed (HTTP {code}{DescribeFailure(response, failureBody, current)}).");
                 return new ClaudeRenewResult(ClaudeRenewOutcome.Failed, null);
             }
 
@@ -135,6 +142,77 @@ public sealed class ClaudeTokenRenewer
         request.Headers.TryAddWithoutValidation("User-Agent", userAgent);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         return request;
+    }
+
+    /// <summary>
+    /// Says why the endpoint refused, for the log: the error identifier from a JSON body, the content type and the
+    /// headers that tell a rate limit from a blocked client. Never the error message or any other part of the body.
+    /// Each part starts with "; " so the result appends to the status code.
+    /// </summary>
+    private static string DescribeFailure(HttpResponseMessage response, string body, ClaudeOwnedCredentials current)
+    {
+        var detail = new StringBuilder();
+
+        void Append(string name, string? value)
+        {
+            if (!string.IsNullOrEmpty(value))
+            {
+                detail.Append("; ").Append(name).Append('=').Append(value);
+            }
+        }
+
+        Append("error", ErrorIdentifier(body, current));
+        Append("content-type", CleanHeaderValue(response.Content.Headers.ContentType?.MediaType));
+        foreach (string header in FailureHeaders)
+        {
+            if (response.Headers.TryGetValues(header, out IEnumerable<string>? values))
+            {
+                Append(header, CleanHeaderValue(string.Join(", ", values)));
+            }
+        }
+
+        return detail.ToString();
+    }
+
+    /// <summary>
+    /// "error" as a string (OAuth), else error.type (Anthropic API), and only when it is a short identifier that
+    /// does not contain one of the tokens we sent: a server that echoed its input must not reach the log.
+    /// </summary>
+    private static string? ErrorIdentifier(string body, ClaudeOwnedCredentials current)
+    {
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(body);
+            JsonElement root = document.RootElement;
+            string? identifier = Json.Str(root, "error")
+                ?? (Json.Obj(root, "error") is { } error ? Json.Str(error, "type") : null);
+            if (identifier is null
+                || identifier.Length is 0 or > MaxFailureValueLength
+                || !identifier.All(c => char.IsAsciiLetterOrDigit(c) || c is '_' or '-' or '.')
+                || identifier.Contains(current.RefreshToken, StringComparison.Ordinal)
+                || identifier.Contains(current.AccessToken, StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            return identifier;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Keeps ASCII letters, digits, spaces and a little punctuation, at most 48 characters.</summary>
+    private static string? CleanHeaderValue(string? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        string cleaned = string.Concat(value.Where(c => char.IsAsciiLetterOrDigit(c) || " _.,:;=/+-".Contains(c, StringComparison.Ordinal)));
+        return cleaned.Length > MaxFailureValueLength ? cleaned[..MaxFailureValueLength] : cleaned;
     }
 
     /// <summary>

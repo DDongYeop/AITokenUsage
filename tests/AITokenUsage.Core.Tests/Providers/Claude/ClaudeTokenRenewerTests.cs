@@ -139,6 +139,96 @@ public class ClaudeTokenRenewerTests
     }
 
     [Fact]
+    public async Task Failure_log_names_the_error_type_and_refusal_headers_but_no_message()
+    {
+        Respond(() =>
+        {
+            HttpResponseMessage response = StubHttpHandler.Json(
+                HttpStatusCode.TooManyRequests,
+                """{"type":"error","error":{"type":"rate_limit_error","message":"Slow down, friend."}}""");
+            response.Headers.TryAddWithoutValidation("Retry-After", "120");
+            response.Headers.TryAddWithoutValidation("Server", "cloudflare");
+            response.Headers.TryAddWithoutValidation("cf-mitigated", "challenge");
+            response.Headers.TryAddWithoutValidation("x-should-retry", "false");
+            return response;
+        });
+
+        await CreateRenewer().RenewAsync(Login(), UserAgent, CancellationToken.None);
+
+        LogEntry entry = Assert.Single(_log.Entries);
+        Assert.Equal(
+            "Claude token renewal: failed (HTTP 429; error=rate_limit_error; content-type=application/json; retry-after=120; server=cloudflare; cf-mitigated=challenge; x-should-retry=false).",
+            entry.Message);
+        AssertNoTokensInLog();
+    }
+
+    [Fact]
+    public async Task Failure_log_names_an_oauth_style_error_code_without_its_description()
+    {
+        Respond(() => StubHttpHandler.Json(
+            HttpStatusCode.ServiceUnavailable,
+            """{"error":"temporarily_unavailable","error_description":"Try again in a while."}"""));
+
+        await CreateRenewer().RenewAsync(Login(), UserAgent, CancellationToken.None);
+
+        Assert.Equal(
+            "Claude token renewal: failed (HTTP 503; error=temporarily_unavailable; content-type=application/json).",
+            Assert.Single(_log.Entries).Message);
+    }
+
+    [Fact]
+    public async Task Failure_log_of_a_non_json_body_names_only_the_content_type()
+    {
+        Respond(() => new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+        {
+            Content = new StringContent("<html><body>Just a moment...</body></html>", System.Text.Encoding.UTF8, "text/html"),
+        });
+
+        await CreateRenewer().RenewAsync(Login(), UserAgent, CancellationToken.None);
+
+        Assert.Equal(
+            "Claude token renewal: failed (HTTP 429; content-type=text/html).",
+            Assert.Single(_log.Entries).Message);
+    }
+
+    [Theory]
+    [InlineData("""{"error":"owned-refresh-token-one"}""")]
+    [InlineData("""{"error":{"type":"owned-refresh-token-one"}}""")]
+    [InlineData("""{"error":"not an identifier; has spaces"}""")]
+    [InlineData("""{"error":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}""")]
+    [InlineData("""{"error":42}""")]
+    [InlineData("""[1]""")]
+    public async Task Failure_log_drops_an_error_value_that_is_not_a_short_identifier_or_echoes_a_token(string body)
+    {
+        Respond(() => StubHttpHandler.Json(HttpStatusCode.TooManyRequests, body));
+
+        await CreateRenewer().RenewAsync(Login(), UserAgent, CancellationToken.None);
+
+        Assert.Equal(
+            "Claude token renewal: failed (HTTP 429; content-type=application/json).",
+            Assert.Single(_log.Entries).Message);
+        AssertNoTokensInLog();
+    }
+
+    [Fact]
+    public async Task Failure_log_cleans_and_shortens_header_values()
+    {
+        Respond(() =>
+        {
+            HttpResponseMessage response = StubHttpHandler.Json(HttpStatusCode.TooManyRequests, "{}");
+            response.Headers.TryAddWithoutValidation("Retry-After", "Wed, 21 Oct 2026 07:28:00 GMT");
+            response.Headers.TryAddWithoutValidation("Server", new string('s', 80) + "é<tag>");
+            return response;
+        });
+
+        await CreateRenewer().RenewAsync(Login(), UserAgent, CancellationToken.None);
+
+        Assert.Equal(
+            "Claude token renewal: failed (HTTP 429; content-type=application/json; retry-after=Wed, 21 Oct 2026 07:28:00 GMT; server=" + new string('s', 48) + ").",
+            Assert.Single(_log.Entries).Message);
+    }
+
+    [Fact]
     public async Task Network_error_is_temporary()
     {
         Respond(() => throw new HttpRequestException("No connection could be made."));

@@ -14,7 +14,7 @@ public class ClaudePathsTests
         Assert.Equal(Path.Combine(env.UserProfile, ".claude", ".credentials.json"), ClaudePaths.ResolveCredentialsPath(env));
     }
 
-    [Fact]
+    [WindowsFact]
     public void Uses_claude_config_dir_when_set()
     {
         var env = new FakeEnvironment();
@@ -32,7 +32,7 @@ public class ClaudePathsTests
         Assert.Equal(Path.Combine(env.UserProfile, ".claude", ".credentials.json"), ClaudePaths.ResolveCredentialsPath(env));
     }
 
-    [Fact]
+    [WindowsFact]
     public void Secure_storage_dir_wins_over_claude_config_dir()
     {
         var env = new FakeEnvironment();

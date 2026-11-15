@@ -93,7 +93,7 @@ public class ClaudeUsageProviderTests
         Assert.Equal(new[] { "현재 세션 (5시간)", "주간 · 모든 모델" }, provider.StaticMeterOptions.Select(o => o.Label));
     }
 
-    [Fact]
+    [WindowsFact]
     public void Watch_path_follows_secure_storage_override()
     {
         var h = new Harness();

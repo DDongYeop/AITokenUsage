@@ -10,7 +10,7 @@ public sealed class DpapiSecretStoreTests : IDisposable
 
     public void Dispose() => _temp.Dispose();
 
-    [Fact]
+    [WindowsFact]
     public void SaveThenLoad_RoundTrips_AndFileIsNotPlainText()
     {
         string directory = _temp.Combine("AITokenUsage");
@@ -27,7 +27,7 @@ public sealed class DpapiSecretStoreTests : IDisposable
         Assert.Equal("ghu_test-token-한글", new DpapiSecretStore(directory).Load("copilot-token"));
     }
 
-    [Fact]
+    [WindowsFact]
     public void Save_Overwrites_AndLeavesNoTempFile()
     {
         var store = new DpapiSecretStore(_temp.Path);
@@ -45,7 +45,7 @@ public sealed class DpapiSecretStoreTests : IDisposable
         Assert.Null(new DpapiSecretStore(_temp.Combine("does-not-exist")).Load("copilot-token"));
     }
 
-    [Fact]
+    [WindowsFact]
     public void Load_Succeeds_WhileAnotherHandleHoldsTheFileOpenForWriting()
     {
         var store = new DpapiSecretStore(_temp.Path);
@@ -58,7 +58,7 @@ public sealed class DpapiSecretStoreTests : IDisposable
         Assert.Null(store.Load("never-saved"));
     }
 
-    [Fact]
+    [WindowsFact]
     public void Load_ReturnsNull_WhenFileIsCorrupt()
     {
         File.WriteAllBytes(_temp.Combine("copilot-token.bin"), [1, 2, 3, 4, 5]);
@@ -66,7 +66,7 @@ public sealed class DpapiSecretStoreTests : IDisposable
         Assert.Null(new DpapiSecretStore(_temp.Path).Load("copilot-token"));
     }
 
-    [Fact]
+    [WindowsFact]
     public void Delete_RemovesTheFile_AndIsIdempotent()
     {
         var store = new DpapiSecretStore(_temp.Path);
@@ -79,7 +79,7 @@ public sealed class DpapiSecretStoreTests : IDisposable
         Assert.False(File.Exists(_temp.Combine("copilot-token.bin")));
     }
 
-    [Theory]
+    [WindowsTheory]
     [InlineData("")]
     [InlineData(" ")]
     [InlineData("..")]

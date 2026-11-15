@@ -21,7 +21,7 @@ public sealed class GeminiCredentialReaderTests
         Assert.Equal(Path.Combine(_env.UserProfile, ".gemini", "settings.json"), paths.SettingsPath);
     }
 
-    [Fact]
+    [WindowsFact]
     public void Paths_treat_GEMINI_CLI_HOME_as_the_home_directory()
     {
         _env.Set("GEMINI_CLI_HOME", @"D:\alt-home");

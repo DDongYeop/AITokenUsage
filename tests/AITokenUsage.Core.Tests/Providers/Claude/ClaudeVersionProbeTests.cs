@@ -18,7 +18,7 @@ public class ClaudeVersionProbeTests
 
     private static Func<IEnumerable<string?>> Processes(params string?[] versions) => () => versions;
 
-    [Fact]
+    [WindowsFact]
     public void Picks_highest_semantic_version_from_extension_folders()
     {
         var env = new FakeEnvironment();
@@ -63,7 +63,7 @@ public class ClaudeVersionProbeTests
         Assert.Equal("2.1.311", probe.GetVersion());
     }
 
-    [Fact]
+    [WindowsFact]
     public void Only_desktop_running_falls_through_to_extension_folders()
     {
         string?[] raw = new[] { ClaudeVersionProbe.TryReadClaudeCodeVersion("Claude", "4.29.0.0") }
@@ -100,7 +100,7 @@ public class ClaudeVersionProbeTests
         Assert.Equal("2.1.311", probe.GetVersion());
     }
 
-    [Fact]
+    [WindowsFact]
     public void Unparseable_process_versions_fall_back_to_folders()
     {
         var probe = new ClaudeVersionProbe(new FakeEnvironment(), _ => ExtensionFolders, Processes(null, "", "unknown"));
@@ -108,7 +108,7 @@ public class ClaudeVersionProbeTests
         Assert.Equal("2.1.350", probe.GetVersion());
     }
 
-    [Fact]
+    [WindowsFact]
     public void Process_probe_failure_falls_back_to_folders()
     {
         var probe = new ClaudeVersionProbe(

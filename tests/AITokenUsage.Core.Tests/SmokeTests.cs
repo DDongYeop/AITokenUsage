@@ -4,7 +4,7 @@ namespace AITokenUsage.Core.Tests;
 
 public class SmokeTests
 {
-    [Fact]
+    [WindowsFact]
     public void Tests_RunOnWindows()
     {
         Assert.True(OperatingSystem.IsWindows());

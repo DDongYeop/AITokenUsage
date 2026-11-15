@@ -76,7 +76,7 @@ public class CodexUsageProviderTests
 
     private static string StaleAuth() => CodexTestData.AuthJson(accessToken: CodexTestData.AccessJwt(CodexTestData.Now.AddMinutes(2)));
 
-    [Fact]
+    [WindowsFact]
     public void Metadata_FollowsSpec()
     {
         _env.Set("CODEX_HOME", @"D:\codex-home");
@@ -215,7 +215,7 @@ public class CodexUsageProviderTests
         Assert.Single(_startedFileNames);
     }
 
-    [Fact]
+    [WindowsFact]
     public async Task StaleToken_SkipsWham_AndUsesAppServerThroughCmd()
     {
         GivenAuth(StaleAuth());
@@ -231,7 +231,7 @@ public class CodexUsageProviderTests
         Assert.Equal(new[] { "cmd.exe" }, _startedFileNames);
     }
 
-    [Fact]
+    [WindowsFact]
     public async Task AppServer_RunsAtMostOncePerFifteenMinutes_ThenRolloutFallback()
     {
         UseKoreanTime();
@@ -254,7 +254,7 @@ public class CodexUsageProviderTests
         Assert.Equal(2, _startedFileNames.Count); // t=0 and t=15min, not t=5min
     }
 
-    [Fact]
+    [WindowsFact]
     public async Task StaleToken_NoCodex_UsesRolloutLogs()
     {
         UseKoreanTime();
@@ -346,7 +346,7 @@ public class CodexUsageProviderTests
         Assert.Equal("Codex 사용량을 불러오지 못했습니다 (HTTP 503)", snapshot.StatusMessage);
     }
 
-    [Fact]
+    [WindowsFact]
     public async Task HtmlBody_IsTransientFailure_AndFallsBackToLogs()
     {
         UseKoreanTime();
@@ -430,7 +430,7 @@ public class CodexUsageProviderTests
         });
     }
 
-    [Fact]
+    [WindowsFact]
     public void ForAccount_UsesTheAccountHome_AndIsAnAccount()
     {
         _env.Set("CODEX_HOME", @"D:\should-be-ignored");
@@ -496,7 +496,7 @@ public class CodexUsageProviderTests
         Assert.Empty(_processes.Calls);
     }
 
-    [Fact]
+    [WindowsFact]
     public async Task Account_StaleToken_AppServerRunsWithTheAccountCodexHome()
     {
         GivenAccountAuth(CodexTestData.AuthJson(accessToken: CodexTestData.AccessJwt(CodexTestData.Now.AddMinutes(2))));

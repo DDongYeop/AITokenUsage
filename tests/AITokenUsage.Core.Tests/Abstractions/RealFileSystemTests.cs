@@ -11,7 +11,7 @@ public sealed class RealFileSystemTests : IDisposable
 
     public void Dispose() => _temp.Dispose();
 
-    [Fact]
+    [WindowsFact]
     public void ReadAllTextShared_ReadsWhileAnotherHandleHoldsTheFileOpenForWriting()
     {
         string path = _temp.Combine("auth.json");

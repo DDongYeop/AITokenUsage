@@ -23,7 +23,7 @@ public sealed partial class WindowsCredentialStoreTests : IDisposable
         }
     }
 
-    [Fact]
+    [WindowsFact]
     public void ReadGeneric_DecodesUtf8Blob()
     {
         string target = _prefix + "main-account";
@@ -32,13 +32,13 @@ public sealed partial class WindowsCredentialStoreTests : IDisposable
         Assert.Equal("""{"token":{"accessToken":"test-access-token","note":"한글"}}""", _store.ReadGeneric(target));
     }
 
-    [Fact]
+    [WindowsFact]
     public void ReadGeneric_ReturnsNull_WhenMissing()
     {
         Assert.Null(_store.ReadGeneric(_prefix + "missing"));
     }
 
-    [Fact]
+    [WindowsFact]
     public void EnumerateGeneric_ReturnsEveryMatch_WithUserNames()
     {
         WriteGeneric(_prefix + "https://github.com:alice", "https://github.com:alice", "gho_test-alice");
@@ -53,7 +53,7 @@ public sealed partial class WindowsCredentialStoreTests : IDisposable
         Assert.Equal("gho_test-bob", found[1].Secret);
     }
 
-    [Fact]
+    [WindowsFact]
     public void EnumerateGeneric_ReturnsEmpty_WhenNothingMatches()
     {
         Assert.Empty(_store.EnumerateGeneric(_prefix + "nothing-here*"));

@@ -9,7 +9,7 @@ public class RealProcessRunnerTests
 
     private readonly RealProcessRunner _runner = new();
 
-    [Fact]
+    [WindowsFact]
     public async Task RunAsync_CapturesStdoutStderrAndExitCode()
     {
         var spec = new ProcessSpec(Cmd, ["/d", "/c", "echo out-line& echo err-line 1>&2& exit /b 3"]);
@@ -22,7 +22,7 @@ public class RealProcessRunnerTests
         Assert.Equal("err-line", result.StdErr.Trim());
     }
 
-    [Fact]
+    [WindowsFact]
     public async Task RunAsync_AppliesAndRemovesEnvironmentVariables()
     {
         Environment.SetEnvironmentVariable("AITU_TEST_REMOVE", "inherited");
@@ -42,7 +42,7 @@ public class RealProcessRunnerTests
         }
     }
 
-    [Fact]
+    [WindowsFact]
     public async Task RunAsync_KillsTreeAndReportsTimeout()
     {
         var spec = new ProcessSpec(Cmd, ["/d", "/c", "ping -n 30 127.0.0.1 >nul"], Timeout: TimeSpan.FromMilliseconds(500));
@@ -55,7 +55,7 @@ public class RealProcessRunnerTests
         Assert.True(DateTime.UtcNow - started < TimeSpan.FromSeconds(10));
     }
 
-    [Fact]
+    [WindowsFact]
     public async Task RunAsync_ThrowsWhenCallerCancels()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
@@ -64,7 +64,7 @@ public class RealProcessRunnerTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => _runner.RunAsync(spec, cts.Token));
     }
 
-    [Fact]
+    [WindowsFact]
     public async Task StartInteractive_ExchangesLines()
     {
         var spec = new ProcessSpec(PowerShell,
@@ -82,7 +82,7 @@ public class RealProcessRunnerTests
         Assert.Null(end);
     }
 
-    [Fact]
+    [WindowsFact]
     public async Task StartInteractive_ReadLineHonoursCancellation()
     {
         var spec = new ProcessSpec(Cmd, ["/d", "/c", "ping -n 30 127.0.0.1 >nul"]);
@@ -92,7 +92,7 @@ public class RealProcessRunnerTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => process.ReadLineAsync(cts.Token));
     }
 
-    [Fact]
+    [WindowsFact]
     public void FindOnPath_ResolvesWithPathExt()
     {
         string? found = _runner.FindOnPath("cmd");

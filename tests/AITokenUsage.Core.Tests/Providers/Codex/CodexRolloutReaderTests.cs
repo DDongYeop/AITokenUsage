@@ -19,7 +19,7 @@ public class CodexRolloutReaderTests
     private static string RolloutPath(string stamp, string thread = "00000000-0000-4000-8000-000000000001")
         => $@"{DayDir}\rollout-{stamp}-{thread}.jsonl";
 
-    [Fact]
+    [WindowsFact]
     public void VariantA_FlatFields_NoResetInfo()
     {
         var (files, reader) = Setup();
@@ -36,7 +36,7 @@ public class CodexRolloutReaderTests
         Assert.All(snapshot.Meters, m => Assert.Null(m.ResetsAt));
     }
 
-    [Fact]
+    [WindowsFact]
     public void VariantB_RelativeResets_AddedToLineTimestamp_AndNullRateLimitsSkipped()
     {
         var (files, reader) = Setup();
@@ -53,7 +53,7 @@ public class CodexRolloutReaderTests
         Assert.Equal(new DateTimeOffset(2026, 11, 1, 2, 30, 0, TimeSpan.Zero), snapshot.Meters[1].ResetsAt);
     }
 
-    [Fact]
+    [WindowsFact]
     public void VariantC_EpochResets_AndPlanType()
     {
         var (files, reader) = Setup();
@@ -70,7 +70,7 @@ public class CodexRolloutReaderTests
         Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1793415600), snapshot.Meters[1].ResetsAt);
     }
 
-    [Fact]
+    [WindowsFact]
     public void ResetAlreadyPassed_ShowsZeroPercent()
     {
         var (files, reader) = Setup();
@@ -85,7 +85,7 @@ public class CodexRolloutReaderTests
         Assert.Equal(41, snapshot.Meters[1].UsedPercent);
     }
 
-    [Fact]
+    [WindowsFact]
     public void VariantD_SkipsOtherLimitIds()
     {
         var (files, reader) = Setup();
@@ -101,7 +101,7 @@ public class CodexRolloutReaderTests
         Assert.Equal(5, snapshot.Meters[1].UsedPercent);
     }
 
-    [Fact]
+    [WindowsFact]
     public void MissingWindow_OnlyPresentWindowBecomesMeter()
     {
         var (files, reader) = Setup();
@@ -115,7 +115,7 @@ public class CodexRolloutReaderTests
         Assert.Equal(9, meter.UsedPercent);
     }
 
-    [Fact]
+    [WindowsFact]
     public void PicksNewestFileByLastWriteTime_NotByName()
     {
         var (files, reader) = Setup();
@@ -127,7 +127,7 @@ public class CodexRolloutReaderTests
         Assert.Equal("pro", snapshot!.PlanType); // rollout-d content
     }
 
-    [Fact]
+    [WindowsFact]
     public void FallsThroughToOlderFile_WhenNewestHasNoUsableLine()
     {
         var (files, reader) = Setup();
@@ -140,7 +140,7 @@ public class CodexRolloutReaderTests
         Assert.Equal("plus", snapshot!.PlanType); // rollout-c content
     }
 
-    [Fact]
+    [WindowsFact]
     public void IgnoresCompressedRollouts()
     {
         var (files, reader) = Setup();

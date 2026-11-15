@@ -22,7 +22,7 @@ public sealed class GeminiOAuthClientLocatorTests
         Assert.Equal(new GeminiOAuthClient("env-id.apps.googleusercontent.com", "env-secret"), client);
     }
 
-    [Fact]
+    [WindowsFact]
     public void Reads_double_quoted_constants_from_the_npm_bundle()
     {
         _files.AddFile(Path.Combine(NpmPackageRoot, "bundle", "chunk-AAAA.js"), "export const unrelated = 1;");

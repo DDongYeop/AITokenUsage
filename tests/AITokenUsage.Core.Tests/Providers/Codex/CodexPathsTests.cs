@@ -6,7 +6,7 @@ namespace AITokenUsage.Core.Tests.Providers.Codex;
 
 public class CodexPathsTests
 {
-    [Fact]
+    [WindowsFact]
     public void Resolve_UsesCodexHome_WhenDefined()
     {
         var env = new FakeEnvironment();
@@ -20,7 +20,7 @@ public class CodexPathsTests
         Assert.Equal(@"D:\codex-home\sessions", paths.SessionsDirectory);
     }
 
-    [Theory]
+    [WindowsTheory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]

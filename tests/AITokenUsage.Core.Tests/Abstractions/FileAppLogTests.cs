@@ -47,7 +47,7 @@ public sealed class FileAppLogTests : IDisposable
         Assert.All(files, f => Assert.True(new FileInfo(_temp.Combine(f)).Length < 400));
     }
 
-    [Fact]
+    [WindowsFact]
     public void RotationFailure_DoesNotStopAppending()
     {
         // app.1.log is held open without FileShare.Delete, so moving it to app.2.log fails.

@@ -4,7 +4,7 @@ namespace AITokenUsage.Core.Tests.Accounts;
 
 public class AccountLoginCommandTests
 {
-    [Fact]
+    [WindowsFact]
     public void Create_Claude_ClearsSecureStorageDirAndPointsConfigDirAtTheFolder()
     {
         const string Folder = @"C:\Users\kim\AppData\Local\AITokenUsage\login\claude-k3x9q2";
@@ -19,7 +19,7 @@ public class AccountLoginCommandTests
         Assert.Equal(Folder, command.Environment["CLAUDE_CONFIG_DIR"]);
     }
 
-    [Fact]
+    [WindowsFact]
     public void Create_Codex_SetsCodexHome()
     {
         const string Folder = @"C:\Users\kim\AppData\Local\AITokenUsage\accounts\codex-a1b2c3";
@@ -32,7 +32,7 @@ public class AccountLoginCommandTests
         Assert.Single(command.Environment);
     }
 
-    [Fact]
+    [WindowsFact]
     public void Create_TheFolderNeverGoesIntoTheArguments()
     {
         AccountLoginCommand? claude = AccountLoginCommand.Create("claude", @"C:\Users\kim\login\claude-k3x9q2");
@@ -42,7 +42,7 @@ public class AccountLoginCommandTests
         Assert.DoesNotContain("kim", codex!.Arguments, StringComparison.Ordinal);
     }
 
-    [Theory]
+    [WindowsTheory]
     [InlineData(@"C:\Users\Kim Min Su\AppData\Local\AITokenUsage\accounts\codex-a1b2c3")]
     [InlineData(@"D:\내 폴더\accounts\codex-a1b2c3")]
     [InlineData(@"C:\Users\a&b ""c"" 100%^|<>;\accounts\codex-a1b2c3")]
@@ -53,7 +53,7 @@ public class AccountLoginCommandTests
         Assert.Equal(directory, AccountLoginCommand.Create("claude", directory)!.Environment["CLAUDE_CONFIG_DIR"]);
     }
 
-    [Fact]
+    [WindowsFact]
     public void Create_EnvironmentNamesIgnoreCase()
     {
         AccountLoginCommand? command = AccountLoginCommand.Create("codex", @"C:\x");

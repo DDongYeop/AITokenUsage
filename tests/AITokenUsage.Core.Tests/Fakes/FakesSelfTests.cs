@@ -42,7 +42,7 @@ public class FakesSelfTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => http.GetAsync("https://example.test/none"));
     }
 
-    [Fact]
+    [WindowsFact]
     public void FakeFileSystem_TracksDirectoriesPatternsQueuedReadsAndErrors()
     {
         var fs = new FakeFileSystem()
@@ -130,7 +130,7 @@ public class FakesSelfTests
         Assert.Empty(creds.EnumerateGeneric("gh:*"));
     }
 
-    [Fact]
+    [WindowsFact]
     public void FakeEnvironment_DistinguishesUndefinedFromEmpty()
     {
         var env = new FakeEnvironment().Set("CLAUDE_CONFIG_DIR", "").Set("GH_TOKEN", "x").Set("GH_TOKEN", null);

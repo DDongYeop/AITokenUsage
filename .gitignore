@@ -27,3 +27,7 @@ coverage*.xml
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# macOS app build output (tools/build-mac-app.sh)
+dist/
+.build/

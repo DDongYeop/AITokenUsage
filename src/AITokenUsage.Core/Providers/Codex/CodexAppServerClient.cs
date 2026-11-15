@@ -59,6 +59,9 @@ public sealed class CodexAppServerClient
         IReadOnlyDictionary<string, string?>? environment = string.IsNullOrWhiteSpace(codexHome)
             ? null
             : new Dictionary<string, string?> { [CodexHomeVariable] = codexHome };
+        // macOS/Linux: the npm shim is a "#!/usr/bin/env node" script (or a native binary) that runs directly.
+        if (!OperatingSystem.IsWindows())
+            return new ProcessSpec(codexPath, AppServerArguments, environment, ProcessTimeout);
         var extension = Path.GetExtension(codexPath);
         if (extension.Equals(".exe", StringComparison.OrdinalIgnoreCase) || extension.Equals(".com", StringComparison.OrdinalIgnoreCase))
             return new ProcessSpec(codexPath, AppServerArguments, environment, ProcessTimeout);

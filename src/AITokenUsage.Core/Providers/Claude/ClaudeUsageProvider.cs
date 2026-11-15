@@ -333,9 +333,14 @@ public sealed class ClaudeUsageProvider : IUsageProvider
         return _version;
     }
 
-    private static ClaudeCliCredentialSource CliSource(ProviderContext ctx)
+    private static IClaudeCredentialSource CliSource(ProviderContext ctx)
     {
         ArgumentNullException.ThrowIfNull(ctx);
+        if (ctx.Credentials is MacKeychainCredentialStore keychain)
+        {
+            return new ClaudeKeychainCredentialSource(keychain, ctx.Files, ctx.Env);
+        }
+
         return new ClaudeCliCredentialSource(ctx.Files, ClaudePaths.ResolveCredentialsPath(ctx.Env));
     }
 

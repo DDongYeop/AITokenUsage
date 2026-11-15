@@ -95,7 +95,7 @@ public class CodexAppServerClientTests
         Assert.False(parameters.TryGetProperty("supportsLunaReserve", out _));
     }
 
-    [Theory]
+    [WindowsTheory]
     [InlineData(@"C:\Users\test\AppData\Roaming\npm\codex.cmd", "cmd.exe", "/d|/c|codex|-s|read-only|-a|never|app-server")]
     [InlineData(@"C:\Users\test\AppData\Roaming\npm\codex", "cmd.exe", "/d|/c|codex|-s|read-only|-a|never|app-server")]
     [InlineData(@"C:\Tools\codex\codex.exe", @"C:\Tools\codex\codex.exe", "-s|read-only|-a|never|app-server")]
@@ -134,7 +134,7 @@ public class CodexAppServerClientTests
         Assert.Null(_started[^1].EnvironmentOverrides);
     }
 
-    [Fact]
+    [WindowsFact]
     public async Task ReadRateLimits_StartsTheResolvedSpec()
     {
         var client = CreateClient(ProcessWith(InitializeOk, """{"id":2,"result":{"rateLimits":null}}"""));

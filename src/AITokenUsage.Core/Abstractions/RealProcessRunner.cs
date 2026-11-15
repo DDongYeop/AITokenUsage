@@ -68,6 +68,12 @@ public sealed class RealProcessRunner : IProcessRunner
             return File.Exists(commandName) ? commandName : null;
         }
 
+        if (!OperatingSystem.IsWindows())
+        {
+            return FindOnUnixPath(commandName, Environment.GetEnvironmentVariable("PATH") ?? "",
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+        }
+
         string[] extensions = ReadPathExtensions();
         bool hasExtension = Path.HasExtension(commandName);
         string pathVariable = Environment.GetEnvironmentVariable("PATH") ?? "";
@@ -102,6 +108,87 @@ public sealed class RealProcessRunner : IProcessRunner
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// macOS/Linux lookup: PATH (':'-separated, no extensions, executable files only), then the folders where Homebrew,
+    /// npm, bun and the official installers put CLIs. A menu bar app started from Finder gets only
+    /// /usr/bin:/bin:/usr/sbin:/sbin, so the extra folders are what finds claude, codex, gemini and gh there.
+    /// </summary>
+    public static string? FindOnUnixPath(string commandName, string pathVariable, string home)
+    {
+        foreach (string directory in UnixSearchDirectories(pathVariable, home))
+        {
+            string candidate = Path.Combine(directory, commandName);
+            if (IsExecutableFile(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    public static IEnumerable<string> UnixSearchDirectories(string pathVariable, string home)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string directory in pathVariable.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (seen.Add(directory)) yield return directory;
+        }
+
+        string[] wellKnown =
+        [
+            "/opt/homebrew/bin",
+            "/usr/local/bin",
+            Path.Combine(home, ".local", "bin"),
+            Path.Combine(home, ".claude", "local"),
+            Path.Combine(home, ".npm-global", "bin"),
+            Path.Combine(home, ".bun", "bin"),
+            Path.Combine(home, ".volta", "bin"),
+            "/usr/bin",
+            "/bin",
+        ];
+        foreach (string directory in wellKnown)
+        {
+            if (seen.Add(directory)) yield return directory;
+        }
+
+        // nvm: every installed Node version's bin folder, newest name last (lookup order does not matter much here).
+        string nvmVersions = Path.Combine(home, ".nvm", "versions", "node");
+        if (Directory.Exists(nvmVersions))
+        {
+            string[] versions;
+            try
+            {
+                versions = Directory.GetDirectories(nvmVersions);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                versions = [];
+            }
+
+            foreach (string version in versions.OrderByDescending(v => v, StringComparer.Ordinal))
+            {
+                string bin = Path.Combine(version, "bin");
+                if (seen.Add(bin)) yield return bin;
+            }
+        }
+    }
+
+    private static bool IsExecutableFile(string path)
+    {
+        try
+        {
+            if (!File.Exists(path)) return false;
+            if (OperatingSystem.IsWindows()) return true;
+            UnixFileMode mode = File.GetUnixFileMode(path);
+            return (mode & (UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute)) != 0;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     internal static void KillTree(Process process)

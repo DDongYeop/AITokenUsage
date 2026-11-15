@@ -137,7 +137,11 @@ public sealed class CopilotTokenSources(ProviderContext ctx)
 
     private List<CopilotTokenCandidate> ReadLanguageServerFile(string fileName)
     {
-        var path = Path.Combine(ctx.Env.LocalAppData, "github-copilot", fileName);
+        // The Copilot language server keeps apps.json in %LOCALAPPDATA% on Windows and in ~/.config elsewhere.
+        var directory = OperatingSystem.IsWindows()
+            ? Path.Combine(ctx.Env.LocalAppData, "github-copilot")
+            : Path.Combine(ctx.Env.UserProfile, ".config", "github-copilot");
+        var path = Path.Combine(directory, fileName);
         string? text;
         try
         {

@@ -18,7 +18,7 @@ public sealed class CopilotTokenSourcesTests
     private readonly FakeSecretStore _secrets = new();
     private readonly List<ProcessSpec> _ghCalls = [];
 
-    [Fact]
+    [WindowsFact]
     public async Task Yields_every_source_in_spec_order()
     {
         _secrets.Save(CopilotSavedToken.SecretName, new CopilotSavedToken("gho_saved", "saved-user").ToJson());

@@ -96,6 +96,30 @@ public sealed partial class GeminiOAuthClientLocator(IEnvironment env, IFileSyst
             }
         }
 
+        if (!OperatingSystem.IsWindows())
+        {
+            // npm on macOS links <prefix>/bin/gemini to <prefix>/lib/node_modules/@google/gemini-cli/...
+            if (processes.FindOnPath("gemini") is { } link && Path.GetDirectoryName(link) is { } binDir)
+            {
+                var fromPrefix = Path.GetFullPath(Path.Combine(binDir, "..", "lib", "node_modules"));
+                if (seen.Add(fromPrefix))
+                {
+                    yield return fromPrefix;
+                }
+            }
+
+            foreach (var prefix in new[] { "/opt/homebrew", "/usr/local", Path.Combine(env.UserProfile, ".npm-global") })
+            {
+                var root = Path.Combine(prefix, "lib", "node_modules");
+                if (seen.Add(root))
+                {
+                    yield return root;
+                }
+            }
+
+            yield break;
+        }
+
         var npmGlobal = Path.Combine(env.RoamingAppData, "npm", "node_modules");
         if (seen.Add(npmGlobal))
         {

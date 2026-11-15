@@ -8,6 +8,8 @@ final class AgentClient: ObservableObject {
     @Published private(set) var lastError: String?
     @Published private(set) var rotationIndex = 0
     @Published private(set) var copilotSignIn: CopilotSignInEvent?
+    /// The tray menu's "자동 전환 일시정지".
+    @Published var rotationPausedByUser = false
 
     private var process: Process?
     private var input: FileHandle?
@@ -52,7 +54,13 @@ final class AgentClient: ObservableObject {
         rotationIndex = (rotationIndex + 1) % count
     }
 
-    /// Stops rotating while the popover is open.
+    func showPrevious() {
+        let count = rotatingPanels.count
+        guard count > 0 else { return }
+        rotationIndex = (rotationIndex + count - 1) % count
+    }
+
+    /// Stops rotating while the card is open, when "상세 카드를 열면 멈춤" (PauseOnHover) is on.
     func setPaused(_ value: Bool) { paused = value }
 
     // MARK: Commands
@@ -60,8 +68,37 @@ final class AgentClient: ObservableObject {
     func refresh() { send("refresh") }
     func setEnabled(_ id: String, _ enabled: Bool) { send("set-enabled \(id) \(enabled)") }
     func setValueMode(_ mode: String) { send("set-value-mode \(mode)") }
-    func setRotation(_ seconds: Int?) { send("set-rotation \(seconds.map(String.init) ?? "off")") }
+    func setRotationEnabled(_ value: Bool) { send("set-rotation-enabled \(value)") }
+    func setRotationSeconds(_ seconds: Int) { send("set-rotation-seconds \(seconds)") }
+    func setSkipUnavailable(_ value: Bool) { send("set-skip-unavailable \(value)") }
+    func setPauseOnHover(_ value: Bool) { send("set-pause-on-hover \(value)") }
+    func setShowResetTime(_ value: Bool) { send("set-show-reset-time \(value)") }
     func setRefresh(_ minutes: Int) { send("set-refresh \(minutes)") }
+    func setLines(_ id: String, _ line1: String, _ line2: String) { send("set-lines \(id) \(line1) \(line2)") }
+    func move(_ id: String, up: Bool) { send("move \(id) \(up ? "up" : "down")") }
+    func recheck(_ id: String) { send("refresh \(id)") }
+
+    /// "터미널에서 로그인": opens Terminal.app running the command in a login shell (so npm/Homebrew are on PATH).
+    /// A .command file needs no Automation permission, unlike scripting Terminal.
+    @discardableResult
+    static func openTerminal(running command: String) -> Bool {
+        let script = FileManager.default.temporaryDirectory.appendingPathComponent("aitokenusage-\(UUID().uuidString).command")
+        let text = "#!/bin/zsh -l\nclear\n\(command)\n"
+        do {
+            try text.write(to: script, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
+        } catch {
+            return false
+        }
+        guard let terminal = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Terminal") else { return false }
+        NSWorkspace.shared.open([script], withApplicationAt: terminal, configuration: NSWorkspace.OpenConfiguration())
+        return true
+    }
+
+    /// Restarts the agent so a new language applies (Core strings are created in the startup language).
+    func restartAgent() {
+        process?.terminate()
+    }
     func startCopilotSignIn() {
         copilotSignIn = CopilotSignInEvent(phase: "starting")
         send("copilot-signin")
@@ -72,13 +109,8 @@ final class AgentClient: ObservableObject {
     }
     func signOutCopilot() { send("copilot-signout") }
 
-    /// Core strings are created in the agent's startup language, so a language change restarts the agent.
-    func setLanguage(_ language: String) {
-        send("set-language \(language)")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.process?.terminate()
-        }
-    }
+    /// Saved now, applied by "지금 다시 시작" (restartAgent), like the Windows General page.
+    func setLanguage(_ language: String) { send("set-language \(language)") }
 
     private func send(_ line: String) {
         guard let input, let data = (line + "\n").data(using: .utf8) else { return }
@@ -213,7 +245,7 @@ final class AgentClient: ObservableObject {
         let interval = TimeInterval(max(2, state.rotationSeconds))
         rotationTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self, !self.paused else { return }
+                guard let self, !self.paused, !self.rotationPausedByUser else { return }
                 self.showNext()
             }
         }

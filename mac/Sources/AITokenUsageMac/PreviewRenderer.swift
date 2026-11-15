@@ -1,8 +1,9 @@
 import AppKit
 import SwiftUI
 
-/// `AITokenUsage --render-preview <state.json> <out-dir>`: renders the menu bar label (every panel) and the window
-/// to PNG files from one agent state line (`aitokenusage-agent --once`). For checks and README screenshots.
+/// `AITokenUsage --render-preview <state.json> <out-dir>`: renders the menu bar widget (every panel, light and dark),
+/// the detail card and the settings pages to PNG files from one agent state line (`aitokenusage-agent --once`).
+/// For checks and README screenshots; controls drawn by AppKit (buttons, pickers) show as placeholders here.
 @MainActor
 enum PreviewRenderer {
     static func runIfRequested() {
@@ -18,22 +19,28 @@ enum PreviewRenderer {
             client.load(state)
 
             for (i, panel) in client.rotatingPanels.enumerated() {
-                while client.currentPanel?.id != panel.id { client.showNext() }
                 for dark in [false, true] {
-                    let bar = HStack { MenuBarLabel(client: client).foregroundStyle(dark ? Color.white : Color.black) }
+                    let bar = WidgetContent(panel: panel, foreground: dark ? .white : .black, showReset: state.showResetTime)
+                        .frame(height: 22)
                         .padding(.horizontal, 8)
-                        .frame(height: 24)
-                        .background(dark ? Color(white: 0.16) : Color(white: 0.93))
-                        .environment(\.colorScheme, dark ? .dark : .light)
+                        .background(dark ? Color(white: 0.12) : Color(white: 0.93))
                     try write(bar, to: outDir.appendingPathComponent("menubar-\(i)-\(panel.id)-\(dark ? "dark" : "light").png"))
                 }
+                let card = DetailCard(panel: panel)
+                    .frame(width: 364)
+                    .padding(8)
+                    .background(Color(white: 0.13))
+                    .environment(\.colorScheme, .dark)
+                try write(card, to: outDir.appendingPathComponent("card-\(i)-\(panel.id).png"))
             }
 
-            for dark in [false, true] {
-                let window = PopoverView(client: client)
-                    .background(dark ? Color(white: 0.18) : Color(white: 0.97))
-                    .environment(\.colorScheme, dark ? .dark : .light)
-                try write(window, to: outDir.appendingPathComponent("window-\(dark ? "dark" : "light").png"))
+            for page in SettingsWindow.Page.allCases {
+                let view = SettingsPagePreview(client: client, page: page)
+                    .frame(width: 560)
+                    .padding(20)
+                    .background(Color(white: 0.13))
+                    .environment(\.colorScheme, .dark)
+                try write(view, to: outDir.appendingPathComponent("settings-\(page).png"))
             }
             print("rendered to \(outDir.path)")
             exit(0)

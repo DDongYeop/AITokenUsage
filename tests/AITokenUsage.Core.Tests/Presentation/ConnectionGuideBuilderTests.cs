@@ -7,6 +7,9 @@ namespace AITokenUsage.Core.Tests.Presentation;
 
 public class ConnectionGuideBuilderTests
 {
+    private static readonly string NodeInstall =
+        OperatingSystem.IsWindows() ? "winget install OpenJS.NodeJS.LTS" : "brew install node";
+
     [Theory]
     [InlineData(ProviderIds.Claude)]
     [InlineData(ProviderIds.Codex)]
@@ -40,7 +43,7 @@ public class ConnectionGuideBuilderTests
         ConnectionGuide guide = ConnectionGuideBuilder.Build(ProviderIds.Codex, ProviderStatus.NotInstalled, null)!;
 
         Assert.Equal(4, guide.Steps.Count);
-        Assert.Equal("winget install OpenJS.NodeJS.LTS", guide.Steps[0].Command);
+        Assert.Equal(NodeInstall, guide.Steps[0].Command);
         Assert.Equal(GuideAction.None, guide.Steps[0].Action);
         Assert.Equal("npm install -g @openai/codex", guide.Steps[1].Command);
         Assert.Equal(GuideAction.OpenTerminal, guide.Steps[2].Action);
@@ -73,7 +76,7 @@ public class ConnectionGuideBuilderTests
         ConnectionGuide guide = ConnectionGuideBuilder.Build(ProviderIds.Claude, ProviderStatus.NotInstalled, null)!;
 
         Assert.Equal(4, guide.Steps.Count);
-        Assert.Equal("winget install OpenJS.NodeJS.LTS", guide.Steps[0].Command);
+        Assert.Equal(NodeInstall, guide.Steps[0].Command);
         Assert.Equal("npm install -g @anthropic-ai/claude-code", guide.Steps[1].Command);
         Assert.Equal(GuideAction.OpenTerminal, guide.Steps[2].Action);
         Assert.Equal("claude", guide.Steps[2].TerminalCommand);

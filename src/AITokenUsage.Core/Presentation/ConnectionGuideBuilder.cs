@@ -9,7 +9,8 @@ namespace AITokenUsage.Core.Presentation;
 public static class ConnectionGuideBuilder
 {
     // Commands are code constants: never translated, never built from user input.
-    private const string NodeInstallCommand = "winget install OpenJS.NodeJS.LTS";
+    // Node.js comes from winget on Windows and Homebrew on macOS (the Mac menu bar app shows the same guide).
+    private static string NodeInstallCommand => OperatingSystem.IsWindows() ? "winget install OpenJS.NodeJS.LTS" : "brew install node";
     private const string ClaudeInstallCommand = "npm install -g @anthropic-ai/claude-code";
     private const string CodexInstallCommand = "npm install -g @openai/codex";
     private const string GeminiInstallCommand = "npm install -g @google/gemini-cli";

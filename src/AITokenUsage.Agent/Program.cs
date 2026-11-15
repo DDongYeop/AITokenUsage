@@ -19,7 +19,10 @@ namespace AITokenUsage.Agent;
 ///   --language  the macOS UI language, used when the "language" setting is "auto".
 /// Otherwise runs until stdin closes or "quit" arrives, printing a state line whenever something changes and every
 /// 30 s (so "resets in" texts stay current). Commands, one per line on stdin:
-///   refresh | set-enabled &lt;id&gt; true|false | set-value-mode used|remaining | set-rotation &lt;seconds&gt;|off
+///   refresh [id] | set-enabled &lt;id&gt; true|false | set-lines &lt;id&gt; &lt;key1&gt; &lt;key2&gt; | move &lt;id&gt; up|down
+///   | set-value-mode used|remaining | set-rotation &lt;seconds&gt;|off | set-rotation-enabled true|false
+///   | set-rotation-seconds &lt;n&gt; | set-skip-unavailable true|false | set-pause-on-hover true|false
+///   | set-show-reset-time true|false
 ///   | set-refresh &lt;minutes&gt; | set-language auto|ko|en | copilot-signin | copilot-cancel | copilot-signout | quit
 /// Besides "state" lines, Copilot sign-in progress is written as {"type":"copilotSignIn","phase":...} lines.
 /// </summary>
@@ -75,7 +78,7 @@ public static class Program
             TimeProvider.System,
             log);
 
-        var emitter = new StateEmitter(usage, settings, culture);
+        var emitter = new StateEmitter(usage, providers, settings, culture);
         var copilotSignIn = new CopilotSignIn(
             providers.OfType<CopilotUsageProvider>().First(), new GitHubDeviceFlow(http, TimeProvider.System), usage, log);
 
@@ -154,6 +157,48 @@ public static class Program
 
             case "set-value-mode" when parts.Length == 2:
                 lock (Gate) settings.ValueMode = parts[1] == "remaining" ? ValueMode.Remaining : ValueMode.Used;
+                break;
+
+            case "set-lines" when parts.Length == 4:
+                lock (Gate)
+                {
+                    if (settings.Providers.FirstOrDefault(p => p.Id == parts[1]) is not { } provider) return false;
+                    provider.Line1Key = parts[2];
+                    provider.Line2Key = parts[3];
+                }
+
+                break;
+
+            case "move" when parts.Length == 3:
+                lock (Gate)
+                {
+                    int index = settings.Providers.FindIndex(p => p.Id == parts[1]);
+                    int target = parts[2] == "up" ? index - 1 : index + 1;
+                    if (index < 0 || target < 0 || target >= settings.Providers.Count) return false;
+                    (settings.Providers[index], settings.Providers[target]) = (settings.Providers[target], settings.Providers[index]);
+                }
+
+                break;
+
+            case "set-rotation-enabled" when parts.Length == 2 && bool.TryParse(parts[1], out bool rotate):
+                lock (Gate) settings.RotationEnabled = rotate;
+                break;
+
+            case "set-rotation-seconds" when parts.Length == 2
+                && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int rotationSeconds):
+                lock (Gate) settings.RotationSeconds = rotationSeconds;
+                break;
+
+            case "set-skip-unavailable" when parts.Length == 2 && bool.TryParse(parts[1], out bool skip):
+                lock (Gate) settings.SkipUnavailable = skip;
+                break;
+
+            case "set-pause-on-hover" when parts.Length == 2 && bool.TryParse(parts[1], out bool pause):
+                lock (Gate) settings.PauseOnHover = pause;
+                break;
+
+            case "set-show-reset-time" when parts.Length == 2 && bool.TryParse(parts[1], out bool showReset):
+                lock (Gate) settings.ShowResetTime = showReset;
                 break;
 
             case "set-rotation" when parts.Length == 2:
@@ -253,7 +298,7 @@ public static class Program
     }
 
     /// <summary>Serializes the panels and writes them as one line; EmitSoon coalesces bursts of ViewChanged.</summary>
-    private sealed class StateEmitter(UsageService usage, AppSettings settings, CultureInfo culture)
+    private sealed class StateEmitter(UsageService usage, IReadOnlyList<IUsageProvider> providers, AppSettings settings, CultureInfo culture)
     {
         private static readonly TimeSpan Coalesce = TimeSpan.FromMilliseconds(250);
         private int _scheduled;
@@ -291,7 +336,7 @@ public static class Program
             foreach (ProviderSettings provider in settings.Providers)
             {
                 if (usage.GetView(provider.Id) is not ProviderView view) continue;
-                all.Add(new ProviderEntry(view.ProviderId, view.Title, provider.Enabled));
+                all.Add(ToEntry(provider, view, now, zone));
                 if (provider.Enabled) enabled.Add(view);
             }
 
@@ -326,9 +371,37 @@ public static class Program
                 settings.RotationEnabled,
                 settings.RotationSeconds,
                 settings.SkipUnavailable,
+                settings.PauseOnHover,
+                settings.ShowResetTime,
                 settings.RefreshMinutes,
+                typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "",
+                MacPaths.SettingsFile,
+                MacPaths.LogDirectory,
                 panels,
                 all);
+        }
+
+        private ProviderEntry ToEntry(ProviderSettings provider, ProviderView view, DateTimeOffset now, TimeZoneInfo zone)
+        {
+            IUsageProvider? source = providers.FirstOrDefault(p => p.Id == provider.Id);
+            IReadOnlyList<MeterOption> options = MeterOptionList.Build(
+                source?.StaticMeterOptions ?? [], view.DisplayMeters, [provider.Line1Key, provider.Line2Key]);
+            ConnectionGuide? guide = ConnectionGuideBuilder.Build(view.ProviderId, view.Current.Status, view.Current.StatusMessage);
+            return new ProviderEntry(
+                view.ProviderId,
+                ProviderIds.KindOf(view.ProviderId),
+                view.Title,
+                provider.Enabled,
+                view.Current.Status,
+                ProviderStatusText.ForSettings(view, now, zone),
+                provider.Line1Key,
+                provider.Line2Key,
+                options.Select(o => new OptionState(o.Key, o.Label)).ToArray(),
+                guide is null
+                    ? null
+                    : new GuideState(
+                        guide.Steps.Select(g => new GuideStepState(g.Text, g.Command, g.Action, g.TerminalCommand)).ToArray(),
+                        guide.Footnote));
         }
 
         private static RowState ToRow(WidgetRow row) =>
@@ -347,11 +420,33 @@ public static class Program
         bool RotationEnabled,
         int RotationSeconds,
         bool SkipUnavailable,
+        bool PauseOnHover,
+        bool ShowResetTime,
         int RefreshMinutes,
+        string Version,
+        string SettingsFile,
+        string LogDirectory,
         IReadOnlyList<PanelState> Panels,
         IReadOnlyList<ProviderEntry> Providers);
 
-    private sealed record ProviderEntry(string Id, string Title, bool Enabled);
+    /// <summary>One card of the "AI 연결" settings page, in settings order (enabled or not).</summary>
+    private sealed record ProviderEntry(
+        string Id,
+        string Kind,
+        string Title,
+        bool Enabled,
+        ProviderStatus Status,
+        string StatusText,
+        string Line1Key,
+        string Line2Key,
+        IReadOnlyList<OptionState> MeterOptions,
+        GuideState? Guide);
+
+    private sealed record OptionState(string Key, string Label);
+
+    private sealed record GuideState(IReadOnlyList<GuideStepState> Steps, string? Footnote);
+
+    private sealed record GuideStepState(string Text, string? Command, GuideAction Action, string? TerminalCommand);
 
     private sealed record PanelState(
         string Id,

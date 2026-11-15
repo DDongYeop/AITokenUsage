@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// macOS menu bar app: the Mac counterpart of the Windows taskbar widget.
+/// macOS menu bar app: the Mac counterpart of the Windows taskbar widget, hover card, tray menu and settings window.
 @main
 struct AITokenUsageApp: App {
     @StateObject private var client = AgentClient()
@@ -14,10 +14,15 @@ struct AITokenUsageApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            PopoverView(client: client)
+            MenuWindow(client: client)
         } label: {
             MenuBarLabel(client: client)
         }
         .menuBarExtraStyle(.window)
+
+        Window(L10n.text(.settingsTitle, language: client.state?.language ?? AgentClient.systemLanguage), id: SettingsWindow.id) {
+            SettingsWindow(client: client)
+        }
+        .windowResizability(.contentMinSize)
     }
 }

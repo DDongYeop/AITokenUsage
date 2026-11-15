@@ -10,15 +10,46 @@ struct AgentState: Decodable, Equatable {
     var rotationEnabled: Bool
     var rotationSeconds: Int
     var skipUnavailable: Bool
+    var pauseOnHover: Bool
+    var showResetTime: Bool
     var refreshMinutes: Int
+    var version: String
+    var settingsFile: String
+    var logDirectory: String
     var panels: [PanelState]
     var providers: [ProviderEntry]
 }
 
+/// One card of the "AI 연결" settings page (settings order, enabled or not).
 struct ProviderEntry: Decodable, Equatable, Identifiable {
     var id: String
+    var kind: String
     var title: String
     var enabled: Bool
+    var status: String
+    var statusText: String
+    var line1Key: String
+    var line2Key: String
+    var meterOptions: [MeterOptionState]
+    var guide: GuideState?
+}
+
+struct MeterOptionState: Decodable, Equatable, Hashable {
+    var key: String
+    var label: String
+}
+
+struct GuideState: Decodable, Equatable {
+    var steps: [GuideStepState]
+    var footnote: String?
+}
+
+/// action: "none", "openTerminal" (runs terminalCommand) or "recheck".
+struct GuideStepState: Decodable, Equatable {
+    var text: String
+    var command: String?
+    var action: String
+    var terminalCommand: String?
 }
 
 struct PanelState: Decodable, Equatable, Identifiable {

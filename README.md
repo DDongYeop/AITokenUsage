@@ -47,6 +47,32 @@ Windows 11 작업 표시줄 안에 **Claude · Codex · Gemini CLI · GitHub Cop
 
 관리자 권한은 필요 없고, 기본 설치 위치는 `%LOCALAPPDATA%\Programs\AITokenUsage`입니다. 제거는 **설정 → 앱**에서 하며, 제거할 때 설정과 캐시도 지울지 묻습니다. AI CLI의 로그인 파일은 건드리지 않습니다.
 
+## macOS (메뉴 막대 앱)
+
+macOS 13 이상에서는 같은 기능을 **메뉴 막대 앱**으로 씁니다. 작업 표시줄 위젯 대신 메뉴 막대에 AI 이름과 2줄 미니바(`5h ▬ 44% 4h12m` / `주 ▬ 82% 2d3h`)가 나오고, 몇 초마다 다음 AI로 넘어갑니다. 누르면 AI별 상세 카드(한도별 바, 초기화 시각, 플랜)와 설정이 열립니다.
+
+- **설정**: 창 오른쪽 위 톱니바퀴에서 표시할 AI, 사용한 %·남은 %, 자동 전환 간격, 새로고침 간격, 언어, 로그인 시 자동 실행을 바꿉니다.
+- **Claude**: macOS의 Claude Code는 로그인을 키체인(`Claude Code-credentials`)에 저장합니다. 처음 조회할 때 macOS가 키체인 접근을 물으면 **항상 허용**을 누르세요.
+- **Codex·Gemini**: Windows와 같이 `~/.codex`, `~/.gemini`의 로그인을 읽습니다. Finder에서 실행해도 Homebrew·npm·nvm 경로에서 `codex`, `gemini`, `gh`를 찾습니다.
+- **Copilot**: Copilot 카드의 **GitHub 로그인**(기기 코드), 또는 `gh auth login`.
+- **아직 없는 것**: 여러 계정 추가, PC 사용량(CPU·메모리). 이 둘은 Windows 전용입니다.
+
+### 빌드와 실행
+
+필요한 것: .NET 10 SDK, Xcode 명령줄 도구(`xcode-select --install`).
+
+```bash
+tools/build-mac-app.sh          # 이 Mac의 아키텍처 (Apple Silicon이면 arm64)
+tools/build-mac-app.sh x64      # Intel Mac용
+open dist/mac/AITokenUsage.app
+```
+
+`dist/mac/AITokenUsage.app`과 배포용 zip이 만들어집니다. 앱은 ad-hoc 서명만 되어 있어(공증 안 됨) 다른 Mac에서 처음 열 때는 **우클릭 → 열기**를 해야 합니다. 응용 프로그램 폴더로 옮겨 두면 **로그인 시 자동 실행**을 켤 수 있습니다.
+
+- 구조: Swift 메뉴 막대 앱(`mac/`)이 앱 안에 들어 있는 .NET 에이전트(`src/AITokenUsage.Agent`)를 실행합니다. 에이전트는 Windows 앱과 같은 `AITokenUsage.Core`로 사용량을 조회해 JSON 줄로 넘깁니다.
+- 터미널에서 바로 확인: `dist/mac/AITokenUsage.app/Contents/Resources/agent/aitokenusage-agent --once`
+- 저장 위치: 설정·캐시는 `~/Library/Application Support/AITokenUsage`, 로그는 `~/Library/Logs/AITokenUsage`.
+
 ## AI 연결 방법
 
 **설정 → AI 연결** 페이지에서 AI마다 연결 상태를 볼 수 있습니다. 연결되지 않은 AI는 카드에 단계별 안내가 나오고, 명령은 [복사]로 복사하거나 [터미널에서 로그인]으로 바로 실행할 수 있습니다. 로그인하면 자동으로 인식됩니다(바로 확인하려면 [다시 확인]).

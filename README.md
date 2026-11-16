@@ -67,14 +67,17 @@ Claude·Codex·Gemini 설치에는 Node.js가 필요합니다: `winget install O
 회사·개인처럼 Claude나 Codex 계정을 하나 더 보여 줄 수 있습니다.
 
 - **추가**: **설정 → AI 연결** 아래의 [Claude 계정 추가] 또는 [Codex 계정 추가]를 누르면 터미널이 열립니다. 터미널에서 로그인을 마치면 자동으로 추가되고, 앱을 다시 시작하면 위젯에 나타납니다. 버튼을 쓰려면 Claude Code(`claude`) 또는 Codex CLI(`codex`)가 설치되어 있어야 합니다.
-- **이 앱 전용 로그인**: 추가한 계정은 앱 폴더에 따로 로그인하므로 PC의 기본 CLI 로그인(`~/.claude`, `~/.codex`)은 바뀌지 않습니다.
+- **이 앱 전용 로그인**: 추가한 계정은 앱 폴더(`%LOCALAPPDATA%\AITokenUsage\accounts\`)에 따로 로그인하므로 PC의 기본 CLI 로그인(`~/.claude`, `~/.codex`)은 바뀌지 않습니다.
 - **팀·개인 표시**: 같은 AI가 둘 이상 켜져 있으면 요금제에 따라 `Claude · 팀`, `Claude · 개인`처럼 표시합니다(위젯에는 `팀`/`개인`만). 요금제를 알 수 없으면 `#2`처럼 번호를 붙입니다.
 - 로그인 중에 취소해도 터미널은 열려 있어요. 터미널 창을 닫아 주세요.
 - **다시 로그인·삭제**: 추가한 계정 카드의 [다시 로그인]으로 로그인을 새로 하고, 펼친 영역의 [계정 삭제]로 지웁니다. 삭제하면 앱이 다시 시작되고, 저장된 로그인은 다음 시작 때 정리됩니다.
 - **주의**
-  - Claude 추가 계정은 앱이 Claude Code의 공개 OAuth 클라이언트로 토큰을 직접 갱신합니다. 비공식 방식이라 Anthropic이 막거나 바꾸면 추가 계정 표시가 멈출 수 있습니다. 기본 계정에는 영향이 없습니다.
+  - Claude 추가 계정의 토큰은 Claude Code가 갱신합니다. 만료 5분 전부터 앱이 그 계정 폴더로 Claude Code(`claude mcp get`)를 창 없이 잠깐 실행하고, Claude Code가 갱신해 저장한 로그인을 읽기만 합니다. 그래서 `claude`가 설치되어 있어야 합니다. 이 명령은 Claude 사용량을 쓰지 않습니다.
+  - 이 방식은 Claude Code의 내부 동작에 기대므로, Claude Code가 바뀌면 갱신이 멈춰 카드에 "다시 로그인"이 나올 수 있습니다. 기본 계정에는 영향이 없습니다.
+  - Claude 추가 계정의 로그인 파일(`.credentials.json`)은 Claude Code가 앱 폴더의 계정 폴더에 저장합니다. Claude Code의 기본 로그인(`~/.claude/.credentials.json`)과 같은 방식(암호화하지 않은 파일, 사용자 프로필 안)입니다.
+  - 1.3.0에서 추가한 Claude 계정은 업데이트한 뒤 카드의 [다시 로그인]으로 한 번 다시 로그인해야 합니다.
   - 앱을 오래 꺼 두어 갱신 토큰이 만료되면(계정에 따라 약 2주 또는 하루) 다시 로그인해야 합니다.
-  - Codex 추가 계정은 Codex CLI가 직접 갱신하므로 이 위험이 없습니다. 다만 오래된 토큰을 새로 받으려면 `codex`가 설치되어 있어야 합니다.
+  - Codex 추가 계정도 Codex CLI가 직접 갱신합니다. 오래된 토큰을 새로 받으려면 `codex`가 설치되어 있어야 합니다.
 
 ## 언어
 
@@ -129,8 +132,8 @@ Gemini 토큰을 갱신하려면 Gemini CLI의 Google OAuth 클라이언트가 �
 ## 보안과 개인정보
 
 - CLI의 자격 증명 파일에는 **절대 쓰지 않습니다.** 다른 프로그램이 쓰는 중에도 공유 모드로 읽기만 합니다.
-- Claude·Codex 토큰을 직접 갱신(refresh)하지 않습니다. 만료가 가까우면 CLI가 갱신할 때까지 기다립니다. Gemini만 메모리 안에서 갱신하고 파일에 쓰지 않습니다. 예외는 [여러 계정](#여러-계정)에서 추가한 Claude 계정으로, 앱만 쓰는 로그인이라 앱이 갱신해 앱 저장소에 저장합니다.
-- 추가한 Claude 계정의 로그인은 Copilot 토큰처럼 DPAPI로 암호화해 저장합니다.
+- Claude·Codex 토큰을 직접 갱신(refresh)하지 않습니다. 만료가 가까우면 CLI가 갱신할 때까지 기다립니다. [여러 계정](#여러-계정)에서 추가한 계정은 앱이 그 계정 폴더로 CLI를 실행해 CLI가 갱신하게 합니다. Gemini만 메모리 안에서 갱신하고 파일에 쓰지 않습니다.
+- 추가한 Claude 계정의 로그인 파일은 Claude Code가 쓰고, 앱은 읽기만 합니다. 앱은 다시 로그인하거나 계정을 지울 때 그 계정 폴더를 통째로 옮기거나 지울 뿐입니다.
 - 토큰, `Authorization` 헤더, API 응답 원문은 로그·캐시·오류 메시지에 남기지 않습니다.
 - 앱이 직접 받은 Copilot 토큰은 DPAPI(현재 사용자)로 암호화해 저장하고, 설정 창의 [로그아웃]으로 지웁니다.
 
@@ -141,7 +144,7 @@ Gemini 토큰을 갱신하려면 Gemini CLI의 Google OAuth 클라이언트가 �
 | `%APPDATA%\AITokenUsage\settings.json` | 설정 |
 | `%LOCALAPPDATA%\AITokenUsage\cache.json` | 공급자별 마지막 정상 사용량(토큰 없음) |
 | `%LOCALAPPDATA%\AITokenUsage\copilot-token.bin` | GitHub 로그인 토큰(DPAPI) |
-| `%LOCALAPPDATA%\AITokenUsage\claude-account-<키>.bin` | 추가한 Claude 계정의 로그인(DPAPI) |
+| `%LOCALAPPDATA%\AITokenUsage\accounts\claude-<키>\` | 추가한 Claude 계정의 `CLAUDE_CONFIG_DIR`(로그인 파일은 Claude Code가 저장) |
 | `%LOCALAPPDATA%\AITokenUsage\accounts\codex-<키>\` | 추가한 Codex 계정의 `CODEX_HOME` |
 | `%LOCALAPPDATA%\AITokenUsage\login\` | 계정을 추가하는 동안만 쓰는 임시 폴더(시작할 때 정리) |
 | `%LOCALAPPDATA%\AITokenUsage\logs\app.log` | 로그(1MB마다 교체, 3개 보존) |

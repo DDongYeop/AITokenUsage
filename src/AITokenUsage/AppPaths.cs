@@ -15,10 +15,16 @@ public static class AppPaths
 
     public static string CacheFile => Path.Combine(LocalDirectory, "cache.json");
 
-    /// <summary>Extra Codex accounts: one CODEX_HOME folder per account ("codex-&lt;key&gt;"), written by the app and the Codex CLI it starts.</summary>
+    /// <summary>
+    /// Extra accounts: one folder per account, a CLAUDE_CONFIG_DIR ("claude-&lt;key&gt;") or a CODEX_HOME ("codex-&lt;key&gt;").
+    /// The files in a Claude folder are written by Claude Code only; the app only moves or deletes whole folders.
+    /// </summary>
     public static string AccountsDirectory => Path.Combine(LocalDirectory, "accounts");
 
-    /// <summary>Temporary CLAUDE_CONFIG_DIR folders of a running "add Claude account" login; swept at startup.</summary>
+    /// <summary>
+    /// Temporary CLAUDE_CONFIG_DIR folders of a running Claude account login, moved into <see cref="AccountsDirectory"/>
+    /// when it finishes; swept at startup.
+    /// </summary>
     public static string LoginDirectory => Path.Combine(LocalDirectory, "login");
 
     public static string LogDirectory => Path.Combine(LocalDirectory, "logs");

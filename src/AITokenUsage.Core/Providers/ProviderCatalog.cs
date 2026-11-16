@@ -16,8 +16,8 @@ public static class ProviderCatalog
 
     /// <summary>
     /// The four built-in providers, then one provider per extra account in <paramref name="accountIds"/> order.
-    /// Ids that are not account ids and repeated ids are skipped. Codex accounts keep their CODEX_HOME
-    /// folders under <paramref name="accountsDirectory"/>, which must be non-empty when codex account ids are given.
+    /// Ids that are not account ids and repeated ids are skipped. Accounts keep their folders (CLAUDE_CONFIG_DIR,
+    /// CODEX_HOME) under <paramref name="accountsDirectory"/>, which must be non-empty when account ids are given.
     /// </summary>
     public static IReadOnlyList<IUsageProvider> CreateAll(ProviderContext ctx, IEnumerable<string> accountIds, string accountsDirectory)
     {
@@ -35,7 +35,7 @@ public static class ProviderCatalog
         {
             if (!AccountIds.IsAccountId(id) || !seen.Add(id)) continue;
             providers.Add(ProviderIds.KindOf(id) == ProviderIds.Claude
-                ? ClaudeUsageProvider.ForAccount(ctx, id)
+                ? ClaudeUsageProvider.ForAccount(ctx, id, accountsDirectory)
                 : CodexUsageProvider.ForAccount(ctx, id, accountsDirectory));
         }
         return providers;

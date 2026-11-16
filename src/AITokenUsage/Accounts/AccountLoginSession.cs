@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using AITokenUsage.Core.Abstractions;
 using AITokenUsage.Core.Accounts;
 using AITokenUsage.Core.Models;
@@ -22,14 +21,15 @@ public enum AccountLoginFailure
     /// <summary>The sign-in did not finish within <see cref="AccountLoginSession.Timeout"/>.</summary>
     TimedOut,
 
-    /// <summary>The finished sign-in could not be read or saved.</summary>
+    /// <summary>The finished sign-in could not be put in place (for Claude: moved into the account folder).</summary>
     SaveFailed,
 }
 
 /// <summary>
 /// One widget-only sign-in of an extra Claude/Codex account (spec §2.2, §3): prepares the folder, runs the CLI login in a
-/// terminal and polls the folder until the login appears. A new account is then added to the settings (shown after a
-/// restart); a re-login hands the new login to the running provider.
+/// terminal and polls the folder until the login appears. A Claude sign-in folder is then moved into place as the account
+/// folder (Claude spec 2026-11-16 §2.4). A new account is added to the settings (shown after a restart); after a re-login
+/// the running provider reads the new login from its folder.
 /// Created and started on the UI thread; <see cref="Completed"/> and <see cref="Failed"/> are raised there.
 /// After <see cref="Cancel"/> (or <see cref="Dispose"/>) no event is raised, unless the new account was already added
 /// (<see cref="HasAdded"/>): then <see cref="Completed"/> still follows. File work runs on the thread pool.
@@ -41,8 +41,18 @@ public sealed class AccountLoginSession : IDisposable
     public static readonly TimeSpan SettleDelay = TimeSpan.FromSeconds(2);
     public static readonly TimeSpan Timeout = TimeSpan.FromMinutes(10);
 
-    private const string ClaudeCredentialsFileName = ".credentials.json";
-    private const string ClaudeAccountFileName = ".claude.json";
+    /// <summary>
+    /// Tries to move a finished Claude sign-in into place, <see cref="PollInterval"/> apart: Windows refuses while Claude
+    /// Code (or a virus scanner) still has a file in the folder open.
+    /// </summary>
+    private const int MoveAttempts = 10;
+
+    /// <summary>
+    /// An account folder being replaced waits next to the sign-in folder (same volume) until the new one is in place;
+    /// a leftover there goes with the startup sweep of the login folder.
+    /// </summary>
+    private const string AsideSuffix = ".old";
+
     private const string CodexAuthFileName = "auth.json";
     private const string CodexConfigFileName = "config.toml";
     private const string CodexFileStoreConfig = "cli_auth_credentials_store = \"file\"\n";
@@ -86,7 +96,7 @@ public sealed class AccountLoginSession : IDisposable
     /// </summary>
     public bool HasAdded { get; private set; }
 
-    /// <summary>The login was saved (and a new account added to the settings).</summary>
+    /// <summary>The login is in place (and a new account added to the settings).</summary>
     public event EventHandler? Completed;
 
     public event EventHandler<AccountLoginFailure>? Failed;
@@ -111,7 +121,7 @@ public sealed class AccountLoginSession : IDisposable
         s_lastRun = RunAsync(previous, _cts.Token);
     }
 
-    /// <summary>Stops polling and cleans up (the Claude sign-in folder, a new Codex account's folder). No event follows. UI thread.</summary>
+    /// <summary>Stops polling and cleans up (the Claude sign-in folder, a new account's folder). No event follows. UI thread.</summary>
     public void Cancel()
     {
         _host.Dispatcher.VerifyAccess();
@@ -197,11 +207,11 @@ public sealed class AccountLoginSession : IDisposable
         }
     }
 
-    /// <summary>Null when the login was saved; otherwise why not. Throws OperationCanceledException after Cancel.</summary>
+    /// <summary>Null when the login is in place; otherwise why not. Throws OperationCanceledException after Cancel.</summary>
     private async Task<AccountLoginFailure?> LoginAsync(CancellationToken ct)
     {
         string directory = _kind == ProviderIds.Claude
-            ? Path.Combine(AppPaths.LoginDirectory, ClaudeLoginFolderName())
+            ? Path.Combine(AppPaths.LoginDirectory, AccountStorage.ClaudeHomeName(AccountId))
             : Path.Combine(AppPaths.AccountsDirectory, AccountStorage.CodexHomeName(AccountId));
 
         AccountLoginCommand? command = AccountLoginCommand.Create(_kind, directory);
@@ -237,13 +247,12 @@ public sealed class AccountLoginSession : IDisposable
 
             if (_kind == ProviderIds.Claude)
             {
-                ClaudeOwnedCredentials? login = await Task.Run(() => ReadClaudeLogin(directory), ct);
-                if (login is not null)
+                if (await Task.Run(() => IsClaudeSignedIn(directory), ct))
                 {
-                    // Claude Code writes .claude.json (email, organization) right after the credentials: give it a moment.
+                    // Claude Code writes .claude.json (the account email) right after the credentials and then exits:
+                    // give it a moment, the folder cannot be moved while its files are open.
                     await Task.Delay(SettleDelay, Time, ct);
-                    ClaudeOwnedCredentials final = await Task.Run(() => ReadClaudeLogin(directory), ct) ?? login;
-                    return await SaveClaudeLoginAsync(final, ct);
+                    return await InstallClaudeLoginAsync(directory, ct);
                 }
             }
             else if (await Task.Run(() => IsCodexSignedIn(directory, previousAccessToken), ct))
@@ -260,9 +269,6 @@ public sealed class AccountLoginSession : IDisposable
         }
     }
 
-    /// <summary>"claude-&lt;key&gt;" under the login folder (spec §2.2).</summary>
-    private string ClaudeLoginFolderName() => "claude-" + AccountIds.KeyOf(AccountId);
-
     /// <summary>
     /// Thread pool. Claude: an empty sign-in folder. Codex: the account folder (a new account starts with only a
     /// config.toml that keeps the login in auth.json); returns the
@@ -272,7 +278,7 @@ public sealed class AccountLoginSession : IDisposable
     {
         if (_kind == ProviderIds.Claude || IsNew)
         {
-            DeleteDirectory(directory);
+            AccountFolders.Delete(directory);
         }
 
         Directory.CreateDirectory(directory);
@@ -298,23 +304,16 @@ public sealed class AccountLoginSession : IDisposable
         return text is null ? null : CodexAuthReader.TryParse(text)?.AccessToken;
     }
 
-    /// <summary>Thread pool. The login once the completion condition holds; null while it does not or the files are busy.</summary>
-    private ClaudeOwnedCredentials? ReadClaudeLogin(string directory)
+    /// <summary>Thread pool. True once the completion condition holds; false while it does not or the file is busy.</summary>
+    private bool IsClaudeSignedIn(string directory)
     {
         try
         {
-            string? credentials = Files.ReadAllTextShared(Path.Combine(directory, ClaudeCredentialsFileName));
-            if (credentials is null)
-            {
-                return null;
-            }
-
-            string? account = Files.ReadAllTextShared(Path.Combine(directory, ClaudeAccountFileName));
-            return ClaudeLoginImporter.TryRead(credentials, account);
+            return ClaudeLoginDetector.IsSignedIn(Files.ReadAllTextShared(Path.Combine(directory, ClaudePaths.CredentialsFileName)));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return null;
+            return false;
         }
     }
 
@@ -332,54 +331,64 @@ public sealed class AccountLoginSession : IDisposable
         }
     }
 
-    /// <summary>New account: save the secret, then add the settings entry. Again: hand the login to the running provider.</summary>
-    private async Task<AccountLoginFailure?> SaveClaudeLoginAsync(ClaudeOwnedCredentials login, CancellationToken ct)
+    /// <summary>
+    /// Moves the finished sign-in folder into place as the account folder (spec 2026-11-16 §2.4); the files in it stay as
+    /// Claude Code wrote them. New account: then adds the settings entry. Again: the running provider's account lock keeps
+    /// a renewal from running in the old folder meanwhile, and the provider reads the new login from the folder.
+    /// </summary>
+    private async Task<AccountLoginFailure?> InstallClaudeLoginAsync(string directory, CancellationToken ct)
     {
-        ct.ThrowIfCancellationRequested();
-        if (IsNew)
+        string accountDirectory = Path.Combine(AppPaths.AccountsDirectory, AccountStorage.ClaudeHomeName(AccountId));
+        string asideDirectory = directory + AsideSuffix;
+        bool MoveIntoPlace() => AccountFolders.MoveIntoPlace(directory, accountDirectory, asideDirectory);
+
+        // A new account has no provider until the restart; neither has an account added since the app started.
+        var source = _host.Providers.OfType<ClaudeUsageProvider>()
+            .FirstOrDefault(p => string.Equals(p.Id, AccountId, StringComparison.Ordinal))?.Source as ClaudeDelegatedCredentialSource;
+
+        bool oldFolderDeleted;
+        for (int attempt = 1; ; attempt++)
         {
-            string secretName = AccountStorage.ClaudeSecretName(AccountId);
-            ISecretStore secrets = _host.ProviderContext.Secrets;
+            ct.ThrowIfCancellationRequested();
             try
             {
-                await Task.Run(() => secrets.Save(secretName, login.ToJson()), CancellationToken.None);
+                oldFolderDeleted = await Task.Run(
+                    () => source is null ? Task.FromResult(MoveIntoPlace()) : source.RunExclusiveAsync(MoveIntoPlace, ct),
+                    CancellationToken.None);
+                break;
             }
-            catch (Exception ex) when (ex is CryptographicException or IOException or UnauthorizedAccessException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                Log.Warn($"account sign-in: saving the login failed ({ex.GetType().Name})");
-                return AccountLoginFailure.SaveFailed;
-            }
+                if (attempt >= MoveAttempts)
+                {
+                    Log.Warn($"account sign-in: moving the login into place failed ({ex.GetType().Name})");
+                    return AccountLoginFailure.SaveFailed;
+                }
 
-            if (ct.IsCancellationRequested)
-            {
-                // Cancelled while saving: the account is not added, so its secret goes too (the startup sweep would also catch it).
-                await Task.Run(() => TryDeleteSecret(secrets, secretName), CancellationToken.None);
-                ct.ThrowIfCancellationRequested();
+                await Task.Delay(PollInterval, Time, ct);
             }
+        }
 
-            AddToSettings();
+        if (!oldFolderDeleted)
+        {
+            Log.Warn("account sign-in: the replaced login folder could not be deleted; the startup cleanup removes it");
+        }
+
+        if (!IsNew)
+        {
+            // The new login is in place: a cancel now would not undo it.
+            RefreshUsage();
             return null;
         }
 
-        ClaudeUsageProvider? provider = _host.Providers.OfType<ClaudeUsageProvider>()
-            .FirstOrDefault(p => string.Equals(p.Id, AccountId, StringComparison.Ordinal));
-        if (provider?.Source is not ClaudeOwnedCredentialSource source)
+        if (ct.IsCancellationRequested)
         {
-            Log.Warn($"account sign-in: no running provider for {AccountId}");
-            return AccountLoginFailure.SaveFailed;
+            // Cancelled while moving: the account is not added, so its folder goes too (the startup sweep would also catch it).
+            await Task.Run(() => TryDeleteAccountFolder(accountDirectory), CancellationToken.None);
+            ct.ThrowIfCancellationRequested();
         }
 
-        try
-        {
-            // ReplaceAsync logs the failure itself (type only); a cancel now would not undo a saved login, so it is not passed.
-            await Task.Run(() => source.ReplaceAsync(login, CancellationToken.None), CancellationToken.None);
-        }
-        catch (Exception ex) when (ex is CryptographicException or IOException or UnauthorizedAccessException)
-        {
-            return AccountLoginFailure.SaveFailed;
-        }
-
-        RefreshUsage();
+        AddToSettings();
         return null;
     }
 
@@ -429,9 +438,9 @@ public sealed class AccountLoginSession : IDisposable
     }
 
     /// <summary>
-    /// Deletes the Claude sign-in folder always, and a new Codex account's folder unless the account was added.
-    /// An existing Codex account's folder is its store and is never deleted here. Failures are logged only (the startup
-    /// sweep removes leftovers).
+    /// Deletes the Claude sign-in folder always (gone already once it was moved into place), and a new Codex account's
+    /// folder unless the account was added. An existing account's folder is its store and is never deleted here.
+    /// Failures are logged only (the startup sweep removes leftovers).
     /// </summary>
     private async Task CleanUpAsync(bool completed)
     {
@@ -449,7 +458,7 @@ public sealed class AccountLoginSession : IDisposable
 
         try
         {
-            await Task.Run(() => DeleteDirectory(directory));
+            await Task.Run(() => AccountFolders.Delete(directory));
         }
         catch (Exception ex)
         {
@@ -458,34 +467,15 @@ public sealed class AccountLoginSession : IDisposable
         }
     }
 
-    /// <summary>A link (junction or symlink) is removed itself, never followed.</summary>
-    private static void DeleteDirectory(string directory)
-    {
-        var info = new DirectoryInfo(directory);
-        if (!info.Exists)
-        {
-            return;
-        }
-
-        if (info.LinkTarget is not null)
-        {
-            info.Delete();
-        }
-        else
-        {
-            info.Delete(recursive: true);
-        }
-    }
-
-    private void TryDeleteSecret(ISecretStore secrets, string name)
+    private void TryDeleteAccountFolder(string directory)
     {
         try
         {
-            secrets.Delete(name);
+            AccountFolders.Delete(directory);
         }
-        catch (Exception ex) when (ex is CryptographicException or IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            Log.Warn($"account sign-in: deleting the unused login failed ({ex.GetType().Name})");
+            Log.Warn($"account sign-in: deleting the unused account folder failed ({ex.GetType().Name})");
         }
     }
 }

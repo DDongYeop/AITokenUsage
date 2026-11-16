@@ -7,8 +7,9 @@ public class AccountStorageTests
     [Fact]
     public void Names_UseTheKeyAfterTheSeparator()
     {
-        Assert.Equal("claude-account-k3x9q2", AccountStorage.ClaudeSecretName("claude#k3x9q2"));
+        Assert.Equal("claude-k3x9q2", AccountStorage.ClaudeHomeName("claude#k3x9q2"));
         Assert.Equal("codex-a1b2c3", AccountStorage.CodexHomeName("codex#a1b2c3"));
+        Assert.Equal("claude-", AccountStorage.ClaudeHomePrefix);
         Assert.Equal("claude-account-", AccountStorage.ClaudeSecretPrefix);
         Assert.Equal("codex-", AccountStorage.CodexHomePrefix);
     }
@@ -16,34 +17,47 @@ public class AccountStorageTests
     [Fact]
     public void Names_RejectNonAccountIds()
     {
-        Assert.Throws<ArgumentException>(() => AccountStorage.ClaudeSecretName("claude"));
+        Assert.Throws<ArgumentException>(() => AccountStorage.ClaudeHomeName("claude"));
         Assert.Throws<ArgumentException>(() => AccountStorage.CodexHomeName("codex"));
     }
 
     [Fact]
-    public void OrphanClaudeSecrets_ReturnsPrefixedNamesWhoseKeyIsNotInSettings()
+    public void LegacyClaudeSecrets_ReturnsEveryPrefixedNameEvenWhenTheAccountIsInSettings()
     {
         string[] secrets = ["claude-account-k3x9q2", "claude-account-old111", "copilot-token", "codex-a1b2c3", "something"];
+
+        Assert.Equal(["claude-account-k3x9q2", "claude-account-old111"], AccountStorage.LegacyClaudeSecrets(secrets));
+    }
+
+    [Fact]
+    public void LegacyClaudeSecrets_ANameWithoutAValidKeyIsNeverReturned()
+    {
+        string[] secrets = ["claude-account-", "claude-account-abc", "claude-account-abcdefg", "claude-account-ABCDEF", "claude-account-ab.def", "claude-account-old111"];
+
+        Assert.Equal(["claude-account-old111"], AccountStorage.LegacyClaudeSecrets(secrets));
+    }
+
+    [Fact]
+    public void OrphanClaudeHomes_ReturnsPrefixedDirectoriesWhoseKeyIsNotInSettings()
+    {
+        string[] dirs = ["claude-k3x9q2", "claude-gone99", "codex-a1b2c3", "notes"];
         string[] settings = ["claude", "codex", "claude#k3x9q2", "codex#a1b2c3"];
 
-        Assert.Equal(["claude-account-old111"], AccountStorage.OrphanClaudeSecrets(secrets, settings));
+        Assert.Equal(["claude-gone99"], AccountStorage.OrphanClaudeHomes(dirs, settings));
     }
 
     [Fact]
-    public void OrphanClaudeSecrets_AKeyOfAnotherKindDoesNotProtectTheSecret()
+    public void OrphanClaudeHomes_AKeyOfAnotherKindDoesNotProtectTheDirectory()
     {
-        string[] secrets = ["claude-account-a1b2c3"];
-        string[] settings = ["codex#a1b2c3"];
-
-        Assert.Equal(["claude-account-a1b2c3"], AccountStorage.OrphanClaudeSecrets(secrets, settings));
+        Assert.Equal(["claude-a1b2c3"], AccountStorage.OrphanClaudeHomes(["claude-a1b2c3"], ["codex#a1b2c3"]));
     }
 
     [Fact]
-    public void OrphanClaudeSecrets_NothingInSettings_EveryPrefixedNameIsOrphan()
+    public void OrphanClaudeHomes_ANameWithoutAValidKeyIsNeverAnOrphan()
     {
-        Assert.Equal(
-            ["claude-account-aaaaaa", "claude-account-bbbbbb"],
-            AccountStorage.OrphanClaudeSecrets(["claude-account-aaaaaa", "other", "claude-account-bbbbbb"], []));
+        string[] dirs = ["claude-notes", "claude-", "claude-abc", "claude-abcdefg", "claude-ABCDEF", "claude-ab-def", "claude-account-abc123", "claude-gone99"];
+
+        Assert.Equal(["claude-gone99"], AccountStorage.OrphanClaudeHomes(dirs, []));
     }
 
     [Fact]
@@ -70,14 +84,6 @@ public class AccountStorageTests
     }
 
     [Fact]
-    public void OrphanClaudeSecrets_ANameWithoutAValidKeyIsNeverAnOrphan()
-    {
-        string[] secrets = ["claude-account-", "claude-account-abc", "claude-account-abcdefg", "claude-account-ABCDEF", "claude-account-ab.def", "claude-account-old111"];
-
-        Assert.Equal(["claude-account-old111"], AccountStorage.OrphanClaudeSecrets(secrets, []));
-    }
-
-    [Fact]
     public void Orphans_IgnoreNonAccountSettingsIdsAndKeepInputOrder()
     {
         Assert.Equal(
@@ -88,8 +94,9 @@ public class AccountStorageTests
     [Fact]
     public void Orphans_RejectNull()
     {
-        Assert.Throws<ArgumentNullException>(() => AccountStorage.OrphanClaudeSecrets(null!, []));
-        Assert.Throws<ArgumentNullException>(() => AccountStorage.OrphanClaudeSecrets([], null!));
+        Assert.Throws<ArgumentNullException>(() => AccountStorage.LegacyClaudeSecrets(null!));
+        Assert.Throws<ArgumentNullException>(() => AccountStorage.OrphanClaudeHomes(null!, []));
+        Assert.Throws<ArgumentNullException>(() => AccountStorage.OrphanClaudeHomes([], null!));
         Assert.Throws<ArgumentNullException>(() => AccountStorage.OrphanCodexHomes(null!, []));
         Assert.Throws<ArgumentNullException>(() => AccountStorage.OrphanCodexHomes([], null!));
     }

@@ -51,6 +51,8 @@
 - `claude`가 PATH에 없으면 [Claude 계정 추가]를 끄고 "Claude Code가 설치되어 있어야 추가할 수 있어요"를 보여 준다. 설치 안내는 기존 연결 안내를 따른다.
 
 ### 2.3 토큰 갱신 (이 계정에만 허용)
+> 1.3.1에서 대체됨: `2026-11-16-claude-account-cli-renewal-design.md`(갱신을 Claude Code에 맡기고, 로그인은 계정 폴더에 둔다).
+
 - 기존 규칙 "Claude 토큰은 갱신하지 않는다"는 **기본 계정에는 그대로** 적용한다. 앱이 만든 로그인 체인(추가 계정)만 앱이 갱신한다. 그 체인은 다른 프로그램이 쓰지 않으므로 회전 충돌이 없다.
 - 요청: `POST https://platform.claude.com/v1/oauth/token`
   - `Content-Type: application/json`, `User-Agent: claude-code/<버전>`(사용량 요청과 같은 값)

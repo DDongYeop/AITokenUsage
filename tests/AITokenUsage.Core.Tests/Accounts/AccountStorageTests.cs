@@ -15,14 +15,15 @@ public class AccountStorageTests
     }
 
     [Fact]
-    public void ClaudeHomeOfAside_ReturnsTheAccountFolderOfAReplacedFolder()
+    public void ClaudeHomeToRestore_ReturnsTheAccountFolderOfAReplacedFolderWhoseAccountIsInSettings()
     {
         Assert.Equal(".ready", AccountStorage.ReadySuffix);
         Assert.Equal(".old", AccountStorage.AsideSuffix);
-        Assert.Equal("claude-k3x9q2", AccountStorage.ClaudeHomeOfAside("claude-k3x9q2.old"));
+        Assert.Equal("claude-k3x9q2", AccountStorage.ClaudeHomeToRestore("claude-k3x9q2.old", ["claude", "claude#k3x9q2"]));
     }
 
     [Theory]
+    [InlineData("claude-gone99.old")]
     [InlineData("claude-k3x9q2")]
     [InlineData("claude-k3x9q2.ready")]
     [InlineData("claude-K3X9Q2.old")]
@@ -30,9 +31,15 @@ public class AccountStorageTests
     [InlineData("codex-a1b2c3.old")]
     [InlineData("claude-account-abc123.old")]
     [InlineData(".old")]
-    public void ClaudeHomeOfAside_IsNullForAnyOtherName(string name)
+    public void ClaudeHomeToRestore_IsNullForAnyOtherNameOrAnAccountNotInSettings(string name)
     {
-        Assert.Null(AccountStorage.ClaudeHomeOfAside(name));
+        Assert.Null(AccountStorage.ClaudeHomeToRestore(name, ["claude#k3x9q2", "codex#a1b2c3", "claude#abc123"]));
+    }
+
+    [Fact]
+    public void ClaudeHomeToRestore_AKeyOfAnotherKindDoesNotCount()
+    {
+        Assert.Null(AccountStorage.ClaudeHomeToRestore("claude-a1b2c3.old", ["codex#a1b2c3"]));
     }
 
     [Fact]
@@ -115,6 +122,8 @@ public class AccountStorageTests
     [Fact]
     public void Orphans_RejectNull()
     {
+        Assert.Throws<ArgumentNullException>(() => AccountStorage.ClaudeHomeToRestore(null!, []));
+        Assert.Throws<ArgumentNullException>(() => AccountStorage.ClaudeHomeToRestore("claude-k3x9q2.old", null!));
         Assert.Throws<ArgumentNullException>(() => AccountStorage.LegacyClaudeSecrets(null!));
         Assert.Throws<ArgumentNullException>(() => AccountStorage.OrphanClaudeHomes(null!, []));
         Assert.Throws<ArgumentNullException>(() => AccountStorage.OrphanClaudeHomes([], null!));

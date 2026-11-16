@@ -99,7 +99,8 @@ public sealed class ClaudeUsageProvider : IUsageProvider
             Path.Combine(accountsDirectory, AccountStorage.ClaudeHomeName(accountId)),
             ctx.Files,
             new ClaudeCliRenewer(ctx.Processes, ctx.Files, ctx.Time, ctx.Log),
-            ctx.Time);
+            ctx.Time,
+            ctx.Log);
         return new ClaudeUsageProvider(ctx, accountId, source);
     }
 

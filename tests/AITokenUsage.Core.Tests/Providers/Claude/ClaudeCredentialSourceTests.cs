@@ -95,6 +95,9 @@ public class ClaudeDelegatedCredentialSourceTests
     private readonly FakeTimeProvider _time = new(ClaudeTestData.Now);
     private readonly RecordingLog _log = new();
 
+    // Tests decide whether the network is up; the default would ask this PC.
+    private bool _online = true;
+
     public ClaudeDelegatedCredentialSourceTests()
     {
         _processes.SetPath("claude", @"C:\Users\test\.local\bin\claude.exe");
@@ -102,7 +105,7 @@ public class ClaudeDelegatedCredentialSourceTests
     }
 
     private ClaudeDelegatedCredentialSource CreateSource() =>
-        new(AccountDirectory, _files, new ClaudeCliRenewer(_processes, _files, _time, _log), _time);
+        new(AccountDirectory, _files, new ClaudeCliRenewer(_processes, _files, _time, _log), _time, _log, () => _online);
 
     private void Write(string accessToken, DateTimeOffset expiresAt)
     {
@@ -275,7 +278,7 @@ public class ClaudeDelegatedCredentialSourceTests
         var clock = new ShiftingTimeProvider(_time);
         Write(Token1, ClaudeTestData.Now.AddHours(-2));
         var source = new ClaudeDelegatedCredentialSource(
-            AccountDirectory, _files, new ClaudeCliRenewer(_processes, _files, clock, _log), clock);
+            AccountDirectory, _files, new ClaudeCliRenewer(_processes, _files, clock, _log), clock, _log, () => true);
         await source.ReadAsync(CancellationToken.None);
         Assert.Equal(2, _processes.Calls.Count);
 
@@ -285,6 +288,89 @@ public class ClaudeDelegatedCredentialSourceTests
         await source.ReadAsync(CancellationToken.None);
 
         Assert.Equal(4, _processes.Calls.Count);
+    }
+
+    private int OfflineLogLines() =>
+        _log.Entries.Count(e => e.Level == "INFO" && e.Message.Contains("no network", StringComparison.Ordinal));
+
+    [Fact]
+    public async Task Offline_an_expired_token_runs_no_command_and_counts_no_failure()
+    {
+        Write(Token1, ClaudeTestData.Now.AddMinutes(-1));
+        _online = false;
+        ClaudeDelegatedCredentialSource source = CreateSource();
+
+        for (int i = 0; i < 5; i++)
+        {
+            _time.Advance(TimeSpan.FromMinutes(2));
+            ClaudeCredentialReadResult result = await source.ReadAsync(CancellationToken.None);
+            Assert.Equal(ClaudeCredentialState.RenewFailed, result.State);
+            Assert.Null(result.Credentials);
+        }
+
+        Assert.Empty(_processes.Calls);
+        Assert.Equal(1, OfflineLogLines());
+
+        // Back online: the very next read runs the command (no gap was started while offline).
+        _online = true;
+        RenewWith(Token2);
+        ClaudeCredentialReadResult renewed = await source.ReadAsync(CancellationToken.None);
+        Assert.Equal(Token2, renewed.Credentials!.AccessToken);
+        Assert.Single(_processes.Calls);
+
+        // The next time the network is gone, one more line.
+        _time.Advance(TimeSpan.FromHours(9));
+        _online = false;
+        await source.ReadAsync(CancellationToken.None);
+        await source.ReadAsync(CancellationToken.None);
+        Assert.Equal(2, OfflineLogLines());
+        Assert.Single(_processes.Calls);
+    }
+
+    [Fact]
+    public async Task Offline_inside_the_five_minute_margin_the_old_token_is_used()
+    {
+        Write(Token1, ClaudeTestData.Now.AddMinutes(4));
+        _online = false;
+
+        ClaudeCredentialReadResult result = await CreateSource().ReadAsync(CancellationToken.None);
+
+        Assert.Equal(ClaudeCredentialState.Ok, result.State);
+        Assert.Equal(Token1, result.Credentials!.AccessToken);
+        Assert.Empty(_processes.Calls);
+    }
+
+    [Fact]
+    public async Task Offline_once_sign_in_is_required_it_stays_required_and_the_thirty_minute_gap_is_kept()
+    {
+        Write(Token1, ClaudeTestData.Now.AddMinutes(-1));
+        ClaudeDelegatedCredentialSource source = CreateSource();
+        for (int i = 0; i < 3; i++)
+        {
+            _time.Advance(TimeSpan.FromMinutes(2));
+            await source.ReadAsync(CancellationToken.None);
+        }
+
+        Assert.Equal(6, _processes.Calls.Count);
+
+        // Offline reads neither clear the gap nor start a new one: it still runs from the last attempt.
+        _online = false;
+        _time.Advance(TimeSpan.FromMinutes(10));
+        Assert.Equal(ClaudeCredentialState.ReauthRequired, (await source.ReadAsync(CancellationToken.None)).State);
+
+        _online = true;
+        _time.Advance(TimeSpan.FromMinutes(19));
+        Assert.Equal(ClaudeCredentialState.ReauthRequired, (await source.ReadAsync(CancellationToken.None)).State);
+        Assert.Equal(6, _processes.Calls.Count);
+
+        _online = false;
+        _time.Advance(TimeSpan.FromMinutes(2));
+        Assert.Equal(ClaudeCredentialState.ReauthRequired, (await source.ReadAsync(CancellationToken.None)).State);
+        Assert.Equal(6, _processes.Calls.Count);
+
+        _online = true;
+        Assert.Equal(ClaudeCredentialState.ReauthRequired, (await source.ReadAsync(CancellationToken.None)).State);
+        Assert.Equal(8, _processes.Calls.Count);
     }
 
     [Fact]

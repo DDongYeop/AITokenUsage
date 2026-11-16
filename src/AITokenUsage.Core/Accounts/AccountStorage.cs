@@ -31,19 +31,23 @@ public static class AccountStorage
     public static string CodexHomeName(string accountId) => CodexHomePrefix + AccountIds.KeyOf(accountId);
 
     /// <summary>
-    /// The Claude account folder name a replaced folder in the login folder belongs to ("claude-k3x9q2.old" →
-    /// "claude-k3x9q2"); null for any other name.
+    /// The Claude account folder name that a replaced folder in the login folder should go back to: "claude-k3x9q2" for
+    /// "claude-k3x9q2.old" when claude#k3x9q2 is in <paramref name="settingsIds"/>. Null for any other name, and for the
+    /// replaced folder of an account that is no longer in the settings (that one is deleted).
     /// </summary>
-    public static string? ClaudeHomeOfAside(string name)
+    public static string? ClaudeHomeToRestore(string name, IEnumerable<string> settingsIds)
     {
         ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(settingsIds);
         if (!name.EndsWith(AsideSuffix, StringComparison.Ordinal))
         {
             return null;
         }
 
         string home = name[..^AsideSuffix.Length];
-        return HasKeyAfter(home, ClaudeHomePrefix) ? home : null;
+        return HasKeyAfter(home, ClaudeHomePrefix) && Orphans([home], settingsIds, ClaudeHomePrefix, "claude").Count == 0
+            ? home
+            : null;
     }
 
     /// <summary>

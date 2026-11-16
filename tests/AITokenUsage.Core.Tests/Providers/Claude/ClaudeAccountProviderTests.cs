@@ -78,7 +78,8 @@ public class ClaudeAccountProviderTests
         public ClaudeUsageProvider CreateProvider() => new(
             Context,
             AccountId,
-            new ClaudeDelegatedCredentialSource(AccountDirectory, Files, new ClaudeCliRenewer(Processes, Files, Time, Log), Time),
+            new ClaudeDelegatedCredentialSource(
+                AccountDirectory, Files, new ClaudeCliRenewer(Processes, Files, Time, Log), Time, Log, isNetworkAvailable: () => true),
             new ClaudeVersionProbe(
                 Env,
                 _ => new[] { "anthropic.claude-code-2.1.400-win32-x64" },

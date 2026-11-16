@@ -1,3 +1,4 @@
+using System.Net.NetworkInformation;
 using System.Text.Json;
 using AITokenUsage.Core.Abstractions;
 using AITokenUsage.Core.Util;
@@ -10,6 +11,7 @@ namespace AITokenUsage.Core.Providers.Claude;
 /// <see cref="ClaudeUsageProvider.RefreshMargin"/> of expiry is handed to Claude Code to renew (<see cref="ClaudeCliRenewer"/>),
 /// at most once per <see cref="RenewalGap"/>; <see cref="FailuresBeforeReauth"/> renewals in a row that leave an expired
 /// token mean "sign in again", and from then on the command runs at most once per <see cref="ReauthRenewalGap"/>.
+/// Without a network the command is not run and nothing is counted, so being offline never looks like "sign in again".
 /// Renewals and <see cref="RunExclusiveAsync"/> run one at a time under the account lock.
 /// </summary>
 public sealed class ClaudeDelegatedCredentialSource : IClaudeCredentialSource
@@ -31,6 +33,8 @@ public sealed class ClaudeDelegatedCredentialSource : IClaudeCredentialSource
     private readonly ClaudeCredentialReader _reader;
     private readonly ClaudeCliRenewer _renewer;
     private readonly TimeProvider _time;
+    private readonly IAppLog _log;
+    private readonly Func<bool> _isNetworkAvailable;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     // When the last renewal attempt ended, as TimeProvider.GetTimestamp (unaffected by changes to the wall clock). Under _gate.
@@ -39,18 +43,25 @@ public sealed class ClaudeDelegatedCredentialSource : IClaudeCredentialSource
     // Renewals in a row that left an expired token; cleared whenever a fresh token is read (and with it the longer gap).
     private int _failures;
 
+    // True while renewals are skipped for want of a network, so that is logged once per offline spell. Under _gate.
+    private bool _offline;
+
     private volatile string? _email;
 
     /// <param name="accountDirectory">The account folder (CLAUDE_CONFIG_DIR), e.g. %LOCALAPPDATA%\AITokenUsage\accounts\claude-k3x9q2.</param>
     /// <param name="files">Reads the folder with shared access.</param>
     /// <param name="renewer">Runs Claude Code for the folder.</param>
     /// <param name="time">The clock for expiry and the renewal gap.</param>
-    public ClaudeDelegatedCredentialSource(string accountDirectory, IFileSystem files, ClaudeCliRenewer renewer, TimeProvider time)
+    /// <param name="log">Notes a renewal skipped for want of a network, once per offline spell.</param>
+    /// <param name="isNetworkAvailable">Whether any network is up; defaults to <see cref="NetworkInterface.GetIsNetworkAvailable()"/>.</param>
+    public ClaudeDelegatedCredentialSource(
+        string accountDirectory, IFileSystem files, ClaudeCliRenewer renewer, TimeProvider time, IAppLog log, Func<bool>? isNetworkAvailable = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(accountDirectory);
         ArgumentNullException.ThrowIfNull(files);
         ArgumentNullException.ThrowIfNull(renewer);
         ArgumentNullException.ThrowIfNull(time);
+        ArgumentNullException.ThrowIfNull(log);
         _directory = accountDirectory;
         _credentialsPath = Path.Combine(accountDirectory, ClaudePaths.CredentialsFileName);
         _accountPath = Path.Combine(accountDirectory, AccountFileName);
@@ -58,6 +69,8 @@ public sealed class ClaudeDelegatedCredentialSource : IClaudeCredentialSource
         _reader = new ClaudeCredentialReader(files);
         _renewer = renewer;
         _time = time;
+        _log = log;
+        _isNetworkAvailable = isNetworkAvailable ?? NetworkInterface.GetIsNetworkAvailable;
         WatchPaths = [_credentialsPath];
     }
 
@@ -105,6 +118,20 @@ public sealed class ClaudeDelegatedCredentialSource : IClaudeCredentialSource
                 return NotRenewed(read, countFailure: false);
             }
 
+            if (!IsNetworkAvailable())
+            {
+                // Offline is not a failed renewal: no command, no failure counted and no gap started, so the first read
+                // with a network runs it at once.
+                if (!_offline)
+                {
+                    _offline = true;
+                    _log.Info("Claude account renewal: no network; waiting for one before running claude.");
+                }
+
+                return NotRenewed(read, countFailure: false);
+            }
+
+            _offline = false;
             ClaudeCredentialReadResult? after = await _renewer.RenewAsync(_directory, ct).ConfigureAwait(false);
             _lastRenewal = _time.GetTimestamp();
             if (after is not null && TakeFresh(after))
@@ -161,6 +188,19 @@ public sealed class ClaudeDelegatedCredentialSource : IClaudeCredentialSource
         ClaudeCredentialState.NotInstalled or ClaudeCredentialState.SignedOut => new ClaudeCredentialReadResult(ClaudeCredentialState.ReauthRequired),
         _ => read,
     };
+
+    /// <summary>The injected check; a failing check counts as a network, so the command still decides.</summary>
+    private bool IsNetworkAvailable()
+    {
+        try
+        {
+            return _isNetworkAvailable();
+        }
+        catch (NetworkInformationException)
+        {
+            return true;
+        }
+    }
 
     /// <summary>True when the token needs no renewal; that also clears the failure count.</summary>
     private bool TakeFresh(ClaudeCredentialReadResult read)

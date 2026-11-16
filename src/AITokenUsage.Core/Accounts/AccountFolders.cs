@@ -1,3 +1,5 @@
+using AITokenUsage.Core.Abstractions;
+
 namespace AITokenUsage.Core.Accounts;
 
 /// <summary>
@@ -103,6 +105,80 @@ public static class AccountFolders
 
         Delete(ready);
         Delete(source);
+    }
+
+    /// <summary>
+    /// The startup sweep of the login folder (Claude spec 2026-11-16 §2.5), entry by entry. A replaced account folder
+    /// ("claude-&lt;key&gt;.old") of an account in <paramref name="settingsIds"/> whose account folder under
+    /// <paramref name="accountsDirectory"/> is missing (the app stopped in the middle of a replacement) goes back in place;
+    /// when that fails it is logged and left where it is. Everything else is deleted, and an entry that cannot be deleted is
+    /// logged and skipped. The login folder itself goes once nothing is left in it; a login folder that is a link is left alone.
+    /// </summary>
+    public static void SweepLoginFolder(string loginDirectory, string accountsDirectory, IEnumerable<string> settingsIds, IAppLog log)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(loginDirectory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(accountsDirectory);
+        ArgumentNullException.ThrowIfNull(settingsIds);
+        ArgumentNullException.ThrowIfNull(log);
+
+        var folder = new DirectoryInfo(loginDirectory);
+        if (!folder.Exists)
+        {
+            return;
+        }
+
+        if (folder.Attributes.HasFlag(FileAttributes.ReparsePoint))
+        {
+            log.Warn("account cleanup: the login folder is a link; left alone");
+            return;
+        }
+
+        string[] ids = settingsIds.ToArray();
+        bool keptAny = false;
+        foreach (FileSystemInfo entry in folder.EnumerateFileSystemInfos())
+        {
+            if (AccountStorage.ClaudeHomeToRestore(entry.Name, ids) is { } home)
+            {
+                try
+                {
+                    if (RestoreAside(Path.Combine(accountsDirectory, home), entry.FullName))
+                    {
+                        log.Info($"account cleanup: put the login folder '{home}' back in place");
+                        continue;
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // The only copy of that account's login: never deleted.
+                    log.Warn($"account cleanup: could not put the login folder '{home}' back; left in place", ex);
+                    keptAny = true;
+                    continue;
+                }
+            }
+
+            try
+            {
+                if (entry is DirectoryInfo)
+                {
+                    Delete(entry.FullName);
+                }
+                else
+                {
+                    entry.Delete();
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                log.Warn($"account cleanup: could not remove '{entry.Name}' from the login folder", ex);
+                keptAny = true;
+            }
+        }
+
+        if (!keptAny)
+        {
+            folder.Delete();
+            log.Info("account cleanup: removed leftover login folder");
+        }
     }
 
     /// <summary>Deletes a folder with everything in it; a link (junction or symlink) is removed itself, never followed.</summary>

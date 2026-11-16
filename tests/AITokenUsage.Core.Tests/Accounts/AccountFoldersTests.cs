@@ -248,6 +248,92 @@ public class AccountFoldersTests : IDisposable
         Assert.False(AccountFolders.RestoreAside(Target, Aside));
     }
 
+    private string LoginDirectory => _temp.Combine("login");
+
+    private string AccountsDirectory => _temp.Combine("accounts");
+
+    [Fact]
+    public void SweepLoginFolder_PutsBackAReplacedFolderOfAnAccountInSettingsAndDeletesTheRest()
+    {
+        var log = new RecordingLog();
+        WriteFile(Aside, ".credentials.json", "old");
+        WriteFile(Source, ".credentials.json", "unfinished");
+        WriteFile(Ready, ".credentials.json", "new");
+        WriteFile(_temp.Combine("login", "claude-zzz999.old"), ".credentials.json", "removed account");
+        WriteFile(LoginDirectory, "stray.txt", "x");
+
+        AccountFolders.SweepLoginFolder(LoginDirectory, AccountsDirectory, ["claude", "claude#abc123"], log);
+
+        Assert.Equal("old", ReadFile(Target, ".credentials.json"));
+        Assert.False(Directory.Exists(_temp.Combine("accounts", "claude-zzz999")));
+        Assert.False(Directory.Exists(LoginDirectory));
+        Assert.Contains(log.Entries, e => e.Level == "INFO" && e.Message.Contains("claude-abc123", StringComparison.Ordinal));
+        Assert.DoesNotContain(log.Entries, e => e.Level == "WARN");
+    }
+
+    [Fact]
+    public void SweepLoginFolder_DeletesAReplacedFolderWhenTheAccountFolderExists()
+    {
+        WriteFile(Target, ".credentials.json", "current");
+        WriteFile(Aside, ".credentials.json", "old");
+
+        AccountFolders.SweepLoginFolder(LoginDirectory, AccountsDirectory, ["claude#abc123"], new RecordingLog());
+
+        Assert.Equal("current", ReadFile(Target, ".credentials.json"));
+        Assert.False(Directory.Exists(LoginDirectory));
+    }
+
+    [Fact]
+    public void SweepLoginFolder_LeavesAFolderThatCannotBePutBackAndDeletesEverythingElse()
+    {
+        var log = new RecordingLog();
+        WriteFile(Aside, ".credentials.json", "old");
+        WriteFile(Source, ".credentials.json", "unfinished");
+        WriteFile(Ready, ".credentials.json", "new");
+        WriteFile(LoginDirectory, "stray.txt", "x");
+
+        // A file open inside the replaced folder keeps Windows from moving it back.
+        using (new FileStream(Path.Combine(Aside, ".credentials.json"), FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            AccountFolders.SweepLoginFolder(LoginDirectory, AccountsDirectory, ["claude#abc123"], log);
+        }
+
+        Assert.Equal("old", ReadFile(Aside, ".credentials.json"));
+        Assert.False(Directory.Exists(Target));
+        Assert.False(Directory.Exists(Source));
+        Assert.False(Directory.Exists(Ready));
+        Assert.False(File.Exists(Path.Combine(LoginDirectory, "stray.txt")));
+        Assert.Contains(log.Entries, e => e.Level == "WARN" && e.Message.Contains("claude-abc123", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SweepLoginFolder_KeepsGoingWhenOneEntryCannotBeDeleted()
+    {
+        var log = new RecordingLog();
+        string busy = _temp.Combine("login", "claude-busy11");
+        WriteFile(busy, ".credentials.json", "x");
+        WriteFile(Source, ".credentials.json", "unfinished");
+
+        using (new FileStream(Path.Combine(busy, ".credentials.json"), FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            AccountFolders.SweepLoginFolder(LoginDirectory, AccountsDirectory, [], log);
+        }
+
+        Assert.True(Directory.Exists(busy));
+        Assert.False(Directory.Exists(Source));
+        Assert.Contains(log.Entries, e => e.Level == "WARN" && e.Message.Contains("claude-busy11", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SweepLoginFolder_MissingFolderIsNothingToDo()
+    {
+        var log = new RecordingLog();
+
+        AccountFolders.SweepLoginFolder(LoginDirectory, AccountsDirectory, [], log);
+
+        Assert.Empty(log.Entries);
+    }
+
     [Fact]
     public void Delete_RemovesTheFolderAndIgnoresAMissingOne()
     {

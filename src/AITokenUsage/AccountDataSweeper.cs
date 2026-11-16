@@ -22,7 +22,8 @@ internal static class AccountDataSweeper
         string[] ids = settingsIds.ToArray();
         try
         {
-            SweepLoginDirectory(loginDirectory, accountsDirectory, log);
+            // Entry by entry: a replaced account folder of an account in the settings goes back first (§2.5).
+            AccountFolders.SweepLoginFolder(loginDirectory, accountsDirectory, ids, log);
         }
         catch (Exception ex)
         {
@@ -46,37 +47,6 @@ internal static class AccountDataSweeper
         {
             log.Warn("account cleanup: orphaned account folders could not be cleaned", ex);
         }
-    }
-
-    /// <summary>
-    /// The whole folder: it only ever holds the temporary CLAUDE_CONFIG_DIR of a login that was running when the app exited
-    /// (or its ready copy), or a replaced account folder. A replaced folder whose account folder is missing (the app stopped
-    /// in the middle of a replacement) is put back first; when that fails, nothing is deleted.
-    /// </summary>
-    private static void SweepLoginDirectory(string loginDirectory, string accountsDirectory, IAppLog log)
-    {
-        if (!Directory.Exists(loginDirectory))
-        {
-            return;
-        }
-
-        if (IsReparsePoint(loginDirectory))
-        {
-            log.Warn("account cleanup: the login folder is a link; left alone");
-            return;
-        }
-
-        foreach (string directory in Directory.EnumerateDirectories(loginDirectory))
-        {
-            if (AccountStorage.ClaudeHomeOfAside(Path.GetFileName(directory)) is { } home
-                && AccountFolders.RestoreAside(Path.Combine(accountsDirectory, home), directory))
-            {
-                log.Info($"account cleanup: put the login folder '{home}' back in place");
-            }
-        }
-
-        Directory.Delete(loginDirectory, recursive: true);
-        log.Info("account cleanup: removed leftover login folder");
     }
 
     /// <summary>Every Claude login 1.3.0 kept as a secret, whether or not the account is still in the settings: nothing reads them now.</summary>

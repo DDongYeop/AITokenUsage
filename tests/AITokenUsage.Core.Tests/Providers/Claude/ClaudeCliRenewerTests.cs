@@ -60,9 +60,16 @@ public class ClaudeCliRenewerTests
         Assert.Equal(AccountDirectory, spec.WorkingDirectory);
         Assert.Equal(TimeSpan.FromSeconds(30), spec.Timeout);
         var environment = spec.EnvironmentOverrides!;
-        Assert.Equal(5, environment.Count);
+        Assert.Equal(9, environment.Count);
         Assert.Equal(AccountDirectory, environment["CLAUDE_CONFIG_DIR"]);
-        foreach (string removed in new[] { "CLAUDE_SECURESTORAGE_CONFIG_DIR", "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN" })
+        Assert.Equal("1", environment["DISABLE_AUTOUPDATER"]);
+        Assert.Equal("1", environment["NoDefaultCurrentDirectoryInExePath"]);
+        string[] removedVariables =
+        [
+            "CLAUDE_SECURESTORAGE_CONFIG_DIR", "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN",
+            "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX",
+        ];
+        foreach (string removed in removedVariables)
         {
             Assert.True(environment.ContainsKey(removed), removed);
             Assert.Null(environment[removed]);
@@ -74,18 +81,38 @@ public class ClaudeCliRenewerTests
     }
 
     [Fact]
-    public async Task Npm_shim_runs_through_cmd()
+    public async Task Npm_shim_runs_through_the_system_cmd_with_its_full_path()
     {
-        _processes.SetPath("claude", @"C:\Users\test\AppData\Roaming\npm\claude.cmd");
+        const string shim = @"C:\Users\Test User\AppData\Roaming\npm\claude.cmd";
+        _processes.SetPath("claude", shim);
         RenewOn("get");
 
         await CreateRenewer().RenewAsync(AccountDirectory, CancellationToken.None);
 
         ProcessSpec spec = Assert.Single(_processes.Calls);
-        Assert.Equal("cmd.exe", spec.FileName);
-        Assert.Equal(new[] { "/d", "/c", "claude", "mcp", "get", "aitokenusage-renew" }, spec.Arguments);
+        Assert.Equal(Path.Combine(Environment.SystemDirectory, "cmd.exe"), spec.FileName);
+        Assert.Equal(new[] { "/d", "/c", shim, "mcp", "get", "aitokenusage-renew" }, spec.Arguments);
         Assert.Equal(AccountDirectory, spec.WorkingDirectory);
         Assert.Equal(AccountDirectory, spec.EnvironmentOverrides!["CLAUDE_CONFIG_DIR"]);
+        Assert.Equal("1", spec.EnvironmentOverrides!["NoDefaultCurrentDirectoryInExePath"]);
+    }
+
+    [Theory]
+    [InlineData(@"C:\Users\Kim (Work)\AppData\Roaming\npm\claude.cmd")]
+    [InlineData(@"C:\Users\R&D\AppData\Roaming\npm\claude.cmd")]
+    [InlineData(@"C:\Users\a,b\AppData\Roaming\npm\claude.cmd")]
+    [InlineData(@"C:\Users\100%\AppData\Roaming\npm\claude.cmd")]
+    public async Task A_shim_path_cmd_would_misread_runs_by_name_without_the_current_folder(string shim)
+    {
+        _processes.SetPath("claude", shim);
+        RenewOn("get");
+
+        await CreateRenewer().RenewAsync(AccountDirectory, CancellationToken.None);
+
+        ProcessSpec spec = Assert.Single(_processes.Calls);
+        Assert.Equal(Path.Combine(Environment.SystemDirectory, "cmd.exe"), spec.FileName);
+        Assert.Equal(new[] { "/d", "/c", "claude", "mcp", "get", "aitokenusage-renew" }, spec.Arguments);
+        Assert.Equal("1", spec.EnvironmentOverrides!["NoDefaultCurrentDirectoryInExePath"]);
     }
 
     [Fact]
@@ -119,13 +146,48 @@ public class ClaudeCliRenewerTests
     }
 
     [Fact]
-    public async Task A_token_within_five_minutes_of_expiry_is_not_renewed()
+    public async Task An_unexpired_token_after_mcp_get_is_returned_without_mcp_list()
+    {
+        // Claude Code renews from 5 minutes before expiry: an unexpired token it left alone gains nothing from mcp list.
+        WriteCredentials(OldToken, ClaudeTestData.Now.AddMinutes(4));
+
+        ClaudeCredentialReadResult? result = await CreateRenewer().RenewAsync(AccountDirectory, CancellationToken.None);
+
+        Assert.Single(_processes.Calls);
+        Assert.Equal(OldToken, result!.Credentials!.AccessToken);
+        Assert.Contains(_log.Entries, e => e.Message.Contains("not renewed", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task An_expired_token_after_mcp_get_runs_mcp_list_even_one_second_past_expiry()
+    {
+        WriteCredentials(OldToken, ClaudeTestData.Now.AddSeconds(-1));
+        RenewOn("list");
+
+        ClaudeCredentialReadResult? result = await CreateRenewer().RenewAsync(AccountDirectory, CancellationToken.None);
+
+        Assert.Equal(2, _processes.Calls.Count);
+        Assert.Equal(NewToken, result!.Credentials!.AccessToken);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task A_failed_read_after_mcp_get_runs_mcp_list(bool removeFile)
     {
         _processes.OnRun(spec =>
         {
             if (IsMcp(spec, "get"))
             {
-                WriteCredentials(NewToken, _time.GetUtcNow().AddMinutes(5));
+                _files.Remove(CredentialsPath);
+                if (!removeFile)
+                {
+                    _files.AddFile(CredentialsPath, """{"claudeAiOauth":{"accessTo""");
+                }
+            }
+            else
+            {
+                WriteCredentials(NewToken, _time.GetUtcNow().AddHours(8));
             }
 
             return new ProcessResult(1, "", "", false);

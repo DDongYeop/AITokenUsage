@@ -15,6 +15,27 @@ public class AccountStorageTests
     }
 
     [Fact]
+    public void ClaudeHomeOfAside_ReturnsTheAccountFolderOfAReplacedFolder()
+    {
+        Assert.Equal(".ready", AccountStorage.ReadySuffix);
+        Assert.Equal(".old", AccountStorage.AsideSuffix);
+        Assert.Equal("claude-k3x9q2", AccountStorage.ClaudeHomeOfAside("claude-k3x9q2.old"));
+    }
+
+    [Theory]
+    [InlineData("claude-k3x9q2")]
+    [InlineData("claude-k3x9q2.ready")]
+    [InlineData("claude-K3X9Q2.old")]
+    [InlineData("claude-abc.old")]
+    [InlineData("codex-a1b2c3.old")]
+    [InlineData("claude-account-abc123.old")]
+    [InlineData(".old")]
+    public void ClaudeHomeOfAside_IsNullForAnyOtherName(string name)
+    {
+        Assert.Null(AccountStorage.ClaudeHomeOfAside(name));
+    }
+
+    [Fact]
     public void Names_RejectNonAccountIds()
     {
         Assert.Throws<ArgumentException>(() => AccountStorage.ClaudeHomeName("claude"));

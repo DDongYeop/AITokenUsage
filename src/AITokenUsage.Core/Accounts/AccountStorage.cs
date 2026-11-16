@@ -18,9 +18,33 @@ public static class AccountStorage
     /// <summary>Codex accounts: the CODEX_HOME folder name is this prefix + the key ("codex-a1b2c3").</summary>
     public const string CodexHomePrefix = "codex-";
 
+    /// <summary>
+    /// In the login folder: a finished Claude sign-in, renamed to this suffix once it is known to move ("claude-k3x9q2.ready").
+    /// </summary>
+    public const string ReadySuffix = ".ready";
+
+    /// <summary>In the login folder: an account folder being replaced by a new sign-in ("claude-k3x9q2.old").</summary>
+    public const string AsideSuffix = ".old";
+
     public static string ClaudeHomeName(string accountId) => ClaudeHomePrefix + AccountIds.KeyOf(accountId);
 
     public static string CodexHomeName(string accountId) => CodexHomePrefix + AccountIds.KeyOf(accountId);
+
+    /// <summary>
+    /// The Claude account folder name a replaced folder in the login folder belongs to ("claude-k3x9q2.old" →
+    /// "claude-k3x9q2"); null for any other name.
+    /// </summary>
+    public static string? ClaudeHomeOfAside(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        if (!name.EndsWith(AsideSuffix, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        string home = name[..^AsideSuffix.Length];
+        return HasKeyAfter(home, ClaudeHomePrefix) ? home : null;
+    }
 
     /// <summary>
     /// Names (without extension) from <paramref name="secretNames"/> that start with <see cref="ClaudeSecretPrefix"/>

@@ -41,4 +41,22 @@ public class ClaudeLoginDetectorTests
     {
         Assert.False(ClaudeLoginDetector.IsSignedIn(credentialsJson));
     }
+
+    [Fact]
+    public void Account_file_with_oauthAccount_names_the_account()
+    {
+        Assert.True(ClaudeLoginDetector.HasAccount("""{"numStartups":1,"oauthAccount":{"emailAddress":"me@example.com"}}"""));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("""{"numStartups":1,"oauthAcc""")]
+    [InlineData("""{"numStartups":1}""")]
+    [InlineData("""{"oauthAccount":"nope"}""")]
+    [InlineData("[]")]
+    public void Missing_or_partial_account_file_does_not_name_the_account(string? accountJson)
+    {
+        Assert.False(ClaudeLoginDetector.HasAccount(accountJson));
+    }
 }

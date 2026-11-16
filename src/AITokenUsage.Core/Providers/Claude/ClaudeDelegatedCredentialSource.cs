@@ -9,7 +9,8 @@ namespace AITokenUsage.Core.Providers.Claude;
 /// which is that account's CLAUDE_CONFIG_DIR. The widget only reads the folder. A token that has expired or is within
 /// <see cref="ClaudeUsageProvider.RefreshMargin"/> of expiry is handed to Claude Code to renew (<see cref="ClaudeCliRenewer"/>),
 /// at most once per <see cref="RenewalGap"/>; <see cref="FailuresBeforeReauth"/> renewals in a row that leave an expired
-/// token mean "sign in again". Renewals and <see cref="RunExclusiveAsync"/> run one at a time under the account lock.
+/// token mean "sign in again", and from then on the command runs at most once per <see cref="ReauthRenewalGap"/>.
+/// Renewals and <see cref="RunExclusiveAsync"/> run one at a time under the account lock.
 /// </summary>
 public sealed class ClaudeDelegatedCredentialSource : IClaudeCredentialSource
 {
@@ -20,6 +21,9 @@ public sealed class ClaudeDelegatedCredentialSource : IClaudeCredentialSource
 
     public static readonly TimeSpan RenewalGap = TimeSpan.FromMinutes(2);
 
+    /// <summary>The gap once sign-in is required: a later renewal may still work, but it is unlikely.</summary>
+    public static readonly TimeSpan ReauthRenewalGap = TimeSpan.FromMinutes(30);
+
     private readonly string _directory;
     private readonly string _credentialsPath;
     private readonly string _accountPath;
@@ -29,10 +33,10 @@ public sealed class ClaudeDelegatedCredentialSource : IClaudeCredentialSource
     private readonly TimeProvider _time;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
-    // When the last renewal attempt ended. Under _gate.
-    private DateTimeOffset? _lastRenewal;
+    // When the last renewal attempt ended, as TimeProvider.GetTimestamp (unaffected by changes to the wall clock). Under _gate.
+    private long? _lastRenewal;
 
-    // Renewals in a row that left an expired token; cleared whenever a fresh token is read.
+    // Renewals in a row that left an expired token; cleared whenever a fresh token is read (and with it the longer gap).
     private int _failures;
 
     private volatile string? _email;
@@ -94,14 +98,15 @@ public sealed class ClaudeDelegatedCredentialSource : IClaudeCredentialSource
                 return read;
             }
 
-            if (_lastRenewal is { } last && _time.GetUtcNow() - last < RenewalGap)
+            TimeSpan gap = Volatile.Read(ref _failures) >= FailuresBeforeReauth ? ReauthRenewalGap : RenewalGap;
+            if (_lastRenewal is { } last && _time.GetElapsedTime(last) < gap)
             {
                 // Claude Code ran a moment ago: answer as that attempt did, without counting another failure.
                 return NotRenewed(read, countFailure: false);
             }
 
             ClaudeCredentialReadResult? after = await _renewer.RenewAsync(_directory, ct).ConfigureAwait(false);
-            _lastRenewal = _time.GetUtcNow();
+            _lastRenewal = _time.GetTimestamp();
             if (after is not null && TakeFresh(after))
             {
                 return after;
@@ -116,8 +121,8 @@ public sealed class ClaudeDelegatedCredentialSource : IClaudeCredentialSource
     }
 
     /// <summary>
-    /// Claude Code renews only after the expiry time, so a rejected token cannot be forced: it is replaced only when the
-    /// file changed meanwhile (renewed, or signed in again). Null otherwise.
+    /// Claude Code renews only from 5 minutes before expiry, so a rejected token cannot be renewed on demand: it is
+    /// replaced only when the file changed meanwhile (renewed, or signed in again). Null otherwise.
     /// </summary>
     public async Task<ClaudeCredentialReadResult?> RecoverAsync(ClaudeCredentials rejected, CancellationToken ct)
     {

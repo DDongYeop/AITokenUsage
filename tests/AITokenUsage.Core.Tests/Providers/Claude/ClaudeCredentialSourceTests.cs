@@ -137,6 +137,18 @@ public class ClaudeDelegatedCredentialSourceTests
         }
     }
 
+    /// <summary>The fake clock with a wall clock that can be set back while the monotonic timestamp keeps going.</summary>
+    private sealed class ShiftingTimeProvider(FakeTimeProvider inner) : TimeProvider
+    {
+        public TimeSpan WallClockShift { get; set; }
+
+        public override long TimestampFrequency => inner.TimestampFrequency;
+
+        public override DateTimeOffset GetUtcNow() => inner.GetUtcNow() + WallClockShift;
+
+        public override long GetTimestamp() => inner.GetTimestamp();
+    }
+
     [Fact]
     public void Watches_the_account_credentials_file_and_renews_itself()
     {
@@ -185,7 +197,7 @@ public class ClaudeDelegatedCredentialSourceTests
 
         Assert.Equal(ClaudeCredentialState.Ok, result.State);
         Assert.Equal(Token1, result.Credentials!.AccessToken);
-        Assert.Equal(2, _processes.Calls.Count);
+        Assert.Single(_processes.Calls);
     }
 
     [Fact]
@@ -206,8 +218,122 @@ public class ClaudeDelegatedCredentialSourceTests
         Assert.Equal(
             new[] { ClaudeCredentialState.RenewFailed, ClaudeCredentialState.RenewFailed, ClaudeCredentialState.ReauthRequired, ClaudeCredentialState.ReauthRequired },
             states);
-        Assert.Equal(8, _processes.Calls.Count);
+
+        // get + list per attempt; the fourth read falls in the longer gap that follows the third failure.
+        Assert.Equal(6, _processes.Calls.Count);
         AssertNoTokensLogged();
+    }
+
+    [Fact]
+    public async Task Once_sign_in_is_required_the_command_runs_at_most_once_per_thirty_minutes()
+    {
+        Write(Token1, ClaudeTestData.Now.AddMinutes(-1));
+        ClaudeDelegatedCredentialSource source = CreateSource();
+        for (int i = 0; i < 3; i++)
+        {
+            _time.Advance(TimeSpan.FromMinutes(2));
+            await source.ReadAsync(CancellationToken.None);
+        }
+
+        Assert.Equal(6, _processes.Calls.Count);
+
+        _time.Advance(TimeSpan.FromMinutes(29));
+        Assert.Equal(ClaudeCredentialState.ReauthRequired, (await source.ReadAsync(CancellationToken.None)).State);
+        Assert.Equal(6, _processes.Calls.Count);
+
+        _time.Advance(TimeSpan.FromMinutes(1));
+        Assert.Equal(ClaudeCredentialState.ReauthRequired, (await source.ReadAsync(CancellationToken.None)).State);
+        Assert.Equal(8, _processes.Calls.Count);
+    }
+
+    [Fact]
+    public async Task A_fresh_login_brings_back_the_two_minute_gap()
+    {
+        Write(Token1, ClaudeTestData.Now.AddMinutes(-1));
+        ClaudeDelegatedCredentialSource source = CreateSource();
+        for (int i = 0; i < 3; i++)
+        {
+            _time.Advance(TimeSpan.FromMinutes(2));
+            await source.ReadAsync(CancellationToken.None);
+        }
+
+        // Signed in again a minute after the last attempt, with a token that soon needs renewing again.
+        _time.Advance(TimeSpan.FromMinutes(1));
+        Write(Token3, _time.GetUtcNow().AddMinutes(6));
+        Assert.Equal(Token3, (await source.ReadAsync(CancellationToken.None)).Credentials!.AccessToken);
+        Assert.Equal(6, _processes.Calls.Count);
+
+        _time.Advance(TimeSpan.FromMinutes(2));
+        RenewWith(Token2);
+        Assert.Equal(Token2, (await source.ReadAsync(CancellationToken.None)).Credentials!.AccessToken);
+        Assert.Equal(7, _processes.Calls.Count);
+    }
+
+    [Fact]
+    public async Task The_gap_follows_the_monotonic_clock_when_the_wall_clock_jumps_back()
+    {
+        var clock = new ShiftingTimeProvider(_time);
+        Write(Token1, ClaudeTestData.Now.AddHours(-2));
+        var source = new ClaudeDelegatedCredentialSource(
+            AccountDirectory, _files, new ClaudeCliRenewer(_processes, _files, clock, _log), clock);
+        await source.ReadAsync(CancellationToken.None);
+        Assert.Equal(2, _processes.Calls.Count);
+
+        // Two minutes pass, but the wall clock is set back an hour (the token is still expired).
+        _time.Advance(TimeSpan.FromMinutes(2));
+        clock.WallClockShift = TimeSpan.FromHours(-1);
+        await source.ReadAsync(CancellationToken.None);
+
+        Assert.Equal(4, _processes.Calls.Count);
+    }
+
+    [Fact]
+    public async Task Cancelling_during_the_command_releases_the_lock_and_starts_no_gap()
+    {
+        Write(Token1, ClaudeTestData.Now.AddMinutes(-1));
+        using var cts = new CancellationTokenSource();
+        _processes.OnRun(_ =>
+        {
+            cts.Cancel();
+            throw new OperationCanceledException(cts.Token);
+        });
+        ClaudeDelegatedCredentialSource source = CreateSource();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => source.ReadAsync(cts.Token));
+
+        NeverRenew();
+        ClaudeCredentialReadResult next = await source.ReadAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(ClaudeCredentialState.RenewFailed, next.State);
+        Assert.Equal(3, _processes.Calls.Count);
+    }
+
+    [Theory]
+    [InlineData(true, 4, ClaudeCredentialState.Ok)]
+    [InlineData(false, 4, ClaudeCredentialState.Ok)]
+    [InlineData(true, -1, ClaudeCredentialState.RenewFailed)]
+    [InlineData(false, -1, ClaudeCredentialState.RenewFailed)]
+    public async Task A_failed_read_after_the_command_falls_back_to_the_token_read_before(
+        bool removeFile, int minutesLeft, ClaudeCredentialState expected)
+    {
+        Write(Token1, ClaudeTestData.Now.AddMinutes(minutesLeft));
+        _processes.OnRun(_ =>
+        {
+            _files.Remove(CredentialsPath);
+            if (!removeFile)
+            {
+                _files.AddFile(CredentialsPath, """{"claudeAiOauth":{"accessTo""");
+            }
+
+            return new ProcessResult(1, "", "", false);
+        });
+
+        ClaudeCredentialReadResult result = await CreateSource().ReadAsync(CancellationToken.None);
+
+        Assert.Equal(expected, result.State);
+        Assert.Equal(expected == ClaudeCredentialState.Ok ? Token1 : null, result.Credentials?.AccessToken);
+
+        // Not Ok after mcp get: mcp list is tried as well.
+        Assert.Equal(2, _processes.Calls.Count);
     }
 
     [Fact]
@@ -282,7 +408,7 @@ public class ClaudeDelegatedCredentialSourceTests
 
         Assert.Equal(ClaudeCredentialState.Ok, result.State);
         Assert.Equal(Token1, result.Credentials!.AccessToken);
-        Assert.Equal(2, _processes.Calls.Count);
+        Assert.Single(_processes.Calls);
     }
 
     [Fact]

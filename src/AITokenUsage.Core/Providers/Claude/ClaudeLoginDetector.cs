@@ -4,8 +4,8 @@ using AITokenUsage.Core.Util;
 namespace AITokenUsage.Core.Providers.Claude;
 
 /// <summary>
-/// Decides from the .credentials.json that "claude auth login" writes into the sign-in folder whether the login finished
-/// (used while signing an extra Claude account in). Pure parsing: the caller reads the file with shared access.
+/// Decides from the files that "claude auth login" writes into the sign-in folder whether the login finished
+/// (used while signing an extra Claude account in). Pure parsing: the caller reads the files with shared access.
 /// </summary>
 public static class ClaudeLoginDetector
 {
@@ -34,6 +34,28 @@ public static class ClaudeLoginDetector
                 && Json.Arr(oauth, "scopes") is { } scopes
                 && scopes.EnumerateArray().Any(scope =>
                     scope.ValueKind == JsonValueKind.String && scope.GetString() == ClaudeCredentialReader.ProfileScope);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// True when the sign-in folder's .claude.json has the oauthAccount object (the account email), which Claude Code writes
+    /// right after the credentials. False for a missing or partly written file.
+    /// </summary>
+    public static bool HasAccount(string? accountJson)
+    {
+        if (string.IsNullOrWhiteSpace(accountJson))
+        {
+            return false;
+        }
+
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(accountJson);
+            return Json.Obj(document.RootElement, "oauthAccount") is not null;
         }
         catch (JsonException)
         {

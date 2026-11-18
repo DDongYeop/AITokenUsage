@@ -43,7 +43,7 @@ public class MacPlatformTests
         var keychain = new FakeCredentialStore().Add("Claude Code-credentials", "test", Login);
         var source = new ClaudeKeychainCredentialSource(keychain, new FakeFileSystem(), new FakeEnvironment("/Users/test"));
 
-        ClaudeCredentialReadResult result = await source.ReadAsync("claude-code/2.1.0", CancellationToken.None);
+        ClaudeCredentialReadResult result = await source.ReadAsync(CancellationToken.None);
 
         Assert.Equal(ClaudeCredentialState.Ok, result.State);
         Assert.Equal("sk-ant-oat-keychain", result.Credentials!.AccessToken);
@@ -57,7 +57,7 @@ public class MacPlatformTests
         var files = new FakeFileSystem().AddFile(ClaudePaths.ResolveCredentialsPath(env), Login);
         var source = new ClaudeKeychainCredentialSource(new FakeCredentialStore(), files, env);
 
-        ClaudeCredentialReadResult result = await source.ReadAsync("claude-code/2.1.0", CancellationToken.None);
+        ClaudeCredentialReadResult result = await source.ReadAsync(CancellationToken.None);
 
         Assert.Equal(ClaudeCredentialState.Ok, result.State);
     }
@@ -67,7 +67,7 @@ public class MacPlatformTests
     {
         var source = new ClaudeKeychainCredentialSource(new FakeCredentialStore(), new FakeFileSystem(), new FakeEnvironment("/Users/test"));
 
-        ClaudeCredentialReadResult result = await source.ReadAsync("claude-code/2.1.0", CancellationToken.None);
+        ClaudeCredentialReadResult result = await source.ReadAsync(CancellationToken.None);
 
         Assert.Equal(ClaudeCredentialState.NotInstalled, result.State);
     }

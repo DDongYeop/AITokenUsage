@@ -14,7 +14,8 @@ namespace AITokenUsage.Core.Providers.Claude;
 /// <summary>
 /// Calls GET /api/oauth/usage with the login from an <see cref="IClaudeCredentialSource"/>.
 /// The built-in panel reads Claude Code's login read-only and never refreshes or writes it; an extra account
-/// (<see cref="ForAccount"/>) uses the widget-owned login, which renews itself. Never logs tokens, headers or bodies.
+/// (<see cref="ForAccount"/>) reads Claude Code's login in its own account folder and has Claude Code renew it.
+/// Never logs tokens, headers or bodies.
 /// </summary>
 public sealed class ClaudeUsageProvider : IUsageProvider
 {
@@ -81,19 +82,23 @@ public sealed class ClaudeUsageProvider : IUsageProvider
         _versionProbe = versionProbe ?? new ClaudeVersionProbe(ctx.Env);
     }
 
-    /// <summary>An extra Claude account (<paramref name="accountId"/> like "claude#k3x9q2") with its widget-owned login.</summary>
-    public static ClaudeUsageProvider ForAccount(ProviderContext ctx, string accountId)
+    /// <summary>
+    /// An extra Claude account (<paramref name="accountId"/> like "claude#k3x9q2") whose CLAUDE_CONFIG_DIR is its own
+    /// folder under <paramref name="accountsDirectory"/>.
+    /// </summary>
+    public static ClaudeUsageProvider ForAccount(ProviderContext ctx, string accountId, string accountsDirectory)
     {
         ArgumentNullException.ThrowIfNull(ctx);
+        ArgumentException.ThrowIfNullOrWhiteSpace(accountsDirectory);
         if (!AccountIds.IsAccountId(accountId) || ProviderIds.KindOf(accountId) != ProviderIds.Claude)
         {
             throw new ArgumentException($"Not a Claude account id: '{accountId}'.", nameof(accountId));
         }
 
-        var source = new ClaudeOwnedCredentialSource(
-            ctx.Secrets,
-            AccountStorage.ClaudeSecretName(accountId),
-            new ClaudeTokenRenewer(ctx.Http, ctx.Time, ctx.Log),
+        var source = new ClaudeDelegatedCredentialSource(
+            Path.Combine(accountsDirectory, AccountStorage.ClaudeHomeName(accountId)),
+            ctx.Files,
+            new ClaudeCliRenewer(ctx.Processes, ctx.Files, ctx.Time, ctx.Log),
             ctx.Time,
             ctx.Log);
         return new ClaudeUsageProvider(ctx, accountId, source);
@@ -107,11 +112,11 @@ public sealed class ClaudeUsageProvider : IUsageProvider
 
     public IReadOnlyList<string> WatchPaths => Source.WatchPaths;
 
-    /// <summary>Where the login comes from: Claude Code's file or the widget-owned login of an extra account.</summary>
+    /// <summary>Where the login comes from: Claude Code's file, or Claude Code's file in an extra account's folder.</summary>
     public IClaudeCredentialSource Source { get; }
 
-    /// <summary>The extra account's email once its login was loaded; null for the built-in panel.</summary>
-    public string? AccountEmail => (Source as ClaudeOwnedCredentialSource)?.Email;
+    /// <summary>The extra account's email after the first read of its folder; null for the built-in panel.</summary>
+    public string? AccountEmail => (Source as ClaudeDelegatedCredentialSource)?.Email;
 
     public IReadOnlyList<MeterOption> StaticMeterOptions =>
     [
@@ -124,9 +129,8 @@ public sealed class ClaudeUsageProvider : IUsageProvider
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            // The token endpoint and the usage endpoint get the same User-Agent.
             string userAgent = "claude-code/" + UserAgentVersion(_ctx.Time.GetUtcNow());
-            ClaudeCredentialReadResult read = await Source.ReadAsync(userAgent, ct).ConfigureAwait(false);
+            ClaudeCredentialReadResult read = await Source.ReadAsync(ct).ConfigureAwait(false);
             if (read.State != ClaudeCredentialState.Ok || read.Credentials is null)
             {
                 return FromCredentialState(read.State);
@@ -185,8 +189,8 @@ public sealed class ClaudeUsageProvider : IUsageProvider
                     _ctx.Log.Info("Claude usage: HTTP 401.");
                     if (allowAuthRetry)
                     {
-                        // CLI: re-read the file. Widget-owned: renew once, unless this fetch just did.
-                        ClaudeCredentialReadResult? recovered = await Source.RecoverAsync(credentials, userAgent, ct).ConfigureAwait(false);
+                        // Re-read the file: Claude Code may have renewed the login (or it was signed in again) meanwhile.
+                        ClaudeCredentialReadResult? recovered = await Source.RecoverAsync(credentials, ct).ConfigureAwait(false);
                         if (recovered is not null)
                         {
                             if (recovered.State != ClaudeCredentialState.Ok || recovered.Credentials is null)

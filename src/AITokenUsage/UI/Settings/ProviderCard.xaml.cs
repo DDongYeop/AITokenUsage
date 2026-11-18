@@ -239,7 +239,7 @@ public partial class ProviderCard : UserControl
     }
 
     /// <summary>
-    /// Extra account: its email (Claude: saved with the login; Codex: the id_token of the last read), when known.
+    /// Extra account: its email (Claude: the account folder's .claude.json; Codex: the id_token of the last read), when known.
     /// Built-in Claude/Codex: "Claude Code on this PC" / "Codex on this PC" while another panel of that AI is on the page.
     /// </summary>
     private string? Subtitle(int panelsOfKind)

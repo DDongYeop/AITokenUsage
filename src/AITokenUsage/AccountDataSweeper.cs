@@ -4,8 +4,8 @@ using AITokenUsage.Core.Accounts;
 namespace AITokenUsage;
 
 /// <summary>
-/// Startup cleanup of the extra accounts' leftovers (spec §6). Deletes only inside the app's own folders and never
-/// touches the CLI's own login files (~/.claude, ~/.codex) or other secrets (e.g. the Copilot token).
+/// Startup cleanup of the extra accounts' leftovers (spec §6, Claude spec 2026-11-16 §2.5). Deletes only inside the app's
+/// own folders and never touches the CLI's own login files (~/.claude, ~/.codex) or other secrets (e.g. the Copilot token).
 /// Runs on a background thread; every failure is logged and swallowed.
 /// </summary>
 internal static class AccountDataSweeper
@@ -22,7 +22,8 @@ internal static class AccountDataSweeper
         string[] ids = settingsIds.ToArray();
         try
         {
-            SweepLoginDirectory(loginDirectory, log);
+            // Entry by entry: a replaced account folder of an account in the settings goes back first (§2.5).
+            AccountFolders.SweepLoginFolder(loginDirectory, accountsDirectory, ids, log);
         }
         catch (Exception ex)
         {
@@ -31,42 +32,25 @@ internal static class AccountDataSweeper
 
         try
         {
-            SweepClaudeSecrets(ids, secretsDirectory, log);
+            SweepLegacyClaudeSecrets(secretsDirectory, log);
         }
         catch (Exception ex)
         {
-            log.Warn("account cleanup: orphaned Claude logins could not be cleaned", ex);
+            log.Warn("account cleanup: old Claude logins could not be cleaned", ex);
         }
 
         try
         {
-            SweepCodexHomes(ids, accountsDirectory, log);
+            SweepAccountFolders(ids, accountsDirectory, log);
         }
         catch (Exception ex)
         {
-            log.Warn("account cleanup: orphaned Codex folders could not be cleaned", ex);
+            log.Warn("account cleanup: orphaned account folders could not be cleaned", ex);
         }
     }
 
-    /// <summary>The whole folder: it only ever holds the temporary CLAUDE_CONFIG_DIR of a login that was running when the app exited.</summary>
-    private static void SweepLoginDirectory(string loginDirectory, IAppLog log)
-    {
-        if (!Directory.Exists(loginDirectory))
-        {
-            return;
-        }
-
-        if (IsReparsePoint(loginDirectory))
-        {
-            log.Warn("account cleanup: the login folder is a link; left alone");
-            return;
-        }
-
-        Directory.Delete(loginDirectory, recursive: true);
-        log.Info("account cleanup: removed leftover login folder");
-    }
-
-    private static void SweepClaudeSecrets(IReadOnlyCollection<string> settingsIds, string secretsDirectory, IAppLog log)
+    /// <summary>Every Claude login 1.3.0 kept as a secret, whether or not the account is still in the settings: nothing reads them now.</summary>
+    private static void SweepLegacyClaudeSecrets(string secretsDirectory, IAppLog log)
     {
         if (!Directory.Exists(secretsDirectory))
         {
@@ -83,21 +67,22 @@ internal static class AccountDataSweeper
             }
         }
 
-        foreach (string name in AccountStorage.OrphanClaudeSecrets(byName.Keys, settingsIds))
+        foreach (string name in AccountStorage.LegacyClaudeSecrets(byName.Keys))
         {
             try
             {
                 File.Delete(byName[name]);
-                log.Info($"account cleanup: removed orphaned login '{name}'");
+                log.Info($"account cleanup: removed old Claude login '{name}'");
             }
             catch (Exception ex)
             {
-                log.Warn($"account cleanup: could not remove orphaned login '{name}'", ex);
+                log.Warn($"account cleanup: could not remove old Claude login '{name}'", ex);
             }
         }
     }
 
-    private static void SweepCodexHomes(IReadOnlyCollection<string> settingsIds, string accountsDirectory, IAppLog log)
+    /// <summary>The CLAUDE_CONFIG_DIR and CODEX_HOME folders of accounts that are no longer in the settings.</summary>
+    private static void SweepAccountFolders(IReadOnlyCollection<string> settingsIds, string accountsDirectory, IAppLog log)
     {
         if (!Directory.Exists(accountsDirectory))
         {
@@ -110,7 +95,9 @@ internal static class AccountDataSweeper
             byName[Path.GetFileName(directory)] = directory;
         }
 
-        foreach (string name in AccountStorage.OrphanCodexHomes(byName.Keys, settingsIds))
+        IEnumerable<string> orphans = AccountStorage.OrphanClaudeHomes(byName.Keys, settingsIds)
+            .Concat(AccountStorage.OrphanCodexHomes(byName.Keys, settingsIds));
+        foreach (string name in orphans)
         {
             string path = byName[name];
             try

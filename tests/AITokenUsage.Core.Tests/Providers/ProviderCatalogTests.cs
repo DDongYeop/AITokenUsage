@@ -70,7 +70,8 @@ public sealed class ProviderCatalogTests
         var codex = Assert.IsType<CodexUsageProvider>(providers.Single(p => p.Id == "codex#b1b1b1"));
         Assert.True(codex.IsAccount);
         Assert.Equal([Path.Combine(AccountsDir, "codex-b1b1b1", "auth.json")], codex.WatchPaths);
-        Assert.NotNull(claude);
+        Assert.IsType<ClaudeDelegatedCredentialSource>(claude.Source);
+        Assert.Equal([Path.Combine(AccountsDir, "claude-a1a1a1", ".credentials.json")], claude.WatchPaths);
     }
 
     [Fact]

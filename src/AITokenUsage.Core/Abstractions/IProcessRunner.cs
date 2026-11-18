@@ -7,11 +7,13 @@ namespace AITokenUsage.Core.Abstractions;
 /// RunAsync: kill the process tree after this long (default 30 s).
 /// StartInteractive: kill the process tree after this long (default: no limit).
 /// </param>
+/// <param name="WorkingDirectory">The child's working directory; null keeps the app's own.</param>
 public sealed record ProcessSpec(
     string FileName,
     IReadOnlyList<string> Arguments,
     IReadOnlyDictionary<string, string?>? EnvironmentOverrides = null,
-    TimeSpan? Timeout = null);
+    TimeSpan? Timeout = null,
+    string? WorkingDirectory = null);
 
 public sealed record ProcessResult(int ExitCode, string StdOut, string StdErr, bool TimedOut)
 {

@@ -8,10 +8,10 @@ public enum ClaudeCredentialState
     MissingProfileScope,
     Unreadable,
 
-    /// <summary>The widget-owned login is missing, broken or refused by the token endpoint: sign in again.</summary>
+    /// <summary>An extra account's login is missing, or Claude Code failed to renew it several times in a row: sign in again.</summary>
     ReauthRequired,
 
-    /// <summary>Renewing the widget-owned login failed for now (network, 429, 5xx, bad body). The tokens are kept.</summary>
+    /// <summary>Claude Code did not renew an extra account's expired login this time; a later read tries again.</summary>
     RenewFailed,
 }
 

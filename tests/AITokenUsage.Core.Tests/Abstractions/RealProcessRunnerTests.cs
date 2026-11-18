@@ -1,4 +1,5 @@
 using AITokenUsage.Core.Abstractions;
+using AITokenUsage.Core.Tests.Fakes;
 
 namespace AITokenUsage.Core.Tests.Abstractions;
 
@@ -40,6 +41,17 @@ public class RealProcessRunnerTests
         {
             Environment.SetEnvironmentVariable("AITU_TEST_REMOVE", null);
         }
+    }
+
+    [WindowsFact]
+    public async Task RunAsync_StartsInTheGivenWorkingDirectory()
+    {
+        using var directory = new TempDirectory();
+        var spec = new ProcessSpec(Cmd, ["/d", "/c", "cd"], WorkingDirectory: directory.Path);
+
+        ProcessResult result = await _runner.RunAsync(spec, CancellationToken.None);
+
+        Assert.Equal(directory.Path, result.StdOut.Trim(), ignoreCase: true);
     }
 
     [WindowsFact]

@@ -1,34 +1,41 @@
 using System.Net;
 using System.Text;
+using AITokenUsage.Core.Abstractions;
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Providers.Claude;
 using AITokenUsage.Core.Tests.Fakes;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
-using static AITokenUsage.Core.Tests.Providers.Claude.ClaudeOwnedTestData;
 
 namespace AITokenUsage.Core.Tests.Providers.Claude;
 
-/// <summary>ClaudeUsageProvider with the widget-owned login of an extra account (spec §2.3–2.4).</summary>
+/// <summary>ClaudeUsageProvider for an extra account: Claude Code's login in the account folder (spec 2026-11-16).</summary>
 public class ClaudeAccountProviderTests
 {
     private const string Reauth = "다시 로그인하세요 · 설정 → AI 연결";
     private const string Network = "네트워크 오류 — 잠시 후 다시 시도";
 
-    private sealed record Sent(HttpMethod Method, string Url, string? Authorization, string UserAgent, string? StoredAccessToken);
+    private const string AccountId = "claude#abc123";
+    private const string AccountsDirectory = @"C:\Users\test\AppData\Local\AITokenUsage\accounts";
+    private const string Token1 = "account-access-token-one";
+    private const string Token2 = "account-access-token-two";
+    private const string Token3 = "account-access-token-three";
+
+    private static readonly string AccountDirectory = Path.Combine(AccountsDirectory, "claude-abc123");
+    private static readonly string CredentialsPath = Path.Combine(AccountDirectory, ".credentials.json");
+    private static readonly string[] AllTokens = [Token1, Token2, Token3];
+
+    private sealed record Sent(HttpMethod Method, string Url, string? Authorization);
 
     private sealed class Harness
     {
         public Harness()
         {
+            Processes.SetPath("claude", @"C:\Users\test\.local\bin\claude.exe");
+            Processes.OnRun(_ => new ProcessResult(1, "", "", false));
             Http.When(_ => true, request =>
             {
-                Sent.Add(new Sent(
-                    request.Method,
-                    request.RequestUri!.AbsoluteUri,
-                    request.Headers.Authorization?.ToString(),
-                    request.Headers.UserAgent.ToString(),
-                    ClaudeOwnedCredentials.FromJson(Secrets.Load(SecretName))?.AccessToken));
+                Sent.Add(new Sent(request.Method, request.RequestUri!.AbsoluteUri, request.Headers.Authorization?.ToString()));
                 return Responses.Dequeue()();
             });
         }
@@ -37,9 +44,11 @@ public class ClaudeAccountProviderTests
 
         public FakeEnvironment Env { get; } = new();
 
-        public StubHttpHandler Http { get; } = new();
+        public FakeFileSystem Files { get; } = new();
 
-        public FakeSecretStore Secrets { get; } = new();
+        public FakeProcessRunner Processes { get; } = new();
+
+        public StubHttpHandler Http { get; } = new();
 
         public RecordingLog Log { get; } = new();
 
@@ -47,27 +56,43 @@ public class ClaudeAccountProviderTests
 
         public Queue<Func<HttpResponseMessage>> Responses { get; } = new();
 
-        public void Store(ClaudeOwnedCredentials login) => Secrets.Save(SecretName, login.ToJson());
+        public ProviderContext Context => TestContexts.Create(Http, Time, Files, Env, Processes, log: Log);
 
-        public ClaudeOwnedCredentials? Stored() => ClaudeOwnedCredentials.FromJson(Secrets.Load(SecretName));
-
-        public ClaudeUsageProvider CreateProvider()
+        public void Write(string accessToken, DateTimeOffset expiresAt)
         {
-            var ctx = TestContexts.Create(Http, Time, env: Env, secrets: Secrets, log: Log);
-            var source = new ClaudeOwnedCredentialSource(
-                Secrets,
-                SecretName,
-                new ClaudeTokenRenewer(ctx.Http, Time, Log),
-                Time,
-                Log);
-            return new ClaudeUsageProvider(
-                ctx,
-                AccountId,
-                source,
-                new ClaudeVersionProbe(
-                    Env,
-                    _ => new[] { "anthropic.claude-code-2.1.400-win32-x64" },
-                    () => Array.Empty<string?>()));
+            Files.Remove(CredentialsPath);
+            Files.AddFile(CredentialsPath, ClaudeTestData.Credentials(accessToken, expiresAt.ToUnixTimeMilliseconds()));
+        }
+
+        /// <summary>"claude mcp get" writes <paramref name="accessToken"/>, valid for 8 h.</summary>
+        public void RenewWith(string accessToken) => Processes.OnRun(spec =>
+        {
+            if (spec.Arguments.Contains("get"))
+            {
+                Write(accessToken, Time.GetUtcNow().AddHours(8));
+            }
+
+            return new ProcessResult(1, "", "", false);
+        });
+
+        public ClaudeUsageProvider CreateProvider() => new(
+            Context,
+            AccountId,
+            new ClaudeDelegatedCredentialSource(
+                AccountDirectory, Files, new ClaudeCliRenewer(Processes, Files, Time, Log), Time, Log, isNetworkAvailable: () => true),
+            new ClaudeVersionProbe(
+                Env,
+                _ => new[] { "anthropic.claude-code-2.1.400-win32-x64" },
+                () => Array.Empty<string?>()));
+
+        /// <summary>The widget never calls the token endpoint: every request is the usage request.</summary>
+        public void AssertOnlyUsageRequests()
+        {
+            Assert.All(Sent, s =>
+            {
+                Assert.Equal(HttpMethod.Get, s.Method);
+                Assert.Equal(ClaudeUsageProvider.UsageUrl, s.Url);
+            });
         }
 
         public void AssertNoTokensLeaked(params UsageSnapshot[] snapshots)
@@ -89,38 +114,25 @@ public class ClaudeAccountProviderTests
 
     private static HttpResponseMessage Usage() => Json(HttpStatusCode.OK, Fixture.Read("claude/usage-live.json"));
 
-    private static HttpResponseMessage Renewed(string accessToken = AccessToken2, string refreshToken = RefreshToken2) =>
-        Json(HttpStatusCode.OK, TokenResponse(accessToken, refreshToken));
-
     [Fact]
-    public void Exposes_account_id_and_no_watch_paths()
+    public async Task ForAccount_reads_the_login_in_the_account_folder()
     {
         var h = new Harness();
-        ClaudeUsageProvider provider = h.CreateProvider();
-
-        Assert.Equal(AccountId, provider.Id);
-        Assert.Equal("Claude", provider.DisplayName);
-        Assert.Empty(provider.WatchPaths);
-        Assert.IsType<ClaudeOwnedCredentialSource>(provider.Source);
-        Assert.Null(provider.AccountEmail);
-    }
-
-    [Fact]
-    public async Task ForAccount_uses_the_account_secret()
-    {
-        var h = new Harness();
-        h.Store(Login());
+        h.Write(Token1, ClaudeTestData.Now.AddHours(8));
+        h.Files.AddFile(Path.Combine(AccountDirectory, ".claude.json"), """{"oauthAccount":{"emailAddress":"me@example.com"}}""");
         h.Responses.Enqueue(Usage);
-        ClaudeUsageProvider provider = ClaudeUsageProvider.ForAccount(TestContexts.Create(h.Http, h.Time, env: h.Env, secrets: h.Secrets), AccountId);
+        ClaudeUsageProvider provider = ClaudeUsageProvider.ForAccount(h.Context, AccountId, AccountsDirectory);
 
         UsageSnapshot snapshot = await provider.FetchAsync(CancellationToken.None);
 
         Assert.Equal(AccountId, provider.Id);
-        Assert.Equal(AccountId, snapshot.ProviderId);
-        Assert.Empty(provider.WatchPaths);
+        Assert.Equal("Claude", provider.DisplayName);
+        Assert.IsType<ClaudeDelegatedCredentialSource>(provider.Source);
+        Assert.Equal(new[] { CredentialsPath }, provider.WatchPaths);
         Assert.Equal(ProviderStatus.Ok, snapshot.Status);
+        Assert.Equal(AccountId, snapshot.ProviderId);
         Assert.Equal("me@example.com", provider.AccountEmail);
-        Assert.Equal("Bearer " + AccessToken1, Assert.Single(h.Sent).Authorization);
+        Assert.Equal("Bearer " + Token1, Assert.Single(h.Sent).Authorization);
     }
 
     [Theory]
@@ -131,14 +143,22 @@ public class ClaudeAccountProviderTests
     {
         var h = new Harness();
 
-        Assert.Throws<ArgumentException>(() => ClaudeUsageProvider.ForAccount(TestContexts.Create(h.Http, h.Time), id));
+        Assert.Throws<ArgumentException>(() => ClaudeUsageProvider.ForAccount(h.Context, id, AccountsDirectory));
+    }
+
+    [Fact]
+    public void ForAccount_needs_the_accounts_folder()
+    {
+        var h = new Harness();
+
+        Assert.ThrowsAny<ArgumentException>(() => ClaudeUsageProvider.ForAccount(h.Context, AccountId, ""));
     }
 
     [Fact]
     public void Default_provider_keeps_the_cli_source()
     {
         var h = new Harness();
-        var provider = new ClaudeUsageProvider(TestContexts.Create(h.Http, h.Time, env: h.Env));
+        var provider = new ClaudeUsageProvider(h.Context);
 
         Assert.Equal(ProviderIds.Claude, provider.Id);
         Assert.IsType<ClaudeCliCredentialSource>(provider.Source);
@@ -147,54 +167,53 @@ public class ClaudeAccountProviderTests
     }
 
     [Fact]
-    public async Task Valid_token_queries_usage_without_renewing()
+    public async Task Valid_token_queries_usage_without_a_command()
     {
         var h = new Harness();
-        h.Store(Login());
+        h.Write(Token1, ClaudeTestData.Now.AddHours(8));
         h.Responses.Enqueue(Usage);
-        ClaudeUsageProvider provider = h.CreateProvider();
 
-        UsageSnapshot snapshot = await provider.FetchAsync(CancellationToken.None);
+        UsageSnapshot snapshot = await h.CreateProvider().FetchAsync(CancellationToken.None);
 
         Assert.Equal(ProviderStatus.Ok, snapshot.Status);
-        Assert.Equal(AccountId, snapshot.ProviderId);
-        Assert.Equal("Max 20x", snapshot.PlanLabel);
-        Sent sent = Assert.Single(h.Sent);
-        Assert.Equal(HttpMethod.Get, sent.Method);
-        Assert.Equal("Bearer " + AccessToken1, sent.Authorization);
-        Assert.Equal("me@example.com", provider.AccountEmail);
+        Assert.Equal("Bearer " + Token1, Assert.Single(h.Sent).Authorization);
+        Assert.Empty(h.Processes.Calls);
     }
 
     [Theory]
     [InlineData(299)]
-    [InlineData(0)]
     [InlineData(-3600)]
-    public async Task Expiring_token_is_renewed_and_saved_before_the_usage_request(int secondsLeft)
+    public async Task Expiring_token_is_renewed_by_claude_code_before_the_usage_request(int secondsLeft)
     {
         var h = new Harness();
-        h.Store(Login(expiresAt: ClaudeTestData.Now.AddSeconds(secondsLeft)));
-        h.Responses.Enqueue(() => Renewed());
+        h.Write(Token1, ClaudeTestData.Now.AddSeconds(secondsLeft));
+        h.RenewWith(Token2);
         h.Responses.Enqueue(Usage);
 
         UsageSnapshot snapshot = await h.CreateProvider().FetchAsync(CancellationToken.None);
 
         Assert.Equal(ProviderStatus.Ok, snapshot.Status);
-        Assert.Equal(2, h.Sent.Count);
-        Assert.Equal(HttpMethod.Post, h.Sent[0].Method);
-        Assert.Equal(ClaudeTokenRenewer.TokenUrl, h.Sent[0].Url);
-        Assert.Null(h.Sent[0].Authorization);
-        Assert.Equal("claude-code/2.1.400", h.Sent[0].UserAgent);
-        Assert.Equal(HttpMethod.Get, h.Sent[1].Method);
-        Assert.Equal("Bearer " + AccessToken2, h.Sent[1].Authorization);
-        Assert.Equal("claude-code/2.1.400", h.Sent[1].UserAgent);
-        Assert.Equal(AccessToken2, h.Sent[1].StoredAccessToken);
-        Assert.Equal(RefreshToken2, h.Stored()!.RefreshToken);
-        Assert.Equal(ClaudeTestData.Now.AddSeconds(28800), h.Stored()!.ExpiresAt);
+        Assert.Single(h.Processes.Calls);
+        Assert.Equal("Bearer " + Token2, Assert.Single(h.Sent).Authorization);
+        h.AssertOnlyUsageRequests();
         h.AssertNoTokensLeaked(snapshot);
     }
 
     [Fact]
-    public async Task Missing_login_needs_sign_in_without_http()
+    public async Task Token_close_to_expiry_is_used_while_claude_code_does_not_renew_it()
+    {
+        var h = new Harness();
+        h.Write(Token1, ClaudeTestData.Now.AddMinutes(4));
+        h.Responses.Enqueue(Usage);
+
+        UsageSnapshot snapshot = await h.CreateProvider().FetchAsync(CancellationToken.None);
+
+        Assert.Equal(ProviderStatus.Ok, snapshot.Status);
+        Assert.Equal("Bearer " + Token1, Assert.Single(h.Sent).Authorization);
+    }
+
+    [Fact]
+    public async Task Missing_login_needs_sign_in_without_http_or_a_command()
     {
         var h = new Harness();
 
@@ -203,200 +222,84 @@ public class ClaudeAccountProviderTests
         Assert.Equal(ProviderStatus.SignedOut, snapshot.Status);
         Assert.Equal(Reauth, snapshot.StatusMessage);
         Assert.Empty(h.Sent);
+        Assert.Empty(h.Processes.Calls);
     }
 
     [Fact]
-    public async Task Rejected_renewal_stays_signed_out_until_sign_in_again()
+    public async Task Expired_and_not_renewed_is_a_network_error_until_the_third_failure_asks_to_sign_in_again()
     {
         var h = new Harness();
-        h.Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(1)));
-        h.Responses.Enqueue(() => Json(HttpStatusCode.BadRequest, """{"error":"invalid_grant"}"""));
+        h.Write(Token1, ClaudeTestData.Now.AddMinutes(-1));
         ClaudeUsageProvider provider = h.CreateProvider();
 
-        UsageSnapshot first = await provider.FetchAsync(CancellationToken.None);
-        Assert.Equal(ProviderStatus.SignedOut, first.Status);
-        Assert.Equal(Reauth, first.StatusMessage);
-        Assert.Single(h.Sent);
-        Assert.Equal(AccessToken1, h.Stored()!.AccessToken);
+        var snapshots = new List<UsageSnapshot>();
+        for (int i = 0; i < 3; i++)
+        {
+            snapshots.Add(await provider.FetchAsync(CancellationToken.None));
+            h.Time.Advance(TimeSpan.FromMinutes(2));
+        }
 
-        h.Time.Advance(TimeSpan.FromHours(2));
-        UsageSnapshot second = await provider.FetchAsync(CancellationToken.None);
-        Assert.Equal(ProviderStatus.SignedOut, second.Status);
-        Assert.Single(h.Sent);
-
-        var source = (ClaudeOwnedCredentialSource)provider.Source;
-        await source.ReplaceAsync(Login(AccessToken3, RefreshToken3, h.Time.GetUtcNow().AddHours(8)), CancellationToken.None);
-        h.Responses.Enqueue(Usage);
-
-        UsageSnapshot afterSignIn = await provider.FetchAsync(CancellationToken.None);
-        Assert.Equal(ProviderStatus.Ok, afterSignIn.Status);
-        Assert.Equal(2, h.Sent.Count);
-        Assert.Equal("Bearer " + AccessToken3, h.Sent[1].Authorization);
-        Assert.Equal(AccessToken3, h.Stored()!.AccessToken);
-        h.AssertNoTokensLeaked(first, second, afterSignIn);
-    }
-
-    [Fact]
-    public async Task Expired_refresh_token_needs_sign_in_without_http()
-    {
-        var h = new Harness();
-        h.Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(1), refreshTokenExpiresAt: ClaudeTestData.Now.AddMinutes(-1)));
-
-        UsageSnapshot snapshot = await h.CreateProvider().FetchAsync(CancellationToken.None);
-
-        Assert.Equal(ProviderStatus.SignedOut, snapshot.Status);
-        Assert.Equal(Reauth, snapshot.StatusMessage);
+        Assert.Equal(new[] { ProviderStatus.Error, ProviderStatus.Error, ProviderStatus.SignedOut }, snapshots.Select(s => s.Status));
+        Assert.Equal(new[] { Network, Network, Reauth }, snapshots.Select(s => s.StatusMessage));
         Assert.Empty(h.Sent);
+        h.AssertNoTokensLeaked([.. snapshots]);
     }
 
-    [Theory]
-    [InlineData(HttpStatusCode.TooManyRequests)]
-    [InlineData(HttpStatusCode.ServiceUnavailable)]
-    public async Task Temporary_renewal_failure_of_an_expired_token_is_a_network_error_and_retries_next_poll(HttpStatusCode status)
+    [Fact]
+    public async Task New_sign_in_in_the_folder_is_used_by_the_next_fetch()
     {
         var h = new Harness();
-        h.Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(-1)));
-        h.Responses.Enqueue(() => Json(status, "{}"));
         ClaudeUsageProvider provider = h.CreateProvider();
+        Assert.Equal(ProviderStatus.SignedOut, (await provider.FetchAsync(CancellationToken.None)).Status);
 
-        UsageSnapshot failed = await provider.FetchAsync(CancellationToken.None);
-        Assert.Equal(ProviderStatus.Error, failed.Status);
-        Assert.Equal(Network, failed.StatusMessage);
-        Assert.Equal(AccessToken1, h.Stored()!.AccessToken);
-
-        h.Responses.Enqueue(() => Renewed());
-        h.Responses.Enqueue(Usage);
-        UsageSnapshot next = await provider.FetchAsync(CancellationToken.None);
-        Assert.Equal(ProviderStatus.Ok, next.Status);
-        Assert.Equal(3, h.Sent.Count);
-    }
-
-    [Fact]
-    public async Task Temporary_renewal_failure_before_expiry_uses_the_current_token_and_retries_next_poll()
-    {
-        var h = new Harness();
-        h.Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(1)));
-        h.Responses.Enqueue(() => Json(HttpStatusCode.ServiceUnavailable, "{}"));
-        h.Responses.Enqueue(Usage);
-        ClaudeUsageProvider provider = h.CreateProvider();
-
-        UsageSnapshot first = await provider.FetchAsync(CancellationToken.None);
-        Assert.Equal(ProviderStatus.Ok, first.Status);
-        Assert.Equal(new[] { HttpMethod.Post, HttpMethod.Get }, h.Sent.Select(s => s.Method));
-        Assert.Equal("Bearer " + AccessToken1, h.Sent[1].Authorization);
-        Assert.Equal(AccessToken1, h.Stored()!.AccessToken);
-
-        h.Responses.Enqueue(() => Renewed());
-        h.Responses.Enqueue(Usage);
-        UsageSnapshot next = await provider.FetchAsync(CancellationToken.None);
-        Assert.Equal(ProviderStatus.Ok, next.Status);
-        Assert.Equal(HttpMethod.Post, h.Sent[2].Method);
-        Assert.Equal("Bearer " + AccessToken2, h.Sent[3].Authorization);
-        h.AssertNoTokensLeaked(next);
-    }
-
-    [Fact]
-    public async Task Network_failure_while_renewing_is_a_network_error()
-    {
-        var h = new Harness();
-        h.Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(-1)));
-        h.Responses.Enqueue(() => throw new HttpRequestException("No connection could be made."));
-
-        UsageSnapshot snapshot = await h.CreateProvider().FetchAsync(CancellationToken.None);
-
-        Assert.Equal(ProviderStatus.Error, snapshot.Status);
-        Assert.Equal(Network, snapshot.StatusMessage);
-    }
-
-    [Fact]
-    public async Task Unauthorized_forces_one_renewal_and_retries()
-    {
-        var h = new Harness();
-        h.Store(Login());
-        h.Responses.Enqueue(() => Json(HttpStatusCode.Unauthorized, "{}"));
-        h.Responses.Enqueue(() => Renewed());
-        h.Responses.Enqueue(Usage);
-
-        UsageSnapshot snapshot = await h.CreateProvider().FetchAsync(CancellationToken.None);
-
-        Assert.Equal(ProviderStatus.Ok, snapshot.Status);
-        Assert.Equal(new[] { HttpMethod.Get, HttpMethod.Post, HttpMethod.Get }, h.Sent.Select(s => s.Method));
-        Assert.Equal("Bearer " + AccessToken1, h.Sent[0].Authorization);
-        Assert.Equal("Bearer " + AccessToken2, h.Sent[2].Authorization);
-        Assert.Equal(AccessToken2, h.Sent[2].StoredAccessToken);
-        h.AssertNoTokensLeaked(snapshot);
-    }
-
-    [Fact]
-    public async Task Unauthorized_right_after_renewing_does_not_renew_again_and_holds()
-    {
-        var h = new Harness();
-        h.Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(1)));
-        h.Responses.Enqueue(() => Renewed());
-        h.Responses.Enqueue(() => Json(HttpStatusCode.Unauthorized, "{}"));
-        ClaudeUsageProvider provider = h.CreateProvider();
-
-        UsageSnapshot first = await provider.FetchAsync(CancellationToken.None);
-        Assert.Equal(ProviderStatus.SignedOut, first.Status);
-        Assert.Equal(Reauth, first.StatusMessage);
-        Assert.Equal(new[] { HttpMethod.Post, HttpMethod.Get }, h.Sent.Select(s => s.Method));
-
-        h.Time.Advance(TimeSpan.FromMinutes(59));
-        UsageSnapshot held = await provider.FetchAsync(CancellationToken.None);
-        Assert.Equal(ProviderStatus.SignedOut, held.Status);
-        Assert.Equal(2, h.Sent.Count);
-    }
-
-    [Fact]
-    public async Task Unauthorized_after_the_retry_holds_that_token()
-    {
-        var h = new Harness();
-        h.Store(Login());
-        h.Responses.Enqueue(() => Json(HttpStatusCode.Unauthorized, "{}"));
-        h.Responses.Enqueue(() => Renewed());
-        h.Responses.Enqueue(() => Json(HttpStatusCode.Unauthorized, "{}"));
-
-        UsageSnapshot snapshot = await h.CreateProvider().FetchAsync(CancellationToken.None);
-
-        Assert.Equal(ProviderStatus.SignedOut, snapshot.Status);
-        Assert.Equal(Reauth, snapshot.StatusMessage);
-        Assert.Equal(3, h.Sent.Count);
-    }
-
-    [Theory]
-    [InlineData(HttpStatusCode.Unauthorized, ProviderStatus.SignedOut, Reauth)]
-    [InlineData(HttpStatusCode.BadRequest, ProviderStatus.SignedOut, Reauth)]
-    [InlineData(HttpStatusCode.BadGateway, ProviderStatus.Error, Network)]
-    public async Task Unauthorized_then_failed_renewal_maps_the_state(HttpStatusCode renewStatus, ProviderStatus expected, string message)
-    {
-        var h = new Harness();
-        h.Store(Login());
-        h.Responses.Enqueue(() => Json(HttpStatusCode.Unauthorized, "{}"));
-        h.Responses.Enqueue(() => Json(renewStatus, "{}"));
-
-        UsageSnapshot snapshot = await h.CreateProvider().FetchAsync(CancellationToken.None);
-
-        Assert.Equal(expected, snapshot.Status);
-        Assert.Equal(message, snapshot.StatusMessage);
-        Assert.Equal(2, h.Sent.Count);
-    }
-
-    [Fact]
-    public async Task Replace_is_used_by_the_next_fetch()
-    {
-        var h = new Harness();
-        h.Store(Login());
-        ClaudeUsageProvider provider = h.CreateProvider();
-        h.Responses.Enqueue(Usage);
-        await provider.FetchAsync(CancellationToken.None);
-
-        await ((ClaudeOwnedCredentialSource)provider.Source).ReplaceAsync(
-            Login(AccessToken3, RefreshToken3) with { Email = "other@example.com" }, CancellationToken.None);
+        h.Write(Token3, ClaudeTestData.Now.AddHours(8));
+        h.Files.AddFile(Path.Combine(AccountDirectory, ".claude.json"), """{"oauthAccount":{"emailAddress":"other@example.com"}}""");
         h.Responses.Enqueue(Usage);
         UsageSnapshot snapshot = await provider.FetchAsync(CancellationToken.None);
 
         Assert.Equal(ProviderStatus.Ok, snapshot.Status);
-        Assert.Equal("Bearer " + AccessToken3, h.Sent[1].Authorization);
+        Assert.Equal("Bearer " + Token3, Assert.Single(h.Sent).Authorization);
         Assert.Equal("other@example.com", provider.AccountEmail);
+    }
+
+    [Fact]
+    public async Task Unauthorized_with_an_unchanged_file_holds_the_token_and_asks_to_sign_in_again()
+    {
+        var h = new Harness();
+        h.Write(Token1, ClaudeTestData.Now.AddHours(8));
+        h.Responses.Enqueue(() => Json(HttpStatusCode.Unauthorized, "{}"));
+        ClaudeUsageProvider provider = h.CreateProvider();
+
+        UsageSnapshot first = await provider.FetchAsync(CancellationToken.None);
+        Assert.Equal(ProviderStatus.SignedOut, first.Status);
+        Assert.Equal(Reauth, first.StatusMessage);
+
+        h.Time.Advance(TimeSpan.FromMinutes(59));
+        UsageSnapshot held = await provider.FetchAsync(CancellationToken.None);
+        Assert.Equal(ProviderStatus.SignedOut, held.Status);
+        Assert.Single(h.Sent);
+        Assert.Empty(h.Processes.Calls);
+        h.AssertOnlyUsageRequests();
+    }
+
+    [Fact]
+    public async Task Unauthorized_retries_with_a_token_claude_code_wrote_meanwhile()
+    {
+        var h = new Harness();
+        h.Write(Token1, ClaudeTestData.Now.AddHours(8));
+        h.Responses.Enqueue(() =>
+        {
+            h.Write(Token2, ClaudeTestData.Now.AddHours(8));
+            return Json(HttpStatusCode.Unauthorized, "{}");
+        });
+        h.Responses.Enqueue(Usage);
+
+        UsageSnapshot snapshot = await h.CreateProvider().FetchAsync(CancellationToken.None);
+
+        Assert.Equal(ProviderStatus.Ok, snapshot.Status);
+        Assert.Equal(new[] { "Bearer " + Token1, "Bearer " + Token2 }, h.Sent.Select(s => s.Authorization));
+        Assert.Empty(h.Processes.Calls);
+        h.AssertOnlyUsageRequests();
+        h.AssertNoTokensLeaked(snapshot);
     }
 }

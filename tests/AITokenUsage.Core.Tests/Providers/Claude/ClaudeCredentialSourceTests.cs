@@ -1,10 +1,8 @@
-using System.Net;
 using AITokenUsage.Core.Abstractions;
 using AITokenUsage.Core.Providers.Claude;
 using AITokenUsage.Core.Tests.Fakes;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
-using static AITokenUsage.Core.Tests.Providers.Claude.ClaudeOwnedTestData;
 
 namespace AITokenUsage.Core.Tests.Providers.Claude;
 
@@ -34,7 +32,7 @@ public class ClaudeCliCredentialSourceTests
     {
         Write(ClaudeTestData.Credentials());
 
-        ClaudeCredentialReadResult result = await new ClaudeCliCredentialSource(_files, CredentialsPath).ReadAsync("claude-code/1.0.0", CancellationToken.None);
+        ClaudeCredentialReadResult result = await new ClaudeCliCredentialSource(_files, CredentialsPath).ReadAsync(CancellationToken.None);
 
         Assert.Equal(ClaudeCredentialState.Ok, result.State);
         Assert.Equal(ClaudeTestData.TokenA, result.Credentials!.AccessToken);
@@ -45,9 +43,9 @@ public class ClaudeCliCredentialSourceTests
     {
         Write(ClaudeTestData.Credentials());
         var source = new ClaudeCliCredentialSource(_files, CredentialsPath);
-        ClaudeCredentialReadResult first = await source.ReadAsync("ua", CancellationToken.None);
+        ClaudeCredentialReadResult first = await source.ReadAsync(CancellationToken.None);
 
-        Assert.Null(await source.RecoverAsync(first.Credentials!, "ua", CancellationToken.None));
+        Assert.Null(await source.RecoverAsync(first.Credentials!, CancellationToken.None));
     }
 
     [Fact]
@@ -55,10 +53,10 @@ public class ClaudeCliCredentialSourceTests
     {
         Write(ClaudeTestData.Credentials());
         var source = new ClaudeCliCredentialSource(_files, CredentialsPath);
-        ClaudeCredentialReadResult first = await source.ReadAsync("ua", CancellationToken.None);
+        ClaudeCredentialReadResult first = await source.ReadAsync(CancellationToken.None);
         Write(ClaudeTestData.Credentials(accessToken: ClaudeTestData.TokenB));
 
-        ClaudeCredentialReadResult? recovered = await source.RecoverAsync(first.Credentials!, "ua", CancellationToken.None);
+        ClaudeCredentialReadResult? recovered = await source.RecoverAsync(first.Credentials!, CancellationToken.None);
 
         Assert.NotNull(recovered);
         Assert.Equal(ClaudeCredentialState.Ok, recovered.State);
@@ -70,444 +68,603 @@ public class ClaudeCliCredentialSourceTests
     {
         Write(ClaudeTestData.Credentials());
         var source = new ClaudeCliCredentialSource(_files, CredentialsPath);
-        ClaudeCredentialReadResult first = await source.ReadAsync("ua", CancellationToken.None);
+        ClaudeCredentialReadResult first = await source.ReadAsync(CancellationToken.None);
         Write(ClaudeTestData.Credentials(accessToken: ""));
 
-        ClaudeCredentialReadResult? recovered = await source.RecoverAsync(first.Credentials!, "ua", CancellationToken.None);
+        ClaudeCredentialReadResult? recovered = await source.RecoverAsync(first.Credentials!, CancellationToken.None);
 
         Assert.NotNull(recovered);
         Assert.Equal(ClaudeCredentialState.SignedOut, recovered.State);
     }
 }
 
-public class ClaudeOwnedCredentialSourceTests
+/// <summary>The login of an extra Claude account, renewed by Claude Code (spec 2026-11-16 §2.2–2.3).</summary>
+public class ClaudeDelegatedCredentialSourceTests
 {
-    private const string UserAgent = "claude-code/2.1.400";
+    private const string AccountDirectory = @"C:\Users\test\AppData\Local\AITokenUsage\accounts\claude-abc123";
+    private const string Token1 = "delegated-access-token-one";
+    private const string Token2 = "delegated-access-token-two";
+    private const string Token3 = "delegated-access-token-three";
 
-    private readonly StubHttpHandler _http = new();
+    private static readonly string CredentialsPath = Path.Combine(AccountDirectory, ".credentials.json");
+    private static readonly string AccountPath = Path.Combine(AccountDirectory, ".claude.json");
+    private static readonly string[] AllTokens = [Token1, Token2, Token3];
+
+    private readonly FakeFileSystem _files = new();
+    private readonly FakeProcessRunner _processes = new();
     private readonly FakeTimeProvider _time = new(ClaudeTestData.Now);
     private readonly RecordingLog _log = new();
-    private readonly FakeSecretStore _secrets = new();
-    private readonly Queue<Func<HttpResponseMessage>> _tokenResponses = new();
 
-    public ClaudeOwnedCredentialSourceTests()
+    // Tests decide whether the network is up; the default would ask this PC.
+    private bool _online = true;
+
+    public ClaudeDelegatedCredentialSourceTests()
     {
-        _http.When(StubHttpHandler.Post(ClaudeTokenRenewer.TokenUrl), _ => _tokenResponses.Dequeue()());
+        _processes.SetPath("claude", @"C:\Users\test\.local\bin\claude.exe");
+        NeverRenew();
     }
 
-    private ClaudeOwnedCredentialSource CreateSource(ISecretStore? secrets = null) => new(
-        secrets ?? _secrets,
-        SecretName,
-        new ClaudeTokenRenewer(new HttpClient(_http, disposeHandler: false), _time, _log),
-        _time,
-        _log);
+    private ClaudeDelegatedCredentialSource CreateSource() =>
+        new(AccountDirectory, _files, new ClaudeCliRenewer(_processes, _files, _time, _log), _time, _log, () => _online);
 
-    private void Store(ClaudeOwnedCredentials login) => _secrets.Save(SecretName, login.ToJson());
+    private void Write(string accessToken, DateTimeOffset expiresAt)
+    {
+        _files.Remove(CredentialsPath);
+        _files.AddFile(CredentialsPath, ClaudeTestData.Credentials(accessToken, expiresAt.ToUnixTimeMilliseconds()));
+    }
 
-    private ClaudeOwnedCredentials? Stored() => ClaudeOwnedCredentials.FromJson(_secrets.Load(SecretName));
+    private void WriteAccount(string json)
+    {
+        _files.Remove(AccountPath);
+        _files.AddFile(AccountPath, json);
+    }
+
+    private void NeverRenew() => _processes.OnRun(_ => new ProcessResult(1, "", "", false));
+
+    /// <summary>The next "mcp get" writes <paramref name="accessToken"/>, valid for 8 h.</summary>
+    private void RenewWith(string accessToken) => _processes.OnRun(spec =>
+    {
+        if (spec.Arguments.Contains("get"))
+        {
+            Write(accessToken, _time.GetUtcNow().AddHours(8));
+        }
+
+        return new ProcessResult(1, "", "", false);
+    });
+
+    private void AssertNoTokensLogged()
+    {
+        foreach (string token in AllTokens)
+        {
+            Assert.DoesNotContain(token, _log.AllText, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>The fake clock with a wall clock that can be set back while the monotonic timestamp keeps going.</summary>
+    private sealed class ShiftingTimeProvider(FakeTimeProvider inner) : TimeProvider
+    {
+        public TimeSpan WallClockShift { get; set; }
+
+        public override long TimestampFrequency => inner.TimestampFrequency;
+
+        public override DateTimeOffset GetUtcNow() => inner.GetUtcNow() + WallClockShift;
+
+        public override long GetTimestamp() => inner.GetTimestamp();
+    }
 
     [Fact]
-    public void Has_no_watch_paths_renews_itself_and_no_email_before_loading()
+    public void Watches_the_account_credentials_file_and_renews_itself()
     {
-        Store(Login());
-        ClaudeOwnedCredentialSource source = CreateSource();
+        ClaudeDelegatedCredentialSource source = CreateSource();
 
-        Assert.Empty(source.WatchPaths);
+        Assert.Equal(new[] { CredentialsPath }, source.WatchPaths);
         Assert.True(source.RenewsItself);
         Assert.Null(source.Email);
     }
 
     [Fact]
-    public async Task Read_loads_the_stored_login_once()
+    public async Task Valid_token_runs_no_command()
     {
-        Store(Login());
-        ClaudeOwnedCredentialSource source = CreateSource();
+        Write(Token1, ClaudeTestData.Now.AddMinutes(5).AddSeconds(1));
 
-        ClaudeCredentialReadResult result = await source.ReadAsync(UserAgent, CancellationToken.None);
-        _secrets.Delete(SecretName);
-        ClaudeCredentialReadResult again = await source.ReadAsync(UserAgent, CancellationToken.None);
+        ClaudeCredentialReadResult result = await CreateSource().ReadAsync(CancellationToken.None);
 
         Assert.Equal(ClaudeCredentialState.Ok, result.State);
-        Assert.Equal(AccessToken1, result.Credentials!.AccessToken);
-        Assert.Equal(ClaudeCredentialState.Ok, again.State);
-        Assert.Equal("me@example.com", source.Email);
-        Assert.Empty(_http.Requests);
+        Assert.Equal(Token1, result.Credentials!.AccessToken);
+        Assert.Empty(_processes.Calls);
     }
 
     [Theory]
-    [InlineData(null)]
-    [InlineData("garbage")]
-    [InlineData("""{"accessToken":"a","refreshToken":"r","expiresAt":1793185200000,"scopes":["user:inference"]}""")]
-    public async Task Missing_or_broken_secret_needs_sign_in(string? stored)
+    [InlineData(-3600)]
+    [InlineData(0)]
+    [InlineData(300)]
+    public async Task Expired_or_expiring_token_runs_the_command_and_reads_the_renewed_login(int secondsLeft)
     {
-        if (stored is not null)
-        {
-            _secrets.Save(SecretName, stored);
-        }
+        Write(Token1, ClaudeTestData.Now.AddSeconds(secondsLeft));
+        RenewWith(Token2);
 
-        ClaudeCredentialReadResult result = await CreateSource().ReadAsync(UserAgent, CancellationToken.None);
-
-        Assert.Equal(ClaudeCredentialState.ReauthRequired, result.State);
-        Assert.Null(result.Credentials);
-        Assert.Empty(_http.Requests);
-    }
-
-    [Fact]
-    public async Task Secret_store_read_error_is_temporary_and_retried_on_the_next_read()
-    {
-        var secrets = new ThrowingSecretStore();
-        secrets.Save(SecretName, Login().ToJson());
-        secrets.ThrowOnLoad = true;
-        ClaudeOwnedCredentialSource source = CreateSource(secrets);
-
-        ClaudeCredentialReadResult failed = await source.ReadAsync(UserAgent, CancellationToken.None);
-        Assert.Equal(ClaudeCredentialState.RenewFailed, failed.State);
-        Assert.Null(failed.Credentials);
-        Assert.Null(source.Email);
-        Assert.Contains(_log.Entries, e => e.Level == "WARN" && e.Message.Contains("UnauthorizedAccessException", StringComparison.Ordinal));
-
-        secrets.ThrowOnLoad = false;
-        ClaudeCredentialReadResult next = await source.ReadAsync(UserAgent, CancellationToken.None);
-        Assert.Equal(ClaudeCredentialState.Ok, next.State);
-        Assert.Equal(AccessToken1, next.Credentials!.AccessToken);
-        Assert.Equal("me@example.com", source.Email);
-        Assert.Empty(_http.Requests);
-        foreach (string token in AllTokens)
-        {
-            Assert.DoesNotContain(token, _log.AllText, StringComparison.Ordinal);
-        }
-    }
-
-    [Fact]
-    public async Task Replace_rethrows_a_save_failure_and_keeps_the_previous_state()
-    {
-        var secrets = new ThrowingSecretStore();
-        secrets.Save(SecretName, Login(expiresAt: ClaudeTestData.Now.AddMinutes(1)).ToJson());
-        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.BadRequest, """{"error":"invalid_grant"}"""));
-        ClaudeOwnedCredentialSource source = CreateSource(secrets);
-        Assert.Equal(ClaudeCredentialState.ReauthRequired, (await source.ReadAsync(UserAgent, CancellationToken.None)).State);
-        secrets.ThrowOnSave = true;
-
-        await Assert.ThrowsAsync<IOException>(
-            () => source.ReplaceAsync(Login(AccessToken3, RefreshToken3) with { Email = "new@example.com" }, CancellationToken.None));
-
-        Assert.Equal(ClaudeCredentialState.ReauthRequired, (await source.ReadAsync(UserAgent, CancellationToken.None)).State);
-        Assert.Equal("me@example.com", source.Email);
-        Assert.Equal(AccessToken1, ClaudeOwnedCredentials.FromJson(secrets.Load(SecretName))!.AccessToken);
-        Assert.Single(_http.Requests);
-        Assert.Contains(_log.Entries, e => e.Level == "WARN" && e.Message.Contains("IOException", StringComparison.Ordinal));
-        foreach (string token in AllTokens)
-        {
-            Assert.DoesNotContain(token, _log.AllText, StringComparison.Ordinal);
-        }
-    }
-
-    [Fact]
-    public async Task Replace_save_failure_keeps_the_current_token_in_use()
-    {
-        var secrets = new ThrowingSecretStore();
-        secrets.Save(SecretName, Login().ToJson());
-        ClaudeOwnedCredentialSource source = CreateSource(secrets);
-        await source.ReadAsync(UserAgent, CancellationToken.None);
-        secrets.ThrowOnSave = true;
-
-        await Assert.ThrowsAsync<IOException>(() => source.ReplaceAsync(Login(AccessToken3, RefreshToken3), CancellationToken.None));
-
-        ClaudeCredentialReadResult result = await source.ReadAsync(UserAgent, CancellationToken.None);
-        Assert.Equal(ClaudeCredentialState.Ok, result.State);
-        Assert.Equal(AccessToken1, result.Credentials!.AccessToken);
-    }
-
-    [Fact]
-    public async Task Expiring_token_is_renewed_and_saved()
-    {
-        Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(4)));
-        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.OK, TokenResponse()));
-        ClaudeOwnedCredentialSource source = CreateSource();
-
-        ClaudeCredentialReadResult result = await source.ReadAsync(UserAgent, CancellationToken.None);
+        ClaudeCredentialReadResult result = await CreateSource().ReadAsync(CancellationToken.None);
 
         Assert.Equal(ClaudeCredentialState.Ok, result.State);
-        Assert.Equal(AccessToken2, result.Credentials!.AccessToken);
-        Assert.Equal(AccessToken2, Stored()!.AccessToken);
-        Assert.Equal(RefreshToken2, Stored()!.RefreshToken);
-        Assert.Single(_http.Requests);
+        Assert.Equal(Token2, result.Credentials!.AccessToken);
+        Assert.Single(_processes.Calls);
+        AssertNoTokensLogged();
     }
 
     [Fact]
-    public async Task Token_with_more_than_the_margin_left_is_not_renewed()
+    public async Task Near_expiry_with_the_command_failing_still_returns_the_unexpired_token()
     {
-        Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(5).AddSeconds(1)));
+        Write(Token1, ClaudeTestData.Now.AddMinutes(4));
 
-        ClaudeCredentialReadResult result = await CreateSource().ReadAsync(UserAgent, CancellationToken.None);
+        ClaudeCredentialReadResult result = await CreateSource().ReadAsync(CancellationToken.None);
 
         Assert.Equal(ClaudeCredentialState.Ok, result.State);
-        Assert.Empty(_http.Requests);
+        Assert.Equal(Token1, result.Credentials!.AccessToken);
+        Assert.Single(_processes.Calls);
     }
 
     [Fact]
-    public async Task Save_failure_is_logged_and_the_new_token_is_used()
+    public async Task Expired_and_not_renewed_fails_and_the_third_failure_in_a_row_needs_sign_in()
     {
-        var secrets = new ThrowingSecretStore();
-        secrets.Save(SecretName, Login(expiresAt: ClaudeTestData.Now.AddMinutes(1)).ToJson());
-        secrets.ThrowOnSave = true;
-        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.OK, TokenResponse()));
+        Write(Token1, ClaudeTestData.Now.AddMinutes(-1));
+        ClaudeDelegatedCredentialSource source = CreateSource();
 
-        ClaudeCredentialReadResult result = await CreateSource(secrets).ReadAsync(UserAgent, CancellationToken.None);
-
-        Assert.Equal(ClaudeCredentialState.Ok, result.State);
-        Assert.Equal(AccessToken2, result.Credentials!.AccessToken);
-        Assert.Contains(_log.Entries, e => e.Level == "WARN");
-        foreach (string token in AllTokens)
+        var states = new List<ClaudeCredentialState>();
+        for (int i = 0; i < 4; i++)
         {
-            Assert.DoesNotContain(token, _log.AllText, StringComparison.Ordinal);
+            ClaudeCredentialReadResult result = await source.ReadAsync(CancellationToken.None);
+            Assert.Null(result.Credentials);
+            states.Add(result.State);
+            _time.Advance(TimeSpan.FromMinutes(2));
         }
+
+        Assert.Equal(
+            new[] { ClaudeCredentialState.RenewFailed, ClaudeCredentialState.RenewFailed, ClaudeCredentialState.ReauthRequired, ClaudeCredentialState.ReauthRequired },
+            states);
+
+        // get + list per attempt; the fourth read falls in the longer gap that follows the third failure.
+        Assert.Equal(6, _processes.Calls.Count);
+        AssertNoTokensLogged();
     }
 
     [Fact]
-    public async Task Failed_renewal_of_an_expired_token_keeps_the_stored_tokens_and_tries_again_next_time()
+    public async Task Once_sign_in_is_required_the_command_runs_at_most_once_per_thirty_minutes()
     {
-        Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(-1)));
-        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.ServiceUnavailable, "{}"));
-        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.OK, TokenResponse()));
-        ClaudeOwnedCredentialSource source = CreateSource();
+        Write(Token1, ClaudeTestData.Now.AddMinutes(-1));
+        ClaudeDelegatedCredentialSource source = CreateSource();
+        for (int i = 0; i < 3; i++)
+        {
+            _time.Advance(TimeSpan.FromMinutes(2));
+            await source.ReadAsync(CancellationToken.None);
+        }
 
-        ClaudeCredentialReadResult failed = await source.ReadAsync(UserAgent, CancellationToken.None);
-        Assert.Equal(ClaudeCredentialState.RenewFailed, failed.State);
-        Assert.Equal(AccessToken1, Stored()!.AccessToken);
+        Assert.Equal(6, _processes.Calls.Count);
 
-        ClaudeCredentialReadResult next = await source.ReadAsync(UserAgent, CancellationToken.None);
-        Assert.Equal(ClaudeCredentialState.Ok, next.State);
-        Assert.Equal(2, _http.Requests.Count);
-        Assert.Contains($"\"refresh_token\":\"{RefreshToken1}\"", _http.RequestBodies[1], StringComparison.Ordinal);
+        _time.Advance(TimeSpan.FromMinutes(29));
+        Assert.Equal(ClaudeCredentialState.ReauthRequired, (await source.ReadAsync(CancellationToken.None)).State);
+        Assert.Equal(6, _processes.Calls.Count);
+
+        _time.Advance(TimeSpan.FromMinutes(1));
+        Assert.Equal(ClaudeCredentialState.ReauthRequired, (await source.ReadAsync(CancellationToken.None)).State);
+        Assert.Equal(8, _processes.Calls.Count);
+    }
+
+    [Fact]
+    public async Task A_fresh_login_brings_back_the_two_minute_gap()
+    {
+        Write(Token1, ClaudeTestData.Now.AddMinutes(-1));
+        ClaudeDelegatedCredentialSource source = CreateSource();
+        for (int i = 0; i < 3; i++)
+        {
+            _time.Advance(TimeSpan.FromMinutes(2));
+            await source.ReadAsync(CancellationToken.None);
+        }
+
+        // Signed in again a minute after the last attempt, with a token that soon needs renewing again.
+        _time.Advance(TimeSpan.FromMinutes(1));
+        Write(Token3, _time.GetUtcNow().AddMinutes(6));
+        Assert.Equal(Token3, (await source.ReadAsync(CancellationToken.None)).Credentials!.AccessToken);
+        Assert.Equal(6, _processes.Calls.Count);
+
+        _time.Advance(TimeSpan.FromMinutes(2));
+        RenewWith(Token2);
+        Assert.Equal(Token2, (await source.ReadAsync(CancellationToken.None)).Credentials!.AccessToken);
+        Assert.Equal(7, _processes.Calls.Count);
+    }
+
+    [Fact]
+    public async Task The_gap_follows_the_monotonic_clock_when_the_wall_clock_jumps_back()
+    {
+        var clock = new ShiftingTimeProvider(_time);
+        Write(Token1, ClaudeTestData.Now.AddHours(-2));
+        var source = new ClaudeDelegatedCredentialSource(
+            AccountDirectory, _files, new ClaudeCliRenewer(_processes, _files, clock, _log), clock, _log, () => true);
+        await source.ReadAsync(CancellationToken.None);
+        Assert.Equal(2, _processes.Calls.Count);
+
+        // Two minutes pass, but the wall clock is set back an hour (the token is still expired).
+        _time.Advance(TimeSpan.FromMinutes(2));
+        clock.WallClockShift = TimeSpan.FromHours(-1);
+        await source.ReadAsync(CancellationToken.None);
+
+        Assert.Equal(4, _processes.Calls.Count);
+    }
+
+    private int OfflineLogLines() =>
+        _log.Entries.Count(e => e.Level == "INFO" && e.Message.Contains("no network", StringComparison.Ordinal));
+
+    [Fact]
+    public async Task Offline_an_expired_token_runs_no_command_and_counts_no_failure()
+    {
+        Write(Token1, ClaudeTestData.Now.AddMinutes(-1));
+        _online = false;
+        ClaudeDelegatedCredentialSource source = CreateSource();
+
+        for (int i = 0; i < 5; i++)
+        {
+            _time.Advance(TimeSpan.FromMinutes(2));
+            ClaudeCredentialReadResult result = await source.ReadAsync(CancellationToken.None);
+            Assert.Equal(ClaudeCredentialState.RenewFailed, result.State);
+            Assert.Null(result.Credentials);
+        }
+
+        Assert.Empty(_processes.Calls);
+        Assert.Equal(1, OfflineLogLines());
+
+        // Back online: the very next read runs the command (no gap was started while offline).
+        _online = true;
+        RenewWith(Token2);
+        ClaudeCredentialReadResult renewed = await source.ReadAsync(CancellationToken.None);
+        Assert.Equal(Token2, renewed.Credentials!.AccessToken);
+        Assert.Single(_processes.Calls);
+
+        // The next time the network is gone, one more line.
+        _time.Advance(TimeSpan.FromHours(9));
+        _online = false;
+        await source.ReadAsync(CancellationToken.None);
+        await source.ReadAsync(CancellationToken.None);
+        Assert.Equal(2, OfflineLogLines());
+        Assert.Single(_processes.Calls);
+    }
+
+    [Fact]
+    public async Task Offline_inside_the_five_minute_margin_the_old_token_is_used()
+    {
+        Write(Token1, ClaudeTestData.Now.AddMinutes(4));
+        _online = false;
+
+        ClaudeCredentialReadResult result = await CreateSource().ReadAsync(CancellationToken.None);
+
+        Assert.Equal(ClaudeCredentialState.Ok, result.State);
+        Assert.Equal(Token1, result.Credentials!.AccessToken);
+        Assert.Empty(_processes.Calls);
+    }
+
+    [Fact]
+    public async Task Offline_once_sign_in_is_required_it_stays_required_and_the_thirty_minute_gap_is_kept()
+    {
+        Write(Token1, ClaudeTestData.Now.AddMinutes(-1));
+        ClaudeDelegatedCredentialSource source = CreateSource();
+        for (int i = 0; i < 3; i++)
+        {
+            _time.Advance(TimeSpan.FromMinutes(2));
+            await source.ReadAsync(CancellationToken.None);
+        }
+
+        Assert.Equal(6, _processes.Calls.Count);
+
+        // Offline reads neither clear the gap nor start a new one: it still runs from the last attempt.
+        _online = false;
+        _time.Advance(TimeSpan.FromMinutes(10));
+        Assert.Equal(ClaudeCredentialState.ReauthRequired, (await source.ReadAsync(CancellationToken.None)).State);
+
+        _online = true;
+        _time.Advance(TimeSpan.FromMinutes(19));
+        Assert.Equal(ClaudeCredentialState.ReauthRequired, (await source.ReadAsync(CancellationToken.None)).State);
+        Assert.Equal(6, _processes.Calls.Count);
+
+        _online = false;
+        _time.Advance(TimeSpan.FromMinutes(2));
+        Assert.Equal(ClaudeCredentialState.ReauthRequired, (await source.ReadAsync(CancellationToken.None)).State);
+        Assert.Equal(6, _processes.Calls.Count);
+
+        _online = true;
+        Assert.Equal(ClaudeCredentialState.ReauthRequired, (await source.ReadAsync(CancellationToken.None)).State);
+        Assert.Equal(8, _processes.Calls.Count);
+    }
+
+    [Fact]
+    public async Task Cancelling_during_the_command_releases_the_lock_and_starts_no_gap()
+    {
+        Write(Token1, ClaudeTestData.Now.AddMinutes(-1));
+        using var cts = new CancellationTokenSource();
+        _processes.OnRun(_ =>
+        {
+            cts.Cancel();
+            throw new OperationCanceledException(cts.Token);
+        });
+        ClaudeDelegatedCredentialSource source = CreateSource();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => source.ReadAsync(cts.Token));
+
+        NeverRenew();
+        ClaudeCredentialReadResult next = await source.ReadAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(ClaudeCredentialState.RenewFailed, next.State);
+        Assert.Equal(3, _processes.Calls.Count);
     }
 
     [Theory]
-    [InlineData(HttpStatusCode.ServiceUnavailable)]
-    [InlineData(HttpStatusCode.TooManyRequests)]
-    public async Task Failed_renewal_before_expiry_returns_the_current_token_and_renews_again_next_time(HttpStatusCode status)
+    [InlineData(true, 4, ClaudeCredentialState.Ok)]
+    [InlineData(false, 4, ClaudeCredentialState.Ok)]
+    [InlineData(true, -1, ClaudeCredentialState.RenewFailed)]
+    [InlineData(false, -1, ClaudeCredentialState.RenewFailed)]
+    public async Task A_failed_read_after_the_command_falls_back_to_the_token_read_before(
+        bool removeFile, int minutesLeft, ClaudeCredentialState expected)
     {
-        Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(1)));
-        _tokenResponses.Enqueue(() => StubHttpHandler.Json(status, "{}"));
-        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.OK, TokenResponse()));
-        ClaudeOwnedCredentialSource source = CreateSource();
-
-        ClaudeCredentialReadResult current = await source.ReadAsync(UserAgent, CancellationToken.None);
-        Assert.Equal(ClaudeCredentialState.Ok, current.State);
-        Assert.Equal(AccessToken1, current.Credentials!.AccessToken);
-        Assert.Equal(AccessToken1, Stored()!.AccessToken);
-        Assert.Single(_http.Requests);
-
-        ClaudeCredentialReadResult next = await source.ReadAsync(UserAgent, CancellationToken.None);
-        Assert.Equal(ClaudeCredentialState.Ok, next.State);
-        Assert.Equal(AccessToken2, next.Credentials!.AccessToken);
-        Assert.Equal(2, _http.Requests.Count);
-    }
-
-    [Fact]
-    public async Task Failed_renewal_before_expiry_is_not_counted_as_a_renewal_for_recover()
-    {
-        // No sticky flag: the token handed out was not renewed, so a 401 for it still forces one renewal.
-        Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(1)));
-        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.ServiceUnavailable, "{}"));
-        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.OK, TokenResponse()));
-        ClaudeOwnedCredentialSource source = CreateSource();
-        ClaudeCredentialReadResult read = await source.ReadAsync(UserAgent, CancellationToken.None);
-
-        ClaudeCredentialReadResult? recovered = await source.RecoverAsync(read.Credentials!, UserAgent, CancellationToken.None);
-
-        Assert.NotNull(recovered);
-        Assert.Equal(ClaudeCredentialState.Ok, recovered.State);
-        Assert.Equal(AccessToken2, recovered.Credentials!.AccessToken);
-        Assert.Equal(2, _http.Requests.Count);
-    }
-
-    [Fact]
-    public async Task Failed_renewal_at_the_exact_expiry_is_a_temporary_failure()
-    {
-        Store(Login(expiresAt: ClaudeTestData.Now));
-        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.ServiceUnavailable, "{}"));
-
-        ClaudeCredentialReadResult result = await CreateSource().ReadAsync(UserAgent, CancellationToken.None);
-
-        Assert.Equal(ClaudeCredentialState.RenewFailed, result.State);
-        Assert.Null(result.Credentials);
-    }
-
-    [Fact]
-    public async Task Rejected_renewal_stays_signed_out_until_replaced()
-    {
-        Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(1)));
-        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.BadRequest, """{"error":"invalid_grant"}"""));
-        ClaudeOwnedCredentialSource source = CreateSource();
-
-        Assert.Equal(ClaudeCredentialState.ReauthRequired, (await source.ReadAsync(UserAgent, CancellationToken.None)).State);
-        _time.Advance(TimeSpan.FromHours(3));
-        Assert.Equal(ClaudeCredentialState.ReauthRequired, (await source.ReadAsync(UserAgent, CancellationToken.None)).State);
-        Assert.Single(_http.Requests);
-        Assert.NotNull(Stored());
-
-        await source.ReplaceAsync(Login(AccessToken3, RefreshToken3, _time.GetUtcNow().AddHours(8)) with { Email = "new@example.com" }, CancellationToken.None);
-
-        ClaudeCredentialReadResult replaced = await source.ReadAsync(UserAgent, CancellationToken.None);
-        Assert.Equal(ClaudeCredentialState.Ok, replaced.State);
-        Assert.Equal(AccessToken3, replaced.Credentials!.AccessToken);
-        Assert.Equal(AccessToken3, Stored()!.AccessToken);
-        Assert.Equal("new@example.com", source.Email);
-        Assert.Single(_http.Requests);
-    }
-
-    [Fact]
-    public async Task Expired_refresh_token_needs_sign_in_without_request()
-    {
-        Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(1), refreshTokenExpiresAt: ClaudeTestData.Now.AddSeconds(-1)));
-
-        ClaudeCredentialReadResult result = await CreateSource().ReadAsync(UserAgent, CancellationToken.None);
-
-        Assert.Equal(ClaudeCredentialState.ReauthRequired, result.State);
-        Assert.Empty(_http.Requests);
-    }
-
-    [Fact]
-    public async Task Replace_before_first_read_is_used_without_loading()
-    {
-        ClaudeOwnedCredentialSource source = CreateSource();
-
-        await source.ReplaceAsync(Login(), CancellationToken.None);
-        ClaudeCredentialReadResult result = await source.ReadAsync(UserAgent, CancellationToken.None);
-
-        Assert.Equal(ClaudeCredentialState.Ok, result.State);
-        Assert.Equal(AccessToken1, Stored()!.AccessToken);
-    }
-
-    [Fact]
-    public async Task Recover_after_a_renewal_in_the_same_read_returns_null()
-    {
-        Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(1)));
-        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.OK, TokenResponse()));
-        ClaudeOwnedCredentialSource source = CreateSource();
-        ClaudeCredentialReadResult read = await source.ReadAsync(UserAgent, CancellationToken.None);
-
-        ClaudeCredentialReadResult? recovered = await source.RecoverAsync(read.Credentials!, UserAgent, CancellationToken.None);
-
-        Assert.Null(recovered);
-        Assert.Single(_http.Requests);
-    }
-
-    [Fact]
-    public async Task Recover_forces_one_renewal()
-    {
-        Store(Login());
-        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.OK, TokenResponse()));
-        ClaudeOwnedCredentialSource source = CreateSource();
-        ClaudeCredentialReadResult read = await source.ReadAsync(UserAgent, CancellationToken.None);
-
-        ClaudeCredentialReadResult? recovered = await source.RecoverAsync(read.Credentials!, UserAgent, CancellationToken.None);
-
-        Assert.NotNull(recovered);
-        Assert.Equal(ClaudeCredentialState.Ok, recovered.State);
-        Assert.Equal(AccessToken2, recovered.Credentials!.AccessToken);
-        Assert.Equal(AccessToken2, Stored()!.AccessToken);
-    }
-
-    [Fact]
-    public async Task Recover_in_a_later_read_renews_again()
-    {
-        Store(Login(expiresAt: ClaudeTestData.Now.AddMinutes(1)));
-        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.OK, TokenResponse()));
-        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.OK, TokenResponse(AccessToken3, RefreshToken3)));
-        ClaudeOwnedCredentialSource source = CreateSource();
-        await source.ReadAsync(UserAgent, CancellationToken.None);
-        ClaudeCredentialReadResult second = await source.ReadAsync(UserAgent, CancellationToken.None);
-
-        ClaudeCredentialReadResult? recovered = await source.RecoverAsync(second.Credentials!, UserAgent, CancellationToken.None);
-
-        Assert.Equal(AccessToken3, recovered!.Credentials!.AccessToken);
-        Assert.Contains($"\"refresh_token\":\"{RefreshToken2}\"", _http.RequestBodies[1], StringComparison.Ordinal);
-    }
-
-    [Theory]
-    [InlineData(HttpStatusCode.Unauthorized, ClaudeCredentialState.ReauthRequired)]
-    [InlineData(HttpStatusCode.InternalServerError, ClaudeCredentialState.RenewFailed)]
-    public async Task Recover_reports_a_failed_renewal(HttpStatusCode status, ClaudeCredentialState expected)
-    {
-        Store(Login());
-        _tokenResponses.Enqueue(() => StubHttpHandler.Json(status, "{}"));
-        ClaudeOwnedCredentialSource source = CreateSource();
-        ClaudeCredentialReadResult read = await source.ReadAsync(UserAgent, CancellationToken.None);
-
-        ClaudeCredentialReadResult? recovered = await source.RecoverAsync(read.Credentials!, UserAgent, CancellationToken.None);
-
-        Assert.Equal(expected, recovered!.State);
-    }
-
-    [Fact]
-    public async Task Recover_after_a_replace_returns_the_new_token_without_renewing()
-    {
-        Store(Login());
-        ClaudeOwnedCredentialSource source = CreateSource();
-        ClaudeCredentialReadResult read = await source.ReadAsync(UserAgent, CancellationToken.None);
-        await source.ReplaceAsync(Login(AccessToken3, RefreshToken3), CancellationToken.None);
-
-        ClaudeCredentialReadResult? recovered = await source.RecoverAsync(read.Credentials!, UserAgent, CancellationToken.None);
-
-        Assert.NotNull(recovered);
-        Assert.Equal(ClaudeCredentialState.Ok, recovered.State);
-        Assert.Equal(AccessToken3, recovered.Credentials!.AccessToken);
-        Assert.Empty(_http.Requests);
-    }
-
-    [Fact]
-    public async Task Recover_while_sign_in_is_required_does_not_renew()
-    {
-        Store(Login());
-        _tokenResponses.Enqueue(() => StubHttpHandler.Json(HttpStatusCode.BadRequest, """{"error":"invalid_grant"}"""));
-        ClaudeOwnedCredentialSource source = CreateSource();
-        ClaudeCredentialReadResult read = await source.ReadAsync(UserAgent, CancellationToken.None);
-        ClaudeCredentialReadResult? refused = await source.RecoverAsync(read.Credentials!, UserAgent, CancellationToken.None);
-        Assert.Equal(ClaudeCredentialState.ReauthRequired, refused!.State);
-        Assert.Single(_http.Requests);
-
-        ClaudeCredentialReadResult? again = await source.RecoverAsync(read.Credentials!, UserAgent, CancellationToken.None);
-
-        Assert.NotNull(again);
-        Assert.Equal(ClaudeCredentialState.ReauthRequired, again.State);
-        Assert.Null(again.Credentials);
-        Assert.Single(_http.Requests);
-    }
-
-    [Fact]
-    public async Task Recover_with_no_saved_login_needs_sign_in_without_http()
-    {
-        ClaudeOwnedCredentialSource source = CreateSource();
-
-        ClaudeCredentialReadResult? recovered = await source.RecoverAsync(Login().ToCredentials(), UserAgent, CancellationToken.None);
-
-        Assert.Equal(ClaudeCredentialState.ReauthRequired, recovered!.State);
-        Assert.Empty(_http.Requests);
-    }
-
-    /// <summary>An in-memory secret store that can be told to fail.</summary>
-    private sealed class ThrowingSecretStore : ISecretStore
-    {
-        private readonly FakeSecretStore _inner = new();
-
-        public bool ThrowOnSave { get; set; }
-
-        public bool ThrowOnLoad { get; set; }
-
-        public void Save(string name, string secret)
+        Write(Token1, ClaudeTestData.Now.AddMinutes(minutesLeft));
+        _processes.OnRun(_ =>
         {
-            if (ThrowOnSave)
+            _files.Remove(CredentialsPath);
+            if (!removeFile)
             {
-                throw new IOException("disk full");
+                _files.AddFile(CredentialsPath, """{"claudeAiOauth":{"accessTo""");
             }
 
-            _inner.Save(name, secret);
+            return new ProcessResult(1, "", "", false);
+        });
+
+        ClaudeCredentialReadResult result = await CreateSource().ReadAsync(CancellationToken.None);
+
+        Assert.Equal(expected, result.State);
+        Assert.Equal(expected == ClaudeCredentialState.Ok ? Token1 : null, result.Credentials?.AccessToken);
+
+        // Not Ok after mcp get: mcp list is tried as well.
+        Assert.Equal(2, _processes.Calls.Count);
+    }
+
+    [Fact]
+    public async Task A_renewal_resets_the_failure_count()
+    {
+        Write(Token1, ClaudeTestData.Now.AddMinutes(-1));
+        ClaudeDelegatedCredentialSource source = CreateSource();
+        for (int i = 0; i < 2; i++)
+        {
+            Assert.Equal(ClaudeCredentialState.RenewFailed, (await source.ReadAsync(CancellationToken.None)).State);
+            _time.Advance(TimeSpan.FromMinutes(2));
         }
 
-        public string? Load(string name) => ThrowOnLoad ? throw new UnauthorizedAccessException("denied") : _inner.Load(name);
+        RenewWith(Token2);
+        Assert.Equal(Token2, (await source.ReadAsync(CancellationToken.None)).Credentials!.AccessToken);
 
-        public void Delete(string name) => _inner.Delete(name);
+        _time.Advance(TimeSpan.FromHours(9));
+        NeverRenew();
+        Assert.Equal(ClaudeCredentialState.RenewFailed, (await source.ReadAsync(CancellationToken.None)).State);
+    }
+
+    [Fact]
+    public async Task A_new_login_in_the_file_resets_the_failure_count()
+    {
+        Write(Token1, ClaudeTestData.Now.AddMinutes(-1));
+        ClaudeDelegatedCredentialSource source = CreateSource();
+        for (int i = 0; i < 3; i++)
+        {
+            await source.ReadAsync(CancellationToken.None);
+            _time.Advance(TimeSpan.FromMinutes(2));
+        }
+
+        Write(Token3, _time.GetUtcNow().AddHours(8));
+        Assert.Equal(Token3, (await source.ReadAsync(CancellationToken.None)).Credentials!.AccessToken);
+
+        _time.Advance(TimeSpan.FromHours(9));
+        Assert.Equal(ClaudeCredentialState.RenewFailed, (await source.ReadAsync(CancellationToken.None)).State);
+    }
+
+    [Fact]
+    public async Task The_command_runs_at_most_once_per_two_minutes()
+    {
+        Write(Token1, ClaudeTestData.Now.AddMinutes(-1));
+        ClaudeDelegatedCredentialSource source = CreateSource();
+
+        Assert.Equal(ClaudeCredentialState.RenewFailed, (await source.ReadAsync(CancellationToken.None)).State);
+        Assert.Equal(2, _processes.Calls.Count);
+
+        // Within the gap: the previous outcome, no command and no extra failure counted.
+        for (int i = 0; i < 3; i++)
+        {
+            _time.Advance(TimeSpan.FromSeconds(39));
+            Assert.Equal(ClaudeCredentialState.RenewFailed, (await source.ReadAsync(CancellationToken.None)).State);
+        }
+
+        Assert.Equal(2, _processes.Calls.Count);
+
+        _time.Advance(TimeSpan.FromSeconds(3));
+        Assert.Equal(ClaudeCredentialState.RenewFailed, (await source.ReadAsync(CancellationToken.None)).State);
+        Assert.Equal(4, _processes.Calls.Count);
+    }
+
+    [Fact]
+    public async Task Within_the_gap_an_unexpired_token_is_still_used()
+    {
+        Write(Token1, ClaudeTestData.Now.AddMinutes(4));
+        ClaudeDelegatedCredentialSource source = CreateSource();
+        await source.ReadAsync(CancellationToken.None);
+
+        _time.Advance(TimeSpan.FromMinutes(1));
+        ClaudeCredentialReadResult result = await source.ReadAsync(CancellationToken.None);
+
+        Assert.Equal(ClaudeCredentialState.Ok, result.State);
+        Assert.Equal(Token1, result.Credentials!.AccessToken);
+        Assert.Single(_processes.Calls);
+    }
+
+    [Fact]
+    public async Task Missing_file_needs_sign_in_without_a_command()
+    {
+        ClaudeCredentialReadResult result = await CreateSource().ReadAsync(CancellationToken.None);
+
+        Assert.Equal(ClaudeCredentialState.ReauthRequired, result.State);
+        Assert.Null(result.Credentials);
+        Assert.Empty(_processes.Calls);
+    }
+
+    [Theory]
+    [InlineData("""{"claudeAiOauth":{"accessToken":"","expiresAt":1793185200000}}""")]
+    [InlineData("""{"claudeAiOauth":{"accessToken":"delegated-access-token-one","expiresAt":0}}""")]
+    [InlineData("""{"mcpOAuth":{}}""")]
+    public async Task No_token_needs_sign_in_without_a_command(string json)
+    {
+        _files.AddFile(CredentialsPath, json);
+
+        ClaudeCredentialReadResult result = await CreateSource().ReadAsync(CancellationToken.None);
+
+        Assert.Equal(ClaudeCredentialState.ReauthRequired, result.State);
+        Assert.Empty(_processes.Calls);
+    }
+
+    [Fact]
+    public async Task Missing_profile_scope_is_passed_through()
+    {
+        _files.AddFile(CredentialsPath, ClaudeTestData.Credentials(Token1, ClaudeTestData.Now.AddMinutes(-1).ToUnixTimeMilliseconds(), ["user:inference"]));
+
+        ClaudeCredentialReadResult result = await CreateSource().ReadAsync(CancellationToken.None);
+
+        Assert.Equal(ClaudeCredentialState.MissingProfileScope, result.State);
+        Assert.Empty(_processes.Calls);
+    }
+
+    [Fact]
+    public async Task Claude_not_on_path_counts_as_a_failed_renewal()
+    {
+        _processes.SetPath("claude", null);
+        Write(Token1, ClaudeTestData.Now.AddMinutes(-1));
+
+        ClaudeCredentialReadResult result = await CreateSource().ReadAsync(CancellationToken.None);
+
+        Assert.Equal(ClaudeCredentialState.RenewFailed, result.State);
+        Assert.Empty(_processes.Calls);
+    }
+
+    [Fact]
+    public async Task Concurrent_reads_run_one_command()
+    {
+        Write(Token1, ClaudeTestData.Now.AddMinutes(-1));
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        _processes.OnRun(_ =>
+        {
+            entered.Set();
+            release.Wait(TimeSpan.FromSeconds(10));
+            Write(Token2, _time.GetUtcNow().AddHours(8));
+            return new ProcessResult(1, "", "", false);
+        });
+        ClaudeDelegatedCredentialSource source = CreateSource();
+
+        Task<ClaudeCredentialReadResult> first = Task.Run(() => source.ReadAsync(CancellationToken.None));
+        Assert.True(entered.Wait(TimeSpan.FromSeconds(10)));
+        Task<ClaudeCredentialReadResult> second = Task.Run(() => source.ReadAsync(CancellationToken.None));
+
+        // The first read has read the file twice (before and inside the lock); the second has now seen the expired token.
+        Assert.True(SpinWait.SpinUntil(() => _files.ReadCount(CredentialsPath) >= 3, TimeSpan.FromSeconds(10)));
+        release.Set();
+        ClaudeCredentialReadResult[] results = await Task.WhenAll(first, second);
+
+        Assert.Single(_processes.Calls);
+        Assert.All(results, r => Assert.Equal(Token2, r.Credentials!.AccessToken));
+    }
+
+    [Fact]
+    public async Task RunExclusive_waits_for_a_running_renewal()
+    {
+        Write(Token1, ClaudeTestData.Now.AddMinutes(-1));
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        _processes.OnRun(_ =>
+        {
+            entered.Set();
+            release.Wait(TimeSpan.FromSeconds(10));
+            return new ProcessResult(1, "", "", false);
+        });
+        ClaudeDelegatedCredentialSource source = CreateSource();
+        Task<ClaudeCredentialReadResult> read = Task.Run(() => source.ReadAsync(CancellationToken.None));
+        Assert.True(entered.Wait(TimeSpan.FromSeconds(10)));
+
+        bool ran = false;
+        Task exclusive = source.RunExclusiveAsync(() => ran = true, CancellationToken.None);
+        await Task.Delay(100);
+        Assert.False(ran);
+
+        release.Set();
+        await exclusive;
+        await read;
+        Assert.True(ran);
+    }
+
+    [Fact]
+    public async Task Recover_returns_the_changed_token_without_a_command()
+    {
+        Write(Token1, ClaudeTestData.Now.AddHours(8));
+        ClaudeDelegatedCredentialSource source = CreateSource();
+        ClaudeCredentialReadResult read = await source.ReadAsync(CancellationToken.None);
+        Write(Token2, ClaudeTestData.Now.AddHours(8));
+
+        ClaudeCredentialReadResult? recovered = await source.RecoverAsync(read.Credentials!, CancellationToken.None);
+
+        Assert.NotNull(recovered);
+        Assert.Equal(ClaudeCredentialState.Ok, recovered.State);
+        Assert.Equal(Token2, recovered.Credentials!.AccessToken);
+        Assert.Empty(_processes.Calls);
+    }
+
+    [Fact]
+    public async Task Recover_returns_null_when_the_token_did_not_change()
+    {
+        Write(Token1, ClaudeTestData.Now.AddHours(8));
+        ClaudeDelegatedCredentialSource source = CreateSource();
+        ClaudeCredentialReadResult read = await source.ReadAsync(CancellationToken.None);
+
+        Assert.Null(await source.RecoverAsync(read.Credentials!, CancellationToken.None));
+        Assert.Empty(_processes.Calls);
+    }
+
+    [Fact]
+    public async Task Recover_returns_null_when_the_file_is_gone()
+    {
+        Write(Token1, ClaudeTestData.Now.AddHours(8));
+        ClaudeDelegatedCredentialSource source = CreateSource();
+        ClaudeCredentialReadResult read = await source.ReadAsync(CancellationToken.None);
+        _files.Remove(CredentialsPath);
+
+        Assert.Null(await source.RecoverAsync(read.Credentials!, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Email_comes_from_the_account_folder()
+    {
+        Write(Token1, ClaudeTestData.Now.AddHours(8));
+        WriteAccount("""{"numStartups":3,"oauthAccount":{"accountUuid":"u","emailAddress":"me@example.com","organizationName":"Example Org"}}""");
+        ClaudeDelegatedCredentialSource source = CreateSource();
+
+        await source.ReadAsync(CancellationToken.None);
+        Assert.Equal("me@example.com", source.Email);
+
+        // A half-written file keeps the last email; a file without the account clears it.
+        WriteAccount("""{"numStartups":3,"oauthAcc""");
+        await source.ReadAsync(CancellationToken.None);
+        Assert.Equal("me@example.com", source.Email);
+
+        WriteAccount("""{"numStartups":3}""");
+        await source.ReadAsync(CancellationToken.None);
+        Assert.Null(source.Email);
+    }
+
+    [Fact]
+    public async Task Email_is_null_without_the_account_file()
+    {
+        Write(Token1, ClaudeTestData.Now.AddHours(8));
+        ClaudeDelegatedCredentialSource source = CreateSource();
+
+        await source.ReadAsync(CancellationToken.None);
+
+        Assert.Null(source.Email);
     }
 }

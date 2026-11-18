@@ -234,6 +234,11 @@ public sealed class RealProcessRunner : IProcessRunner
             startInfo.ArgumentList.Add(argument);
         }
 
+        if (spec.WorkingDirectory is not null)
+        {
+            startInfo.WorkingDirectory = spec.WorkingDirectory;
+        }
+
         if (spec.EnvironmentOverrides is not null)
         {
             foreach ((string name, string? value) in spec.EnvironmentOverrides)

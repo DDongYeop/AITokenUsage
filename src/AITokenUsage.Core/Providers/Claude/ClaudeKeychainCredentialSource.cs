@@ -45,7 +45,7 @@ public sealed class ClaudeKeychainCredentialSource : IClaudeCredentialSource
         return ServiceName + "-" + Convert.ToHexString(hash)[..8].ToLowerInvariant();
     }
 
-    public async Task<ClaudeCredentialReadResult> ReadAsync(string userAgent, CancellationToken ct)
+    public async Task<ClaudeCredentialReadResult> ReadAsync(CancellationToken ct)
     {
         string? text = await Task.Run(() => _keychain.ReadGeneric(_service), ct).ConfigureAwait(false);
         if (text is not null && ClaudeCredentialReader.TryParse(text, out ClaudeCredentialReadResult result))
@@ -53,15 +53,15 @@ public sealed class ClaudeKeychainCredentialSource : IClaudeCredentialSource
             return result;
         }
 
-        return await _file.ReadAsync(userAgent, ct).ConfigureAwait(false);
+        return await _file.ReadAsync(ct).ConfigureAwait(false);
     }
 
-    public async Task<ClaudeCredentialReadResult?> RecoverAsync(ClaudeCredentials rejected, string userAgent, CancellationToken ct)
+    public async Task<ClaudeCredentialReadResult?> RecoverAsync(ClaudeCredentials rejected, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(rejected);
 
         // Claude Code may have renewed the login while the request was in flight.
-        ClaudeCredentialReadResult reread = await ReadAsync(userAgent, ct).ConfigureAwait(false);
+        ClaudeCredentialReadResult reread = await ReadAsync(ct).ConfigureAwait(false);
         if (reread.State != ClaudeCredentialState.Ok || reread.Credentials is null)
         {
             return reread;

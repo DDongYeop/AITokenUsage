@@ -24,10 +24,10 @@ public sealed class ClaudeCliCredentialSource : IClaudeCredentialSource
 
     public bool RenewsItself => false;
 
-    public Task<ClaudeCredentialReadResult> ReadAsync(string userAgent, CancellationToken ct) =>
+    public Task<ClaudeCredentialReadResult> ReadAsync(CancellationToken ct) =>
         _reader.ReadAsync(_credentialsPath, ct);
 
-    public async Task<ClaudeCredentialReadResult?> RecoverAsync(ClaudeCredentials rejected, string userAgent, CancellationToken ct)
+    public async Task<ClaudeCredentialReadResult?> RecoverAsync(ClaudeCredentials rejected, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(rejected);
 

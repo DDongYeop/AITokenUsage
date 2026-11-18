@@ -69,7 +69,7 @@ tools/build-mac-app.sh x64      # Intel Mac용
 open dist/mac/AITokenUsage.app
 ```
 
-`dist/mac/AITokenUsage.app`과 배포용 zip이 만들어집니다. 앱은 ad-hoc 서명만 되어 있어(공증 안 됨) 다른 Mac에서 처음 열 때는 **우클릭 → 열기**를 해야 합니다. 응용 프로그램 폴더로 옮겨 두면 **로그인 시 자동 실행**을 켤 수 있습니다.
+`dist/mac/AITokenUsage.app`과 배포용 zip이 만들어집니다. 앱은 ad-hoc 서명만 되어 있어(공증 안 됨) 다른 Mac에서 처음 열 때 경고가 나옵니다. macOS 15 이상은 **시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기**, macOS 13·14는 **우클릭 → 열기**로 엽니다(또는 `xattr -dr com.apple.quarantine AITokenUsage.app`). 응용 프로그램 폴더로 옮겨 두면 **로그인 시 자동 실행**을 켤 수 있습니다.
 
 - 구조: Swift 메뉴 막대 앱(`mac/`)이 앱 안에 들어 있는 .NET 에이전트(`src/AITokenUsage.Agent`)를 실행합니다. 에이전트는 Windows 앱과 같은 `AITokenUsage.Core`로 사용량을 조회해 JSON 줄로 넘깁니다.
 - 터미널에서 바로 확인: `dist/mac/AITokenUsage.app/Contents/Resources/agent/aitokenusage-agent --once`

@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using AITokenUsage.Core.Abstractions;
 using AITokenUsage.Core.Providers.Claude;
 using AITokenUsage.Core.Providers.Codex;
@@ -83,6 +84,7 @@ public class MacPlatformTests
     }
 
     [UnixFact]
+    [UnsupportedOSPlatform("windows")]
     public void FindOnUnixPath_FindsExecutables_AndSkipsPlainFiles()
     {
         using var dir = new TempDirectory();
@@ -109,6 +111,7 @@ public class MacPlatformTests
     }
 
     [UnixFact]
+    [UnsupportedOSPlatform("windows")]
     public void UnixFileSecretStore_RoundTrips_WithOwnerOnlyPermissions()
     {
         using var dir = new TempDirectory();
@@ -128,8 +131,11 @@ public class MacPlatformTests
     [Fact]
     public void UnixFileSecretStore_RejectsPathNames()
     {
+        // Runs on Windows too: the name is rejected before any file call, so nothing Unix-only is reached.
+#pragma warning disable CA1416
         var store = new UnixFileSecretStore("/tmp/x");
 
         Assert.Throws<ArgumentException>(() => store.Load("../escape"));
+#pragma warning restore CA1416
     }
 }

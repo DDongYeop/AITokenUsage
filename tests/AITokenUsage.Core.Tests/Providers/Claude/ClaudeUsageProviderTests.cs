@@ -324,8 +324,7 @@ public class ClaudeUsageProviderTests
     {
         SentRequest request = Assert.Single(h.Sent);
         Assert.Equal(HttpMethod.Get, request.Method);
-        Assert.Equal(ClaudeUsageProvider.UsageUrl, request.Url);
-        Assert.Empty(request.Query);
+        Assert.Equal(ClaudeUsageProvider.UsageUrl, request.Url + request.Query);
         Assert.Equal("Bearer " + ClaudeTestData.TokenB, request.Authorization);
     }
 

@@ -1,5 +1,9 @@
 import Foundation
 
+enum WidgetTextWeight: String, Decodable {
+    case `default`, normal, bold
+}
+
 /// One state line written by the .NET agent (src/AITokenUsage.Agent/Program.cs, AgentState).
 struct AgentState: Decodable, Equatable {
     var type: String
@@ -11,6 +15,7 @@ struct AgentState: Decodable, Equatable {
     var rotationSeconds: Int
     var skipUnavailable: Bool
     var pauseOnHover: Bool
+    var textWeight: WidgetTextWeight?
     var showResetTime: Bool
     var refreshMinutes: Int
     var version: String

@@ -197,6 +197,10 @@ public static class Program
                 lock (Gate) settings.PauseOnHover = pause;
                 break;
 
+            case "set-text-weight" when parts.Length == 2 && parts[1] is "default" or "normal" or "bold":
+                lock (Gate) settings.TextWeight = Enum.Parse<TextWeightMode>(parts[1], ignoreCase: true);
+                break;
+
             case "set-show-reset-time" when parts.Length == 2 && bool.TryParse(parts[1], out bool showReset):
                 lock (Gate) settings.ShowResetTime = showReset;
                 break;
@@ -373,6 +377,7 @@ public static class Program
                 settings.SkipUnavailable,
                 settings.PauseOnHover,
                 settings.ShowResetTime,
+                settings.TextWeight,
                 settings.RefreshMinutes,
                 typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "",
                 MacPaths.SettingsFile,
@@ -422,6 +427,7 @@ public static class Program
         bool SkipUnavailable,
         bool PauseOnHover,
         bool ShowResetTime,
+        TextWeightMode TextWeight,
         int RefreshMinutes,
         string Version,
         string SettingsFile,

@@ -38,6 +38,10 @@ public sealed class AppSettings
 
     public TextColorMode TextColor { get; set; } = TextColorMode.Auto;
 
+    public TextWeightMode TextWeight { get; set; } = TextWeightMode.Default;
+
+    public bool SmoothWidgetText { get; set; }
+
     /// <summary>One of ProviderDefaults.RefreshChoicesMinutes (2, 5, 10, 15).</summary>
     public int RefreshMinutes { get; set; } = 5;
 
@@ -89,6 +93,11 @@ public sealed class AppSettings
             TextColor = TextColorMode.Auto;
         }
 
+        if (!Enum.IsDefined(TextWeight))
+        {
+            TextWeight = TextWeightMode.Default;
+        }
+
         if (!Enum.IsDefined(SystemMonitor))
         {
             SystemMonitor = SystemMonitorMode.Off;
@@ -120,6 +129,8 @@ public sealed class AppSettings
         Placement = Placement,
         ValueMode = ValueMode,
         TextColor = TextColor,
+        TextWeight = TextWeight,
+        SmoothWidgetText = SmoothWidgetText,
         RefreshMinutes = RefreshMinutes,
         StartWithWindows = StartWithWindows,
         ShowTrayIcon = ShowTrayIcon,

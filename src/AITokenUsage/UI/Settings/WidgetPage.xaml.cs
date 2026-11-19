@@ -23,6 +23,13 @@ public partial class WidgetPage : SettingsPage
         new(TextColorMode.Dark, UiStrings.TextColorDark),
     ];
 
+    private static readonly IReadOnlyList<SettingsChoice> TextWeightChoices =
+    [
+        new(TextWeightMode.Default, UiStrings.TextWeightDefault),
+        new(TextWeightMode.Normal, UiStrings.TextWeightNormal),
+        new(TextWeightMode.Bold, UiStrings.TextWeightBold),
+    ];
+
     private static readonly IReadOnlyList<SettingsChoice> SystemMonitorChoices =
     [
         new(SystemMonitorMode.Off, UiStrings.SystemMonitorOff),
@@ -52,6 +59,9 @@ public partial class WidgetPage : SettingsPage
         ShowDetailCardBox.IsChecked = settings.ShowDetailCard;
         SystemMonitorBox.ItemsSource = SystemMonitorChoices;
         SystemMonitorBox.SelectedItem = Find(SystemMonitorChoices, settings.SystemMonitor);
+        TextWeightBox.ItemsSource = TextWeightChoices;
+        TextWeightBox.SelectedItem = Find(TextWeightChoices, settings.TextWeight);
+        SmoothWidgetTextBox.IsChecked = settings.SmoothWidgetText;
         TextColorBox.ItemsSource = TextColorChoices;
         TextColorBox.SelectedItem = Find(TextColorChoices, settings.TextColor);
     }
@@ -83,6 +93,14 @@ public partial class WidgetPage : SettingsPage
             if (SystemMonitorBox.SelectedItem is SettingsChoice { Value: SystemMonitorMode mode })
             {
                 Update(s => s.SystemMonitor = mode);
+            }
+        };
+        HookToggle(SmoothWidgetTextBox, on => Update(s => s.SmoothWidgetText = on));
+        TextWeightBox.SelectionChanged += (_, _) =>
+        {
+            if (TextWeightBox.SelectedItem is SettingsChoice { Value: TextWeightMode mode })
+            {
+                Update(s => s.TextWeight = mode);
             }
         };
         TextColorBox.SelectionChanged += (_, _) =>

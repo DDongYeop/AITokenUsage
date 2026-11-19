@@ -32,6 +32,7 @@ public partial class WidgetWindow : Window
 
         _vm = vm;
         InitializeComponent();
+        FontFamily = _vm.FontFamily;
         ApplyWidth();
 
         _front = PanelA;
@@ -115,6 +116,7 @@ public partial class WidgetWindow : Window
 
     private void OnUpdated(object? sender, EventArgs e)
     {
+        FontFamily = _vm.FontFamily;
         ApplyWidth();
         _front.Render(_vm.CurrentModel, _vm.Palette, _vm.ShowResetTime);
         RenderSystemColumn();

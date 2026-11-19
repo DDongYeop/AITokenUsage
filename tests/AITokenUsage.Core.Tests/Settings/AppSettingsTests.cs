@@ -19,12 +19,25 @@ public class AppSettingsTests
         Assert.True(settings.PauseOnHover);
         Assert.True(settings.SkipUnavailable);
         Assert.Null(settings.MonitorDeviceName);
+        Assert.Null(settings.WidgetFontFamily);
         Assert.Equal(WidgetPlacement.LeftEdge, settings.Placement);
         Assert.Equal(ValueMode.Used, settings.ValueMode);
         Assert.Equal(TextColorMode.Auto, settings.TextColor);
         Assert.Equal(5, settings.RefreshMinutes);
         Assert.False(settings.StartWithWindows);
         Assert.True(settings.ShowTrayIcon);
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("", null)]
+    [InlineData(" \t", null)]
+    [InlineData("  맑은 고딕  ", "맑은 고딕")]
+    public void Normalize_WidgetFontFamily(string? saved, string? expected)
+    {
+        var settings = new AppSettings { WidgetFontFamily = saved };
+
+        Assert.Equal(expected, settings.Normalize().WidgetFontFamily);
     }
 
     [Fact]

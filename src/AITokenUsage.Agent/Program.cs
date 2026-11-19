@@ -22,7 +22,7 @@ namespace AITokenUsage.Agent;
 ///   refresh [id] | set-enabled &lt;id&gt; true|false | set-lines &lt;id&gt; &lt;key1&gt; &lt;key2&gt; | move &lt;id&gt; up|down
 ///   | set-value-mode used|remaining | set-rotation &lt;seconds&gt;|off | set-rotation-enabled true|false
 ///   | set-rotation-seconds &lt;n&gt; | set-skip-unavailable true|false | set-pause-on-hover true|false
-///   | set-show-reset-time true|false
+///   | set-show-reset-time true|false | set-widget-font-family [base64-encoded UTF-8 family name]
 ///   | set-refresh &lt;minutes&gt; | set-language auto|ko|en | copilot-signin | copilot-cancel | copilot-signout | quit
 /// Besides "state" lines, Copilot sign-in progress is written as {"type":"copilotSignIn","phase":...} lines.
 /// </summary>
@@ -197,6 +197,11 @@ public static class Program
                 lock (Gate) settings.PauseOnHover = pause;
                 break;
 
+            case "set-widget-font-family" when parts.Length <= 2:
+                string? family = parts.Length == 1 ? null : System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(parts[1]));
+                lock (Gate) settings.WidgetFontFamily = family;
+                break;
+
             case "set-show-reset-time" when parts.Length == 2 && bool.TryParse(parts[1], out bool showReset):
                 lock (Gate) settings.ShowResetTime = showReset;
                 break;
@@ -315,13 +320,11 @@ public static class Program
 
         public void Emit()
         {
-            AgentState state;
+            // Keep a pending poll from writing an older snapshot after a settings command.
             lock (Gate)
             {
-                state = Build();
+                WriteLine(Build());
             }
-
-            WriteLine(state);
         }
 
         private AgentState Build()
@@ -372,6 +375,7 @@ public static class Program
                 settings.RotationSeconds,
                 settings.SkipUnavailable,
                 settings.PauseOnHover,
+                settings.WidgetFontFamily,
                 settings.ShowResetTime,
                 settings.RefreshMinutes,
                 typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "",
@@ -421,6 +425,7 @@ public static class Program
         int RotationSeconds,
         bool SkipUnavailable,
         bool PauseOnHover,
+        string? WidgetFontFamily,
         bool ShowResetTime,
         int RefreshMinutes,
         string Version,

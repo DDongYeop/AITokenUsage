@@ -168,6 +168,7 @@ public sealed class SettingsStoreTests : IDisposable
         AppSettings settings = _store.Load();
 
         Assert.Equal(20, settings.RotationSeconds);
+        Assert.Null(settings.WidgetFontFamily);
         Assert.True(settings.ShowTrayIcon);
         Assert.Equal(["gemini", "claude", "codex", "copilot"], settings.Providers.Select(p => p.Id));
         Assert.False(settings.Providers[0].Enabled);
@@ -232,6 +233,19 @@ public sealed class SettingsStoreTests : IDisposable
         Assert.True(settings.ShowResetTime);
         Assert.True(settings.ShowDetailCard);
         Assert.Equal(8, settings.RotationSeconds);
+    }
+
+    [Theory]
+    [InlineData("맑은 고딕")]
+    [InlineData(null)]
+    public void SaveThenLoad_RoundTripsWidgetFontFamilyFromSnapshot(string? family)
+    {
+        var settings = new AppSettings { WidgetFontFamily = family };
+        _store.Save(settings.Clone());
+
+        using var json = System.Text.Json.JsonDocument.Parse(File.ReadAllText(_path));
+        Assert.Equal(family, json.RootElement.GetProperty("widgetFontFamily").GetString());
+        Assert.Equal(family, new SettingsStore(_path, _log).Load().WidgetFontFamily);
     }
 
     [Fact]

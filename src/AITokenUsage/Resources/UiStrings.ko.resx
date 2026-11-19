@@ -154,6 +154,12 @@
   <data name="SystemMonitorCardOnly" xml:space="preserve">
     <value>상세 카드·툴팁에만</value>
   </data>
+  <data name="WidgetFontHeader" xml:space="preserve">
+    <value>위젯 글꼴</value>
+  </data>
+  <data name="WidgetFontAutomatic" xml:space="preserve">
+    <value>자동 (기본 글꼴)</value>
+  </data>
   <data name="WidgetTextColorHeader" xml:space="preserve">
     <value>글자색</value>
   </data>

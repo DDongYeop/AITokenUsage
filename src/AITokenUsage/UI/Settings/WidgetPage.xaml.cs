@@ -6,7 +6,7 @@ using Microsoft.Win32;
 
 namespace AITokenUsage.UI.Settings;
 
-/// <summary>"Widget" page: monitor, position, value mode, time-until-reset column, detail card, PC usage and text colour (v1.1 spec §4.3).</summary>
+/// <summary>Display and appearance settings for the taskbar widget.</summary>
 public partial class WidgetPage : SettingsPage
 {
     private static readonly IReadOnlyList<SettingsChoice> PlacementChoices =
@@ -54,6 +54,8 @@ public partial class WidgetPage : SettingsPage
         SystemMonitorBox.SelectedItem = Find(SystemMonitorChoices, settings.SystemMonitor);
         TextColorBox.ItemsSource = TextColorChoices;
         TextColorBox.SelectedItem = Find(TextColorChoices, settings.TextColor);
+        FontBox.ItemsSource = WidgetFontChoice.All;
+        FontBox.SelectedItem = WidgetFontChoice.Resolve(settings.WidgetFontFamily);
     }
 
     protected override void OnDispose() => SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
@@ -90,6 +92,13 @@ public partial class WidgetPage : SettingsPage
             if (TextColorBox.SelectedItem is SettingsChoice { Value: TextColorMode mode })
             {
                 Update(s => s.TextColor = mode);
+            }
+        };
+        FontBox.SelectionChanged += (_, _) =>
+        {
+            if (FontBox.SelectedItem is WidgetFontChoice choice)
+            {
+                Update(s => s.WidgetFontFamily = choice.Name);
             }
         };
     }

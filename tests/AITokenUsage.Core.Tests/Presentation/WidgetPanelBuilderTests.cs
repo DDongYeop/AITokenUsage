@@ -50,12 +50,19 @@ public class WidgetPanelBuilderTests
         Assert.Equal("50%", model.Row2!.Value);
     }
 
-    [Fact]
-    public void Build_OneMeterOnly_LeavesSecondRowEmpty()
+    [Theory]
+    [InlineData("codex", "monthly", "월")]
+    [InlineData("codex", "weekly", "주")]
+    [InlineData("claude", "weekly", "주")]
+    public void Build_OneMeterOnly_LeavesSecondRowEmpty(string providerId, string key, string label)
     {
-        WidgetPanelModel model = WidgetPanelBuilder.Build(View(Ok("codex", Meter("monthly", "월", 20))), "5h", "weekly", ValueMode.Used, 1, 0, Now);
+        var lines = ProviderDefaults.CreateDefault(providerId);
+        var view = View(Ok(providerId, Meter(key, label, 20)));
+        WidgetPanelModel model = WidgetPanelBuilder.Build(view, lines.Line1Key, lines.Line2Key, ValueMode.Used, 1, 0, Now);
 
-        Assert.Equal("월", model.Row1.Label);
+        Assert.Equal(WidgetRowKind.Meter, model.Row1.Kind);
+        Assert.Equal(label, model.Row1.Label);
+        Assert.Equal("20%", model.Row1.Value);
         Assert.Null(model.Row2);
     }
 

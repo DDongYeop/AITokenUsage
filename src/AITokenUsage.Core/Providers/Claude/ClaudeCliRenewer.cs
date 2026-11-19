@@ -28,7 +28,6 @@ public sealed class ClaudeCliRenewer
     /// </summary>
     private static readonly string[] RemovedVariables =
     [
-        ClaudePaths.SecureStorageDirVariable,
         "CLAUDE_CODE_OAUTH_TOKEN",
         "ANTHROPIC_API_KEY",
         "ANTHROPIC_AUTH_TOKEN",
@@ -94,8 +93,9 @@ public sealed class ClaudeCliRenewer
         }
 
         string credentialsPath = Path.Combine(accountDirectory, ClaudePaths.CredentialsFileName);
+        Task<ClaudeCredentialReadResult> Reread(CancellationToken token) => _reader.ReadAsync(credentialsPath, token);
         ClaudeCredentialReadResult read = await RunAsync(
-            "claude mcp get", BuildSpec(claudePath, accountDirectory, GetArguments, GetTimeout), credentialsPath, ct).ConfigureAwait(false);
+            "claude mcp get", BuildSpec(claudePath, accountDirectory, GetArguments, GetTimeout), Reread, ct).ConfigureAwait(false);
         if (read is { State: ClaudeCredentialState.Ok, Credentials: { } credentials }
             && (credentials.ExpiresAt is not { } expiresAt || expiresAt > _time.GetUtcNow()))
         {
@@ -105,7 +105,16 @@ public sealed class ClaudeCliRenewer
 
         // In case another Claude Code version renews only on a fuller start. It reaches every connector, so it comes second.
         return await RunAsync(
-            "claude mcp list", BuildSpec(claudePath, accountDirectory, ListArguments, ListTimeout), credentialsPath, ct).ConfigureAwait(false);
+            "claude mcp list", BuildSpec(claudePath, accountDirectory, ListArguments, ListTimeout), Reread, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Use the default CLI profile, then re-read its original file or Keychain source.</summary>
+    internal async Task<ClaudeCredentialReadResult?> RenewPrimaryAsync(IClaudeCredentialSource source, CancellationToken ct)
+    {
+        string? path = _processes.FindOnPath(CommandName);
+        if (path is null) return null;
+        return await RunAsync("claude mcp get", BuildSpec(path, null, GetArguments, GetTimeout), source.ReadAsync, ct)
+            .ConfigureAwait(false);
     }
 
     /// <summary>
@@ -113,16 +122,19 @@ public sealed class ClaudeCliRenewer
     /// its full path, or by name when cmd.exe would misread that path (NoDefaultCurrentDirectoryInExePath keeps the
     /// account folder out of the search).
     /// </summary>
-    private static ProcessSpec BuildSpec(string claudePath, string accountDirectory, string[] arguments, TimeSpan timeout)
+    private static ProcessSpec BuildSpec(string claudePath, string? accountDirectory, string[] arguments, TimeSpan timeout)
     {
         // Windows environment variable names ignore case.
-        var environment = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
-        {
-            [ClaudePaths.ConfigDirVariable] = accountDirectory,
-        };
+        var environment = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (string name in RemovedVariables)
         {
             environment[name] = null;
+        }
+        // The primary account inherits both directories, including an explicitly empty override.
+        if (accountDirectory is not null)
+        {
+            environment[ClaudePaths.ConfigDirVariable] = accountDirectory;
+            environment[ClaudePaths.SecureStorageDirVariable] = null;
         }
 
         foreach ((string name, string value) in SetVariables)
@@ -131,7 +143,8 @@ public sealed class ClaudeCliRenewer
         }
 
         string extension = Path.GetExtension(claudePath);
-        if (extension.Equals(".exe", StringComparison.OrdinalIgnoreCase) || extension.Equals(".com", StringComparison.OrdinalIgnoreCase))
+        if ((accountDirectory is null && !OperatingSystem.IsWindows()) ||
+            extension.Equals(".exe", StringComparison.OrdinalIgnoreCase) || extension.Equals(".com", StringComparison.OrdinalIgnoreCase))
         {
             return new ProcessSpec(claudePath, arguments, environment, timeout, accountDirectory);
         }
@@ -141,7 +154,8 @@ public sealed class ClaudeCliRenewer
             Path.Combine(Environment.SystemDirectory, "cmd.exe"), ["/d", "/c", command, .. arguments], environment, timeout, accountDirectory);
     }
 
-    private async Task<ClaudeCredentialReadResult> RunAsync(string command, ProcessSpec spec, string credentialsPath, CancellationToken ct)
+    private async Task<ClaudeCredentialReadResult> RunAsync(string command, ProcessSpec spec,
+        Func<CancellationToken, Task<ClaudeCredentialReadResult>> reread, CancellationToken ct)
     {
         long started = _time.GetTimestamp();
         ProcessResult? result = null;
@@ -157,7 +171,7 @@ public sealed class ClaudeCliRenewer
         }
 
         string seconds = _time.GetElapsedTime(started).TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture);
-        ClaudeCredentialReadResult read = await _reader.ReadAsync(credentialsPath, ct).ConfigureAwait(false);
+        ClaudeCredentialReadResult read = await reread(ct).ConfigureAwait(false);
         bool renewed = IsFresh(read, _time.GetUtcNow());
         string outcome = renewed ? "renewed" : "not renewed";
 

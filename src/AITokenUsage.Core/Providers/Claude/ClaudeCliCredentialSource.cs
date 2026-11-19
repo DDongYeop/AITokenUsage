@@ -3,8 +3,8 @@ using AITokenUsage.Core.Abstractions;
 namespace AITokenUsage.Core.Providers.Claude;
 
 /// <summary>
-/// Claude Code's own .credentials.json, read-only (the built-in Claude panel). The widget never refreshes or writes
-/// this login: Claude Code rotates it under its own lock and the file watcher re-queries when it does.
+/// Reads Claude Code's primary .credentials.json. Claude Code rotates it under its own lock;
+/// the provider re-reads this source after requesting renewal.
 /// </summary>
 public sealed class ClaudeCliCredentialSource : IClaudeCredentialSource
 {

@@ -11,7 +11,7 @@ public interface IClaudeCredentialSource
 
     /// <summary>
     /// True: the source has a token close to expiry renewed before handing it out (an extra account, through Claude Code),
-    /// so the provider uses what it gets and a rejected token means "sign in again". False: waits for the CLI to renew it.
+    /// so the provider uses what it gets and a rejected token means "sign in again". False: renewal is handled by the caller.
     /// </summary>
     bool RenewsItself { get; }
 

@@ -369,6 +369,24 @@
   <data name="GeminiFlashLiteDaily" xml:space="preserve">
     <value>Flash-Lite daily</value>
   </data>
+  <data name="AntigravityAmountRemaining" xml:space="preserve">
+    <value>{0:N0} left</value>
+  </data>
+  <data name="AntigravityUpdateCli" xml:space="preserve">
+    <value>Run agy update to enable read-only /usage in print mode.</value>
+  </data>
+  <data name="AntigravityQueryFailed" xml:space="preserve">
+    <value>Could not read Antigravity usage limits. Run agy -p /usage in a terminal to check.</value>
+  </data>
+  <data name="AntigravityApiKey" xml:space="preserve">
+    <value>API key sessions have no account quota.</value>
+  </data>
+  <data name="GuideStepInstallAntigravity" xml:space="preserve">
+    <value>Install Antigravity CLI (agy) using PowerShell on Windows or a terminal on macOS</value>
+  </data>
+  <data name="GuideStepLoginAntigravity" xml:space="preserve">
+    <value>Run agy and sign in with your Google account</value>
+  </data>
   <data name="GuideStepNode" xml:space="preserve">
     <value>Install Node.js (skip if you already have it)</value>
   </data>

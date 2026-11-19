@@ -1,6 +1,7 @@
 using AITokenUsage.Core.Abstractions;
 using AITokenUsage.Core.Accounts;
 using AITokenUsage.Core.Models;
+using AITokenUsage.Core.Providers.Antigravity;
 using AITokenUsage.Core.Providers.Claude;
 using AITokenUsage.Core.Providers.Codex;
 using AITokenUsage.Core.Providers.Copilot;
@@ -10,12 +11,12 @@ namespace AITokenUsage.Core.Providers;
 
 public static class ProviderCatalog
 {
-    /// <summary>All providers in default display order: claude, codex, gemini, copilot.</summary>
+    /// <summary>All providers in default display order.</summary>
     public static IReadOnlyList<IUsageProvider> CreateAll(ProviderContext ctx) =>
         CreateAll(ctx, [], string.Empty);
 
     /// <summary>
-    /// The four built-in providers, then one provider per extra account in <paramref name="accountIds"/> order.
+    /// The built-in providers, then one provider per extra account in <paramref name="accountIds"/> order.
     /// Ids that are not account ids and repeated ids are skipped. Accounts keep their folders (CLAUDE_CONFIG_DIR,
     /// CODEX_HOME) under <paramref name="accountsDirectory"/>, which must be non-empty when account ids are given.
     /// </summary>
@@ -28,6 +29,7 @@ public static class ProviderCatalog
             new CodexUsageProvider(ctx),
             new GeminiUsageProvider(ctx),
             new CopilotUsageProvider(ctx),
+            new AntigravityUsageProvider(ctx),
         };
 
         var seen = new HashSet<string>(StringComparer.Ordinal);

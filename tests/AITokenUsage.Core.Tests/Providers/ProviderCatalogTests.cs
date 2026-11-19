@@ -1,5 +1,6 @@
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Providers;
+using AITokenUsage.Core.Providers.Antigravity;
 using AITokenUsage.Core.Providers.Claude;
 using AITokenUsage.Core.Providers.Codex;
 using AITokenUsage.Core.Providers.Copilot;
@@ -17,6 +18,15 @@ public sealed class ProviderCatalogTests
         var providers = Create();
 
         Assert.Equal(ProviderIds.All.ToArray(), providers.Select(p => p.Id).ToArray());
+    }
+
+    [Fact]
+    public void Antigravity_is_a_separate_builtin_provider()
+    {
+        var configured = ProviderDefaults.CreateDefaultProviders();
+        var providers = CreateWith(configured.Select(p => p.Id));
+        var provider = Assert.IsType<AntigravityUsageProvider>(providers.Single(p => p.Id == ProviderIds.Antigravity));
+        Assert.Equal("Antigravity", provider.DisplayName);
     }
 
     [Fact]
@@ -52,7 +62,7 @@ public sealed class ProviderCatalogTests
     }
 
     [Fact]
-    public void Accounts_follow_the_four_defaults_in_the_given_order()
+    public void Accounts_follow_the_defaults_in_the_given_order()
     {
         var providers = CreateWith(["codex#b1b1b1", "claude#a1a1a1", "codex#c1c1c1"]);
 
@@ -77,7 +87,7 @@ public sealed class ProviderCatalogTests
     [Fact]
     public void Invalid_and_duplicate_account_ids_are_skipped()
     {
-        var providers = CreateWith(["gemini#a1a1a1", "codex", "codex#short", "codex#b1b1b1", "codex#b1b1b1", "claude", "CODEX#d1d1d1"]);
+        var providers = CreateWith(["antigravity#a1a1a1", "gemini#a1a1a1", "codex", "codex#short", "codex#b1b1b1", "codex#b1b1b1", "claude", "CODEX#d1d1d1"]);
 
         Assert.Equal([.. ProviderIds.All, "codex#b1b1b1"], providers.Select(p => p.Id).ToArray());
     }

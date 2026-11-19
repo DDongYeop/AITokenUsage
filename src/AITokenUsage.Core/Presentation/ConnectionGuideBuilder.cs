@@ -11,6 +11,10 @@ public static class ConnectionGuideBuilder
     // Commands are code constants: never translated, never built from user input.
     // Node.js comes from winget on Windows and Homebrew on macOS (the Mac menu bar app shows the same guide).
     private static string NodeInstallCommand => OperatingSystem.IsWindows() ? "winget install OpenJS.NodeJS.LTS" : "brew install node";
+    private static string AntigravityInstallCommand => OperatingSystem.IsWindows()
+        ? "irm https://antigravity.google/cli/install.ps1 | iex"
+        : "curl -fsSL https://antigravity.google/cli/install.sh | bash";
+    private const string AntigravityCommand = "agy";
     private const string ClaudeInstallCommand = "npm install -g @anthropic-ai/claude-code";
     private const string CodexInstallCommand = "npm install -g @openai/codex";
     private const string GeminiInstallCommand = "npm install -g @google/gemini-cli";
@@ -51,6 +55,17 @@ public static class ConnectionGuideBuilder
                 ProviderStatus.Unsupported => new ConnectionGuide(
                     Array.Empty<GuideStep>(),
                     string.IsNullOrWhiteSpace(statusMessage) ? Strings.GuideGeminiDiscontinued : statusMessage),
+                _ => null,
+            },
+            ProviderIds.Antigravity => status switch
+            {
+                ProviderStatus.NotInstalled => new ConnectionGuide(
+                    [
+                        new GuideStep(Strings.GuideStepInstallAntigravity, AntigravityInstallCommand, GuideAction.None),
+                        new GuideStep(Strings.GuideStepLoginAntigravity, null, GuideAction.OpenTerminal, AntigravityCommand),
+                        RecheckStep(),
+                    ], null),
+                ProviderStatus.SignedOut => Login(Strings.GuideStepLoginAntigravity, AntigravityCommand),
                 _ => null,
             },
             // The sign-in UI itself is the App's CopilotSignInPanel; the guide only offers the re-check.

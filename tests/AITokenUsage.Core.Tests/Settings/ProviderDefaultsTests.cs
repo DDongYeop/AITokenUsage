@@ -8,6 +8,7 @@ public class ProviderDefaultsTests
     [InlineData("claude", "session", "weekly")]
     [InlineData("codex", "5h", "weekly")]
     [InlineData("gemini", "pro", "flash")]
+    [InlineData("antigravity", "gemini-5h", "gemini-weekly")]
     [InlineData("copilot", "monthly", "reset")]
     public void DefaultLines_FollowTheSpecTable(string id, string line1, string line2)
     {
@@ -17,7 +18,7 @@ public class ProviderDefaultsTests
     [Fact]
     public void DefaultLines_ThrowsForUnknownProvider()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => ProviderDefaults.DefaultLines("antigravity"));
+        Assert.Throws<ArgumentOutOfRangeException>(() => ProviderDefaults.DefaultLines("unknown"));
     }
 
     [Fact]
@@ -29,7 +30,7 @@ public class ProviderDefaultsTests
 
         List<ProviderSettings> second = ProviderDefaults.CreateDefaultProviders();
 
-        Assert.Equal(["claude", "codex", "gemini", "copilot"], second.Select(p => p.Id));
+        Assert.Equal(["claude", "codex", "gemini", "copilot", "antigravity"], second.Select(p => p.Id));
         Assert.All(second, p => Assert.True(p.Enabled));
         Assert.Equal("session", second[0].Line1Key);
     }

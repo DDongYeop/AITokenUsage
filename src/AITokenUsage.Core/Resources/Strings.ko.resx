@@ -369,6 +369,24 @@
   <data name="GeminiFlashLiteDaily" xml:space="preserve">
     <value>Flash-Lite 일간</value>
   </data>
+  <data name="AntigravityAmountRemaining" xml:space="preserve">
+    <value>{0:N0} 남음</value>
+  </data>
+  <data name="AntigravityUpdateCli" xml:space="preserve">
+    <value>비대화형 모드에서 읽기 전용 /usage를 사용하려면 agy update로 CLI를 업데이트하세요.</value>
+  </data>
+  <data name="AntigravityQueryFailed" xml:space="preserve">
+    <value>Antigravity 사용 한도를 읽을 수 없습니다. 터미널에서 agy -p /usage를 실행해 확인하세요.</value>
+  </data>
+  <data name="AntigravityApiKey" xml:space="preserve">
+    <value>API 키 세션에는 계정 할당량이 없습니다.</value>
+  </data>
+  <data name="GuideStepInstallAntigravity" xml:space="preserve">
+    <value>Windows PowerShell 또는 macOS 터미널에서 Antigravity CLI(agy) 설치</value>
+  </data>
+  <data name="GuideStepLoginAntigravity" xml:space="preserve">
+    <value>agy를 실행하고 Google 계정으로 로그인</value>
+  </data>
   <data name="GuideStepNode" xml:space="preserve">
     <value>Node.js 설치 (이미 있으면 건너뛰세요)</value>
   </data>

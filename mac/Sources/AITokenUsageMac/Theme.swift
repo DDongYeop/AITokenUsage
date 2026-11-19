@@ -7,6 +7,7 @@ enum Theme {
     static let codex = Color(red: 0x10 / 255, green: 0xA3 / 255, blue: 0x7F / 255)
     static let gemini = Color(red: 0x42 / 255, green: 0x85 / 255, blue: 0xF4 / 255)
     static let copilot = Color(red: 0x89 / 255, green: 0x57 / 255, blue: 0xE5 / 255)
+    static let antigravity = Color(red: 0x19 / 255, green: 0xA9 / 255, blue: 0xBA / 255)
     static let neutral = Color(red: 0x8A / 255, green: 0x8A / 255, blue: 0x8A / 255)
     static let warning = Color(red: 0xF5 / 255, green: 0xA5 / 255, blue: 0x24 / 255)
     static let critical = Color(red: 0xF0 / 255, green: 0x44 / 255, blue: 0x38 / 255)
@@ -20,6 +21,7 @@ enum Theme {
         case "codex": return codex
         case "gemini": return gemini
         case "copilot": return copilot
+        case "antigravity": return antigravity
         default: return neutral
         }
     }
@@ -43,7 +45,7 @@ enum Theme {
     }
 }
 
-/// The 14×14 provider mark: Claude ✳︎ strokes, Codex rings, Gemini filled star, Copilot hexagon.
+/// The 14×14 provider mark.
 struct ProviderGlyph: View {
     let kind: String
     var size: CGFloat = 14
@@ -85,6 +87,12 @@ struct GlyphShape: Shape {
             path.addCurve(to: p(0, 7), control1: p(6.5, 9.5), control2: p(4.5, 7.5))
             path.addCurve(to: p(7, 0), control1: p(4.5, 6.5), control2: p(6.5, 4.5))
             path.closeSubpath()
+        case "antigravity":
+            path.move(to: p(1.5, 11.5))
+            path.addLine(to: p(7, 2.5))
+            path.addLine(to: p(12.5, 11.5))
+            path.move(to: p(4, 11.5))
+            path.addLine(to: p(10, 11.5))
         case "copilot":
             path.move(to: p(7, 1))
             for point in [p(12.2, 4), p(12.2, 10), p(7, 13), p(1.8, 10), p(1.8, 4)] { path.addLine(to: point) }

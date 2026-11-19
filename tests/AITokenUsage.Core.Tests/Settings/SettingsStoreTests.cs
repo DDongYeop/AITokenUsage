@@ -29,10 +29,32 @@ public sealed class SettingsStoreTests : IDisposable
     {
         AppSettings settings = _store.Load();
 
-        Assert.Equal(["claude", "codex", "gemini", "copilot"], settings.Providers.Select(p => p.Id));
+        Assert.Equal(["claude", "codex", "gemini", "copilot", "antigravity"], settings.Providers.Select(p => p.Id));
         Assert.Equal(5, settings.RotationSeconds);
         Assert.False(File.Exists(_path));
         Assert.Empty(_log.Entries);
+    }
+
+    [Fact]
+    public void Load_PreAntigravitySettings_AppendsOneDefaultAndPreservesPreviousChoices()
+    {
+        WriteRaw("""
+            { "version": 1, "providers": [
+              { "id": "gemini", "enabled": false, "line1Key": "flash-lite", "line2Key": "pro" },
+              { "id": "copilot" }, { "id": "codex" }, { "id": "codex#a1b2c3" }, { "id": "claude" }
+            ] }
+            """);
+
+        AppSettings upgraded = _store.Load();
+        _store.Save(upgraded);
+        AppSettings reloaded = _store.Load();
+
+        Assert.Equal(["gemini", "copilot", "codex", "codex#a1b2c3", "claude", "antigravity"],
+            reloaded.Providers.Select(p => p.Id));
+        var gemini = reloaded.Providers[0];
+        Assert.Equal((false, "flash-lite", "pro"), (gemini.Enabled, gemini.Line1Key, gemini.Line2Key));
+        var antigravity = reloaded.Providers[^1];
+        Assert.Equal((true, "gemini-5h", "gemini-weekly"), (antigravity.Enabled, antigravity.Line1Key, antigravity.Line2Key));
     }
 
     [Fact]
@@ -45,6 +67,7 @@ public sealed class SettingsStoreTests : IDisposable
                 new ProviderSettings { Id = "copilot", Enabled = true, Line1Key = "monthly", Line2Key = "completions" },
                 new ProviderSettings { Id = "claude", Enabled = false, Line1Key = "weekly:fable", Line2Key = "session" },
                 new ProviderSettings { Id = "gemini", Enabled = true, Line1Key = "flash-lite", Line2Key = "pro" },
+                new ProviderSettings { Id = "antigravity", Enabled = false, Line1Key = "gemini-weekly", Line2Key = "gemini-5h" },
                 new ProviderSettings { Id = "codex", Enabled = true, Line1Key = "daily", Line2Key = "weekly" },
             ],
             RotationEnabled = false,
@@ -115,7 +138,7 @@ public sealed class SettingsStoreTests : IDisposable
         AppSettings settings = _store.Load();
 
         Assert.Equal(5, settings.RotationSeconds);
-        Assert.Equal(4, settings.Providers.Count);
+        Assert.Equal(5, settings.Providers.Count);
         Assert.False(File.Exists(_path));
         Assert.Equal(corrupt, File.ReadAllText(_path + ".bak"));
         Assert.Equal(_path + ".bak", _store.BackupPath);
@@ -169,7 +192,7 @@ public sealed class SettingsStoreTests : IDisposable
 
         Assert.Equal(20, settings.RotationSeconds);
         Assert.True(settings.ShowTrayIcon);
-        Assert.Equal(["gemini", "claude", "codex", "copilot"], settings.Providers.Select(p => p.Id));
+        Assert.Equal(["gemini", "claude", "codex", "copilot", "antigravity"], settings.Providers.Select(p => p.Id));
         Assert.False(settings.Providers[0].Enabled);
         Assert.True(File.Exists(_path));
         Assert.False(File.Exists(_path + ".bak"));
@@ -207,7 +230,7 @@ public sealed class SettingsStoreTests : IDisposable
 
         AppSettings settings = _store.Load();
 
-        Assert.Equal(["codex", "claude", "gemini", "copilot"], settings.Providers.Select(p => p.Id));
+        Assert.Equal(["codex", "claude", "gemini", "copilot", "antigravity"], settings.Providers.Select(p => p.Id));
         Assert.Equal(("5h", "weekly"), (settings.Providers[0].Line1Key, settings.Providers[0].Line2Key));
     }
 

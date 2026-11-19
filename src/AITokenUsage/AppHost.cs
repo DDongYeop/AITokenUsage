@@ -232,7 +232,7 @@ public sealed class AppHost : IAsyncDisposable
     }
 
     /// <summary>Each subscriber runs in isolation: a failing subscriber never blocks the others or the caller.</summary>
-    private void RaiseSettingsChanged()
+    internal void RaiseSettingsChanged()
     {
         if (SettingsChanged is not EventHandler handlers)
         {

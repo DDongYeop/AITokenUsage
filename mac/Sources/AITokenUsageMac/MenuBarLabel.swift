@@ -22,12 +22,13 @@ struct MenuBarLabel: View {
         let showReset = client.state?.showResetTime ?? true
         let content: AnyView
         if let panel = client.currentPanel {
-            content = AnyView(WidgetContent(panel: panel, foreground: foreground, showReset: showReset))
+            content = AnyView(WidgetContent(panel: panel, foreground: foreground, showReset: showReset,
+                                            iconStyle: client.state?.providerIconStyle))
         } else {
             let language = client.state?.language ?? AgentClient.systemLanguage
             content = AnyView(
                 HStack(spacing: 4) {
-                    ProviderGlyph(kind: "")
+                    ProviderGlyph(id: "", kind: "", style: nil)
                     Text(client.lastError == nil ? L10n.text(.appTitle, language: language) : "AI ⚠︎")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(foreground)
@@ -35,7 +36,7 @@ struct MenuBarLabel: View {
             )
         }
 
-        let renderer = ImageRenderer(content: content.frame(height: 22).fixedSize())
+        let renderer = ImageRenderer(content: content.environment(\.colorScheme, colorScheme).frame(height: 22).fixedSize())
         renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
         guard let image = renderer.nsImage else { return nil }
         image.isTemplate = false
@@ -47,11 +48,12 @@ struct WidgetContent: View {
     let panel: PanelState
     let foreground: Color
     let showReset: Bool
+    let iconStyle: String?
 
     var body: some View {
         HStack(spacing: 6) {
             HStack(spacing: 4) {
-                ProviderGlyph(kind: panel.kind)
+                ProviderGlyph(id: panel.id, kind: panel.kind, style: iconStyle)
                 Text(panel.shortName)
                     .font(.system(size: 12, weight: .semibold))
                     .lineLimit(1)

@@ -15,6 +15,13 @@ public enum ValueMode
     Remaining,
 }
 
+public enum ProviderIconStyle
+{
+    Classic,
+    Service,
+    Custom,
+}
+
 /// <summary>Where PC usage (CPU and memory) is shown. Off by default.</summary>
 public enum SystemMonitorMode
 {

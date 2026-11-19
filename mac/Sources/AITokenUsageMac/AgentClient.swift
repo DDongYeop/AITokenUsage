@@ -11,6 +11,9 @@ final class AgentClient: ObservableObject {
     /// The tray menu's "자동 전환 일시정지".
     @Published var rotationPausedByUser = false
 
+    @Published private(set) var customIconRevision = 0
+    func customIconChanged() { customIconRevision += 1 }
+
     private var process: Process?
     private var input: FileHandle?
     private var buffer = Data()
@@ -67,6 +70,7 @@ final class AgentClient: ObservableObject {
 
     func refresh() { send("refresh") }
     func setEnabled(_ id: String, _ enabled: Bool) { send("set-enabled \(id) \(enabled)") }
+    func setProviderIconStyle(_ style: String) { send("set-provider-icon-style \(style)") }
     func setValueMode(_ mode: String) { send("set-value-mode \(mode)") }
     func setRotationEnabled(_ value: Bool) { send("set-rotation-enabled \(value)") }
     func setRotationSeconds(_ seconds: Int) { send("set-rotation-seconds \(seconds)") }

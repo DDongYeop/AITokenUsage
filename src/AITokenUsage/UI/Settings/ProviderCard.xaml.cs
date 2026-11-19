@@ -59,7 +59,6 @@ public partial class ProviderCard : UserControl
         InitializeComponent();
 
         string name = _provider.DisplayName;
-        GlyphHost.Content = ProviderGlyphs.CreateIcon(_provider.Id, 16, ProviderGlyphs.BrandBrush(null));
         ChevronGlyph.Text = ChevronDownGlyph;
         SetTitle(name);
 
@@ -101,6 +100,9 @@ public partial class ProviderCard : UserControl
         Line1Box.SelectionChanged += (_, _) => OnLineChanged(Line1Box, key => _settings.Line1Key = key);
         Line2Box.SelectionChanged += (_, _) => OnLineChanged(Line2Box, key => _settings.Line2Key = key);
     }
+
+    internal void RenderIcon(AppHost host) =>
+        GlyphHost.Render(_provider.Id, host.Settings.ProviderIconStyle, !host.Theme.IsAppLight, ProviderGlyphs.BrandBrush(null));
 
     public string ProviderId => _settings.Id;
 

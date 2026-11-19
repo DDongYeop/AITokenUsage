@@ -52,7 +52,7 @@ public partial class WidgetWindow : Window
         Closed += OnClosed;
 
         ResetPanels();
-        _front.Render(_vm.CurrentModel, _vm.Palette, _vm.ShowResetTime);
+        RenderPanel(_front);
         RenderSystemColumn();
     }
 
@@ -113,10 +113,13 @@ public partial class WidgetWindow : Window
 
     private void OnFlyoutPointerOverChanged(object? sender, EventArgs e) => _vm.SetPointerOver(_flyout.IsPointerOver);
 
+    private void RenderPanel(ProviderPanel panel) =>
+        panel.Render(_vm.CurrentModel, _vm.Palette, _vm.ShowResetTime, _vm.Host.Settings.ProviderIconStyle, !_vm.Theme.IsTaskbarLight);
+
     private void OnUpdated(object? sender, EventArgs e)
     {
         ApplyWidth();
-        _front.Render(_vm.CurrentModel, _vm.Palette, _vm.ShowResetTime);
+        RenderPanel(_front);
         RenderSystemColumn();
     }
 
@@ -165,13 +168,13 @@ public partial class WidgetWindow : Window
 
         if (direction == 0)
         {
-            _front.Render(_vm.CurrentModel, _vm.Palette, _vm.ShowResetTime);
+            RenderPanel(_front);
             return;
         }
 
         ProviderPanel outgoing = _front;
         ProviderPanel incoming = _back;
-        incoming.Render(_vm.CurrentModel, _vm.Palette, _vm.ShowResetTime);
+        RenderPanel(incoming);
         incoming.Visibility = Visibility.Visible;
         _front = incoming;
         _back = outgoing;

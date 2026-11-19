@@ -20,13 +20,14 @@ enum PreviewRenderer {
 
             for (i, panel) in client.rotatingPanels.enumerated() {
                 for dark in [false, true] {
-                    let bar = WidgetContent(panel: panel, foreground: dark ? .white : .black, showReset: state.showResetTime)
+                    let bar = WidgetContent(panel: panel, foreground: dark ? .white : .black, showReset: state.showResetTime, iconStyle: state.providerIconStyle)
+                        .environment(\.colorScheme, dark ? .dark : .light)
                         .frame(height: 22)
                         .padding(.horizontal, 8)
                         .background(dark ? Color(white: 0.12) : Color(white: 0.93))
                     try write(bar, to: outDir.appendingPathComponent("menubar-\(i)-\(panel.id)-\(dark ? "dark" : "light").png"))
                 }
-                let card = DetailCard(panel: panel)
+                let card = DetailCard(panel: panel, iconStyle: state.providerIconStyle)
                     .frame(width: 364)
                     .padding(8)
                     .background(Color(white: 0.13))

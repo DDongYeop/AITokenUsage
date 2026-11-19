@@ -299,7 +299,7 @@ public sealed class DetailFlyoutController : IDisposable
         }
 
         DetailFlyout flyout = EnsureFlyout();
-        flyout.Render(model, _theme.IsTaskbarLight);
+        flyout.Render(model, _theme.IsTaskbarLight, _host.Settings.ProviderIconStyle);
         flyout.ShowAbove(anchorHandle);
         _clockTimer.Start();
         _hoverCheckTimer.Start();
@@ -380,7 +380,7 @@ public sealed class DetailFlyoutController : IDisposable
             return;
         }
 
-        _flyout.Render(model, _theme.IsTaskbarLight);
+        _flyout.Render(model, _theme.IsTaskbarLight, _host.Settings.ProviderIconStyle);
     }
 
     private void OnViewChanged(object? sender, ProviderView view)

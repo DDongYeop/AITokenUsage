@@ -36,6 +36,8 @@ public sealed class AppSettings
 
     public ValueMode ValueMode { get; set; } = ValueMode.Used;
 
+    public ProviderIconStyle ProviderIconStyle { get; set; } = ProviderIconStyle.Classic;
+
     public TextColorMode TextColor { get; set; } = TextColorMode.Auto;
 
     /// <summary>One of ProviderDefaults.RefreshChoicesMinutes (2, 5, 10, 15).</summary>
@@ -84,6 +86,11 @@ public sealed class AppSettings
             ValueMode = ValueMode.Used;
         }
 
+        if (!Enum.IsDefined(ProviderIconStyle))
+        {
+            ProviderIconStyle = ProviderIconStyle.Classic;
+        }
+
         if (!Enum.IsDefined(TextColor))
         {
             TextColor = TextColorMode.Auto;
@@ -119,6 +126,7 @@ public sealed class AppSettings
         MonitorDeviceName = MonitorDeviceName,
         Placement = Placement,
         ValueMode = ValueMode,
+        ProviderIconStyle = ProviderIconStyle,
         TextColor = TextColor,
         RefreshMinutes = RefreshMinutes,
         StartWithWindows = StartWithWindows,

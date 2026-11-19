@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using AITokenUsage.Core.Presentation;
+using AITokenUsage.Core.Settings;
 using AITokenUsage.Core.SystemUsage;
 using AITokenUsage.Core.Taskbar;
 
@@ -43,14 +44,15 @@ public partial class ProviderPanel : UserControl
     public TranslateTransform Slide => (TranslateTransform)RenderTransform;
 
     /// <param name="showResetTime">Reserve the right-hand time-to-reset column (WidgetMetrics.ResetGapDip + ResetColumnDip) and fill it on meter rows.</param>
-    public void Render(WidgetPanelModel model, WidgetPalette palette, bool showResetTime)
+    public void Render(WidgetPanelModel model, WidgetPalette palette, bool showResetTime,
+        ProviderIconStyle iconStyle, bool darkBackground)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(palette);
 
         bool hasProvider = model.ProviderId.Length > 0;
-        ProviderGlyphs.Apply(GlyphPath, model.ProviderId, palette.Text);
-        GlyphPath.Visibility = hasProvider ? Visibility.Visible : Visibility.Collapsed;
+        GlyphHost.Render(model.ProviderId, iconStyle, darkBackground, palette.Text);
+        GlyphHost.Visibility = hasProvider ? Visibility.Visible : Visibility.Collapsed;
         NameText.Margin = hasProvider ? new Thickness(4, 0, 0, 0) : new Thickness(0);
         NameText.MaxWidth = hasProvider ? ProviderNameMaxWidth : EmptyTitleMaxWidth;
         NameText.Text = model.DisplayName;

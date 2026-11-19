@@ -1,3 +1,4 @@
+using System.Windows;
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Presentation;
 using AITokenUsage.Core.Settings;
@@ -14,6 +15,13 @@ public partial class WidgetPage : SettingsPage
         new(WidgetPlacement.LeftEdge, UiStrings.PlacementLeftEdge),
         new(WidgetPlacement.BeforeStart, UiStrings.PlacementBeforeStart),
         new(WidgetPlacement.BeforeTray, UiStrings.PlacementBeforeTray),
+    ];
+
+    private static readonly IReadOnlyList<SettingsChoice> IconStyleChoices =
+    [
+        new(ProviderIconStyle.Classic, UiStrings.ProviderIconClassic),
+        new(ProviderIconStyle.Service, UiStrings.ProviderIconService),
+        new(ProviderIconStyle.Custom, UiStrings.ProviderIconCustom),
     ];
 
     private static readonly IReadOnlyList<SettingsChoice> TextColorChoices =
@@ -36,6 +44,7 @@ public partial class WidgetPage : SettingsPage
     {
         InitializeComponent();
         HookEvents();
+        IsVisibleChanged += (_, _) => { if (IsVisible) LoadCustomProviders(); };
         SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
     }
 
@@ -52,6 +61,10 @@ public partial class WidgetPage : SettingsPage
         ShowDetailCardBox.IsChecked = settings.ShowDetailCard;
         SystemMonitorBox.ItemsSource = SystemMonitorChoices;
         SystemMonitorBox.SelectedItem = Find(SystemMonitorChoices, settings.SystemMonitor);
+        LoadCustomProviders();
+        IconStyleBox.ItemsSource = IconStyleChoices;
+        IconStyleBox.SelectedItem = Find(IconStyleChoices, settings.ProviderIconStyle);
+        RefreshCustomIcon();
         TextColorBox.ItemsSource = TextColorChoices;
         TextColorBox.SelectedItem = Find(TextColorChoices, settings.TextColor);
     }
@@ -85,6 +98,17 @@ public partial class WidgetPage : SettingsPage
                 Update(s => s.SystemMonitor = mode);
             }
         };
+        IconStyleBox.SelectionChanged += (_, _) =>
+        {
+            if (IconStyleBox.SelectedItem is SettingsChoice { Value: ProviderIconStyle style })
+            {
+                Update(s => s.ProviderIconStyle = style);
+                RefreshCustomIcon();
+            }
+        };
+        CustomProviderBox.SelectionChanged += (_, _) => RefreshCustomIcon();
+        ChooseIconButton.Click += (_, _) => ChangeCustomIcon(remove: false);
+        RemoveIconButton.Click += (_, _) => ChangeCustomIcon(remove: true);
         TextColorBox.SelectionChanged += (_, _) =>
         {
             if (TextColorBox.SelectedItem is SettingsChoice { Value: TextColorMode mode })
@@ -92,6 +116,61 @@ public partial class WidgetPage : SettingsPage
                 Update(s => s.TextColor = mode);
             }
         };
+    }
+
+    private void LoadCustomProviders()
+    {
+        object? selected = (CustomProviderBox.SelectedItem as SettingsChoice)?.Value;
+        var choices = Host.Settings.Providers.Select(p =>
+        {
+            string? title = Host.Providers.FirstOrDefault(provider => provider.Id == p.Id)?.DisplayName;
+            string label = ProviderIds.KindOf(p.Id) != p.Id && title is not null ? $"{title} · {p.Id}" : title ?? p.Id;
+            return new SettingsChoice(p.Id, label);
+        }).ToArray();
+        CustomProviderBox.ItemsSource = choices;
+        CustomProviderBox.SelectedItem = choices.FirstOrDefault(c => Equals(c.Value, selected)) ?? choices.FirstOrDefault();
+    }
+
+    private void RefreshCustomIcon()
+    {
+        bool custom = Host.Settings.ProviderIconStyle == ProviderIconStyle.Custom;
+        CustomIconCard.Visibility = custom ? Visibility.Visible : Visibility.Collapsed;
+        if (!custom || CustomProviderBox.SelectedItem is not SettingsChoice { Value: string id }) return;
+
+        CustomIconPreview.Render(id, ProviderIconStyle.Custom, !Host.Theme.IsAppLight, Foreground);
+        RemoveIconButton.IsEnabled = CustomProviderIcons.Load(id) is not null;
+    }
+
+    private void ChangeCustomIcon(bool remove)
+    {
+        if (CustomProviderBox.SelectedItem is not SettingsChoice { Value: string id }) return;
+        Window owner = Window.GetWindow(this);
+        try
+        {
+            if (remove)
+            {
+                CustomProviderIcons.Remove(id);
+            }
+            else
+            {
+                var dialog = new OpenFileDialog
+                {
+                    Title = UiStrings.CustomIconChoose,
+                    Filter = $"{UiStrings.ImageFiles}|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp;*.ico",
+                };
+                if (dialog.ShowDialog(owner) != true) return;
+                CustomProviderIcons.Import(id, dialog.FileName);
+            }
+
+            Host.RaiseSettingsChanged();
+            RefreshCustomIcon();
+        }
+        catch (Exception ex)
+        {
+            Host.Log.Warn($"Could not update custom icon for {id}", ex);
+            MessageBox.Show(owner, UiStrings.CustomIconError + Environment.NewLine + ex.Message,
+                UiStrings.CustomIconHeader, MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void LoadMonitors()

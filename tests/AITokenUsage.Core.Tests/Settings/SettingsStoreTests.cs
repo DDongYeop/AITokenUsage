@@ -244,6 +244,32 @@ public sealed class SettingsStoreTests : IDisposable
         Assert.False(loaded.ShowDetailCard);
     }
 
+    [Theory]
+    [InlineData(ProviderIconStyle.Classic, "classic")]
+    [InlineData(ProviderIconStyle.Service, "service")]
+    [InlineData(ProviderIconStyle.Custom, "custom")]
+    public void ProviderIconStyle_SurvivesBackgroundSnapshotAndReload(ProviderIconStyle style, string jsonValue)
+    {
+        var settings = new AppSettings { ProviderIconStyle = style };
+        _store.Save(settings.Clone());
+
+        Assert.Equal(style, _store.Load().ProviderIconStyle);
+        Assert.Contains($"\"providerIconStyle\": \"{jsonValue}\"", File.ReadAllText(_path));
+    }
+
+    [Theory]
+    [InlineData("""{ "rotationSeconds": 8 }""")]
+    [InlineData("""{ "rotationSeconds": 8, "providerIconStyle": 42 }""")]
+    public void ProviderIconStyle_OldOrUndefinedValue_KeepsOtherSettings(string json)
+    {
+        WriteRaw(json);
+        var settings = _store.Load();
+
+        Assert.Equal(ProviderIconStyle.Classic, settings.ProviderIconStyle);
+        Assert.Equal(8, settings.RotationSeconds);
+        Assert.False(_store.LastLoadFellBack);
+    }
+
     [Fact]
     public void Load_JsonWithoutSystemMonitor_IsOff()
     {

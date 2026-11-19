@@ -49,6 +49,8 @@ public partial class ProvidersPage : SettingsPage
         _statusTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher) { Interval = StatusRefreshInterval };
         _statusTimer.Tick += OnStatusTimer;
         Host.ViewChanged += OnViewChanged;
+        Host.SettingsChanged += OnIconsChanged;
+        Host.Theme.Changed += OnIconsChanged;
     }
 
     protected override void OnLoad()
@@ -69,6 +71,8 @@ public partial class ProvidersPage : SettingsPage
         _statusTimer.Stop();
         _statusTimer.Tick -= OnStatusTimer;
         Host.ViewChanged -= OnViewChanged;
+        Host.SettingsChanged -= OnIconsChanged;
+        Host.Theme.Changed -= OnIconsChanged;
 
         // Window closed (or the app restarting) while a sign-in waits: cancel it, which cleans up like [Cancel].
         EndSession(cancel: true);
@@ -104,6 +108,7 @@ public partial class ProvidersPage : SettingsPage
             card.ReloginRequested += OnReloginRequested;
             card.LoginCancelRequested += OnCancelLoginRequested;
             card.RemoveRequested += OnRemoveRequested;
+            card.RenderIcon(Host);
             _cards.Add(card);
         }
     }
@@ -134,6 +139,14 @@ public partial class ProvidersPage : SettingsPage
         {
             arranged[i].SetMoveState(i > 0, i < arranged.Length - 1);
             CardsPanel.Children.Add(arranged[i]);
+        }
+    }
+
+    private void OnIconsChanged(object? sender, EventArgs e)
+    {
+        foreach (ProviderCard card in _cards)
+        {
+            card.RenderIcon(Host);
         }
     }
 

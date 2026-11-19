@@ -54,6 +54,8 @@ public sealed class AppSettings
     /// <summary>위젯에 마우스를 올리면 상세 카드 표시</summary>
     public bool ShowDetailCard { get; set; } = true;
 
+    public bool RefreshOnHover { get; set; }
+
     /// <summary>PC 사용량(CPU·메모리) 표시 위치. 기본은 끄기.</summary>
     public SystemMonitorMode SystemMonitor { get; set; } = SystemMonitorMode.Off;
 
@@ -126,6 +128,7 @@ public sealed class AppSettings
         Language = Language,
         ShowResetTime = ShowResetTime,
         ShowDetailCard = ShowDetailCard,
+        RefreshOnHover = RefreshOnHover,
         SystemMonitor = SystemMonitor,
     };
 

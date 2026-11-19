@@ -235,6 +235,14 @@ public sealed class SettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void RefreshOnHover_DefaultsOffAndSurvivesSaveAndReload()
+    {
+        Assert.False(_store.Load().RefreshOnHover);
+        _store.Save(new AppSettings { RefreshOnHover = true }.Clone());
+        Assert.True(_store.Load().RefreshOnHover);
+    }
+
+    [Fact]
     public void SaveThenLoad_RoundTripsShowDetailCard()
     {
         _store.Save(new AppSettings { ShowDetailCard = false });

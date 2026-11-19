@@ -75,6 +75,8 @@ open dist/mac/AITokenUsage.app
 - 터미널에서 바로 확인: `dist/mac/AITokenUsage.app/Contents/Resources/agent/aitokenusage-agent --once`
 - 저장 위치: 설정·캐시는 `~/Library/Application Support/AITokenUsage`, 로그는 `~/Library/Logs/AITokenUsage`.
 
+Windows의 **설정 → 위젯 표시 → 마우스를 올리면 현재 AI 새로고침**을 켜면 작업 표시줄 위젯에 포인터가 들어갈 때 현재 AI를 바로 조회합니다. 상세 카드 표시를 꺼도 동작합니다. 조회 중이거나 서비스가 재시도를 제한한 동안에는 추가 요청을 보내지 않습니다. 기본값은 꺼짐입니다.
+
 ## AI 연결 방법
 
 **설정 → AI 연결** 페이지에서 AI마다 연결 상태를 볼 수 있습니다. 연결되지 않은 AI는 카드에 단계별 안내가 나오고, 명령은 [복사]로 복사하거나 [터미널에서 로그인]으로 바로 실행할 수 있습니다. 로그인하면 자동으로 인식됩니다(바로 확인하려면 [다시 확인]).

@@ -32,6 +32,11 @@
                       AutomationProperties.Name="{x:Static res:UiStrings.WidgetShowResetTimeHeader}" />
         </controls:SettingsCard>
 
+        <controls:SettingsCard Header="{x:Static res:UiStrings.WidgetRefreshOnHoverHeader}">
+            <CheckBox x:Name="RefreshOnHoverBox" Style="{StaticResource ToggleSwitchStyle}"
+                      AutomationProperties.Name="{x:Static res:UiStrings.WidgetRefreshOnHoverHeader}" />
+        </controls:SettingsCard>
+
         <controls:SettingsCard Header="{x:Static res:UiStrings.WidgetShowDetailCardHeader}"
                                Description="{x:Static res:UiStrings.WidgetShowDetailCardDescription}">
             <CheckBox x:Name="ShowDetailCardBox" Style="{StaticResource ToggleSwitchStyle}"

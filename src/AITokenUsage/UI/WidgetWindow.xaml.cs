@@ -107,7 +107,12 @@ public partial class WidgetWindow : Window
         e.Handled = true;
     }
 
-    private void OnPointerEnter(object sender, MouseEventArgs e) => _flyout.AnchorEnter();
+    private void OnPointerEnter(object sender, MouseEventArgs e)
+    {
+        _flyout.AnchorEnter();
+        if (_vm.Host.Settings.RefreshOnHover)
+            _vm.Host.Usage.NotifyHover(_vm.Host.Rotation.CurrentId);
+    }
 
     private void OnPointerLeave(object sender, MouseEventArgs e) => _flyout.AnchorLeave();
 

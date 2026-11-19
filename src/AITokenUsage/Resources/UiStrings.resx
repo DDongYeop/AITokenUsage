@@ -133,6 +133,9 @@ Log: {0}</value>
   <data name="WidgetShowResetTimeDescription" xml:space="preserve">
     <value>Turn off to make the widget narrower</value>
   </data>
+  <data name="WidgetRefreshOnHoverHeader" xml:space="preserve">
+    <value>Refresh the current AI on hover</value>
+  </data>
   <data name="WidgetShowDetailCardHeader" xml:space="preserve">
     <value>Detail card on hover</value>
   </data>

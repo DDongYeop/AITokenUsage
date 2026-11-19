@@ -452,6 +452,31 @@ public sealed class UsageServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Hover_RefreshesOnlyTheEnteredPanelAndSkipsAnInFlightRequest()
+    {
+        var target = new BlockingProvider("codex", _time);
+        var other = Provider("claude");
+        var service = CreateService(target, other);
+        var views = new ViewRecorder(service);
+        service.Start();
+        await target.WaitUntilFetchingAsync();
+        target.ReleaseOne();
+        await views.NextAsync();
+        await views.NextAsync();
+
+        service.NotifyHover(null);
+        service.NotifyHover("system");
+        service.NotifyHover("codex");
+        await target.WaitUntilFetchingAsync();
+        service.NotifyHover("codex");
+        target.ReleaseOne();
+        Assert.Equal("codex", (await views.NextAsync()).ProviderId);
+        await views.AssertNoneAsync();
+        Assert.Equal(2, target.CallCount);
+        Assert.Equal(1, other.CallCount);
+    }
+
+    [Fact]
     public async Task RefreshNow_WithProviderId_FetchesOnlyThatProvider()
     {
         var claude = Provider("claude");

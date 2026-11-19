@@ -91,6 +91,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0" Grid.Column="0" Margin="0,0,0,4" FontSize="12" Text="{x:Static res:UiStrings.ProviderLine1Label}" />
@@ -100,7 +101,12 @@
                 <ComboBox x:Name="Line2Box" Grid.Row="1" Grid.Column="2" DisplayMemberPath="Label" SelectedValuePath="Key"
                           IsSynchronizedWithCurrentItem="False" />
 
-                <DockPanel Grid.Row="2" Grid.ColumnSpan="3" Margin="0,12,0,0" LastChildFill="False">
+                <StackPanel Grid.Row="2" Grid.ColumnSpan="3" Margin="0,12,0,0">
+                    <TextBlock Margin="0,0,0,4" FontSize="12" Text="{x:Static res:UiStrings.ProviderNicknameLabel}" />
+                    <TextBox x:Name="NicknameBox" />
+                </StackPanel>
+
+                <DockPanel Grid.Row="3" Grid.ColumnSpan="3" Margin="0,12,0,0" LastChildFill="False">
                     <Button x:Name="UpButton" DockPanel.Dock="Left" MinWidth="0" Padding="12,4,12,4"
                             Content="{x:Static res:UiStrings.ProviderMoveUpButton}" />
                     <Button x:Name="DownButton" DockPanel.Dock="Left" MinWidth="0" Padding="12,4,12,4" Margin="8,0,0,0"

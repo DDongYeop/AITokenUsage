@@ -79,6 +79,7 @@ public partial class ProvidersPage : SettingsPage
 
         foreach (ProviderCard card in _cards)
         {
+            card.CommitNickname();
             UnhookCard(card);
             card.DetachExtra();
         }

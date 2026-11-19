@@ -25,6 +25,7 @@ struct ProviderEntry: Decodable, Equatable, Identifiable {
     var id: String
     var kind: String
     var title: String
+    var nickname: String?
     var enabled: Bool
     var status: String
     var statusText: String

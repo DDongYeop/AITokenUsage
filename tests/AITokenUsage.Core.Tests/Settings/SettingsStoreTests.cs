@@ -36,6 +36,37 @@ public sealed class SettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void Nicknames_RoundTripByFullId_IncludingLegacyAndClearedNames()
+    {
+        WriteRaw("""
+            { "providers": [
+                { "id": "claude", "nickname": "  연구  " },
+                { "id": "claude#k3x9q2", "nickname": "개인" },
+                { "id": "gemini", "nickname": "   " },
+                { "id": "codex", "enabled": false }
+            ] }
+            """);
+
+        AppSettings settings = _store.Load();
+        Assert.False(_store.LastLoadFellBack);
+        Assert.Equal("연구", settings.Providers[0].Nickname);
+        Assert.Equal("개인", settings.Providers[1].Nickname);
+        Assert.Null(settings.Providers[2].Nickname);
+        Assert.Null(settings.Providers[3].Nickname);
+        Assert.False(settings.Providers[3].Enabled);
+
+        AppSettings copy = settings.Clone();
+        settings.Providers[0].Nickname = "changed after cloning";
+        copy.Providers[1].Nickname = "  ";
+        _store.Save(copy);
+        Assert.Contains("\"nickname\"", File.ReadAllText(_path));
+        AppSettings reloaded = _store.Load();
+        Assert.Equal("연구", reloaded.Providers.Single(p => p.Id == "claude").Nickname);
+        Assert.Null(reloaded.Providers.Single(p => p.Id == "claude#k3x9q2").Nickname);
+        Assert.Equal("개인", settings.Providers[1].Nickname);
+    }
+
+    [Fact]
     public void SaveThenLoad_RoundTripsEverySetting()
     {
         var original = new AppSettings

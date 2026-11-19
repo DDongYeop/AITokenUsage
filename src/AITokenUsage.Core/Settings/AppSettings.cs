@@ -111,7 +111,7 @@ public sealed class AppSettings
         Version = Version,
         Providers = Providers?.Select(p => p is null
             ? null!
-            : new ProviderSettings { Id = p.Id, Enabled = p.Enabled, Line1Key = p.Line1Key, Line2Key = p.Line2Key }).ToList()!,
+            : new ProviderSettings { Id = p.Id, Nickname = p.Nickname, Enabled = p.Enabled, Line1Key = p.Line1Key, Line2Key = p.Line2Key }).ToList()!,
         RotationEnabled = RotationEnabled,
         RotationSeconds = RotationSeconds,
         PauseOnHover = PauseOnHover,

@@ -186,6 +186,38 @@ public class AccountTagsTests
     }
 
     [Fact]
+    public void Nicknames_FollowExactIdsAcrossUsageDisplays_AndKeepSettingsIdentity()
+    {
+        ProviderView[] views = [V("claude", "Team"), V("claude#k3x9q2", "Pro"), V("gemini", null, "Gemini")];
+        ProviderSettings[] settings =
+        [
+            new() { Id = "gemini", Nickname = "Gem" },
+            new() { Id = "claude#k3x9q2", Nickname = "Side project" },
+            new() { Id = "claude", Nickname = "Work" },
+        ];
+        IReadOnlyList<ProviderView> labeled = AccountTags.Apply(views, settings);
+
+        Assert.Equal(["Claude · 팀", "Claude · 개인", "Gemini"], labeled.Select(v => v.IdentityTitle));
+        Assert.Equal(["Work", "Side project", "Gem"], labeled.Select(v => v.Title));
+        foreach (ProviderView view in labeled)
+        {
+            var panel = WidgetPanelBuilder.Build(view, null, null, ValueMode.Used, 3, 0, Now);
+            var card = DetailCardBuilder.Build(view, ValueMode.Used, Now, Kst);
+            Assert.Equal(view.Title, panel.DisplayName);
+            Assert.Equal(view.Title, card.DisplayName);
+            Assert.Equal(view.ProviderId, card.ProviderId);
+            Assert.StartsWith(view.Title + " 5h 14%", TrayTextFormatter.Tooltip(view, null, ValueMode.Used), StringComparison.Ordinal);
+        }
+
+        settings[1].Nickname = " ";
+        IReadOnlyList<ProviderView> reset = AccountTags.Apply(labeled, settings);
+        Assert.Equal("개인", reset[1].ShortName);
+        Assert.Equal("Claude · 개인", reset[1].Title);
+        Assert.Equal("Work", reset[0].Title);
+        Assert.All(views, v => Assert.Null(v.Nickname));
+    }
+
+    [Fact]
     public void WidgetPanelAndTooltip_NoDataView_AlsoUseTheTag()
     {
         ProviderView view = View(Status("claude#k3x9q2", ProviderStatus.SignedOut)) with { AccountTag = "개인" };

@@ -6,11 +6,15 @@ public sealed record ProviderView(string ProviderId, string DisplayName, UsageSn
     /// <summary>"팀"/"개인"/"#2" when several panels of the same AI are shown (see AccountTags); null otherwise.</summary>
     public string? AccountTag { get; init; }
 
-    /// <summary>Name for cards, tooltips and lists: "Claude", or "Claude · 팀" when tagged.</summary>
-    public string Title => AccountTag is null ? DisplayName : DisplayName + " · " + AccountTag;
+    /// <summary>Custom label for usage displays. Settings keep showing the provider and account identity.</summary>
+    public string? Nickname { get; init; }
 
-    /// <summary>Name for the widget panel: the tag alone when tagged (the icon already tells the AI), else the display name.</summary>
-    public string ShortName => AccountTag ?? DisplayName;
+    public string Title => Nickname ?? IdentityTitle;
+
+    public string IdentityTitle => AccountTag is null ? DisplayName : DisplayName + " · " + AccountTag;
+
+    /// <summary>Name for the widget panel: nickname, account tag, or provider name (in that order).</summary>
+    public string ShortName => Nickname ?? AccountTag ?? DisplayName;
 
     public bool IsStale => Current.Status != ProviderStatus.Ok && LastGood is not null;
 

@@ -432,6 +432,29 @@ public class AppSettingsTests
         Assert.False(settings.Providers[0].Enabled);
     }
 
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(" \t\r\n ", null)]
+    [InlineData("  Work bench  ", "Work bench")]
+    [InlineData("Work\r\nbench", "Work bench")]
+    public void Nickname_NormalizesOnAssignment(string? value, string? expected)
+    {
+        var provider = new ProviderSettings { Nickname = value };
+        Assert.Equal(expected, provider.Nickname);
+    }
+
+    [Fact]
+    public void Nickname_LengthLimitKeepsCompleteTextElements()
+    {
+        string prefix = new('x', ProviderSettings.MaxNicknameLength - 1);
+        var provider = new ProviderSettings { Nickname = prefix + "🙌" };
+        Assert.Equal(prefix, provider.Nickname);
+        provider.Nickname = prefix + "e\u0301";
+        Assert.Equal(prefix, provider.Nickname);
+        provider.Nickname = prefix + "가나다";
+        Assert.Equal(prefix + "가", provider.Nickname);
+    }
+
     [Fact]
     public void Clone_CopiesAccountEntries()
     {

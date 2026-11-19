@@ -8,6 +8,7 @@ enum L10n {
         case navProviders, navWidget, navRotation, navGeneral, navAbout
         case on, off
         case providersDescription, showOnWidget, line1, line2, moveUp, moveDown
+        case nickname, nicknamePlaceholder, save
         case copy, copied, signInTerminal, openTerminal, recheck, terminalFailed
         case githubSignIn, githubSignOut, cancel, openBrowser, enterCodeFormat, verifying, waitingForCode, unofficialApi
         case valueMode, valueUsed, valueRemaining, showResetTime, showResetTimeDescription
@@ -43,6 +44,9 @@ enum L10n {
         case .off: return ("끔", "Off")
         case .providersDescription: return ("위젯에 표시할 AI와 순서를 고르세요", "Choose which AIs the widget shows and in what order")
         case .showOnWidget: return ("위젯에 표시", "Show on widget")
+        case .nickname: return ("별칭", "Nickname")
+        case .nicknamePlaceholder: return ("비워 두면 기본 이름 사용", "Leave blank to use the default name")
+        case .save: return ("저장", "Save")
         case .line1: return ("1줄 표시", "Line 1")
         case .line2: return ("2줄 표시", "Line 2")
         case .moveUp: return ("위로 이동", "Move up")

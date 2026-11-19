@@ -2,6 +2,7 @@ using System.Globalization;
 using AITokenUsage.Core.Accounts;
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Resources;
+using AITokenUsage.Core.Settings;
 
 namespace AITokenUsage.Core.Presentation;
 
@@ -11,10 +12,11 @@ public static class AccountTags
     /// <summary>
     /// A new list in the same order. Only views whose kind (<see cref="ProviderIds.KindOf"/>) is claude or codex
     /// and that share their kind with at least one other view in the list get an <see cref="ProviderView.AccountTag"/>;
-    /// every other view is the same instance. Tag: Team → "팀"/"Team", Personal → "개인"/"Solo", Unknown → "#n".
+    /// nicknames are matched by full provider ID, independently of the tag. Tag: Team → "팀"/"Team", Personal → "개인"/"Solo", Unknown → "#n".
     /// When a tag repeats within a kind, the second and later ones get " n". n is the 1-based position among the views of that kind.
     /// </summary>
-    public static IReadOnlyList<ProviderView> Apply(IReadOnlyList<ProviderView> enabledInOrder)
+    public static IReadOnlyList<ProviderView> Apply(
+        IReadOnlyList<ProviderView> enabledInOrder, IReadOnlyList<ProviderSettings>? providers = null)
     {
         ArgumentNullException.ThrowIfNull(enabledInOrder);
 
@@ -34,20 +36,21 @@ public static class AccountTags
         foreach (ProviderView view in enabledInOrder)
         {
             string kind = ProviderIds.KindOf(view.ProviderId);
-            if (kindCounts.GetValueOrDefault(kind) < 2)
+            string? nickname = providers?.FirstOrDefault(p => p.Id == view.ProviderId)?.Nickname;
+            string? tag = null;
+            if (kindCounts.GetValueOrDefault(kind) >= 2)
             {
-                result.Add(view);
-                continue;
+                int n = position[kind] = position.GetValueOrDefault(kind) + 1;
+                tag = BaseTag(PlanCategories.FromPlan(view.DisplayPlan), n);
+                if (!usedTags.Add((kind, tag)))
+                {
+                    tag += " " + n.ToString(CultureInfo.InvariantCulture);
+                }
             }
 
-            int n = position[kind] = position.GetValueOrDefault(kind) + 1;
-            string tag = BaseTag(PlanCategories.FromPlan(view.DisplayPlan), n);
-            if (!usedTags.Add((kind, tag)))
-            {
-                tag = tag + " " + n.ToString(CultureInfo.InvariantCulture);
-            }
-
-            result.Add(view with { AccountTag = tag });
+            result.Add(view.AccountTag == tag && view.Nickname == nickname
+                ? view
+                : view with { AccountTag = tag, Nickname = nickname });
         }
 
         return result;

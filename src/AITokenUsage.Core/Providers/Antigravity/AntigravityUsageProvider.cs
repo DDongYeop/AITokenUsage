@@ -37,7 +37,8 @@ public sealed class AntigravityUsageProvider(ProviderContext ctx) : IUsageProvid
             if (!Version.TryParse(version.StdOut.Trim().TrimStart('v'), out var installed) || installed < MinimumVersion)
                 return Status(ProviderStatus.Unsupported, Strings.AntigravityUpdateCli);
 
-            var result = await ctx.Processes.RunAsync(new ProcessSpec(cli, ["-p", "/usage", "--output-format", "json"]),
+            // The flag predates headless /usage (1.1.9). Override any saved print-mode preference.
+            var result = await ctx.Processes.RunAsync(new ProcessSpec(cli, ["--disable-slash-commands=false", "-p", "/usage", "--output-format", "json"]),
                 ct).ConfigureAwait(false);
             if (result.TimedOut) return Status(ProviderStatus.Error, Strings.AntigravityQueryFailed);
             if (result.ExitCode != 0)

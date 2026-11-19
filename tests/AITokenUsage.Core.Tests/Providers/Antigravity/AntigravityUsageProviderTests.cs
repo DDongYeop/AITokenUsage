@@ -36,7 +36,10 @@ public sealed class AntigravityUsageProviderTests
         SetCli(new ProcessResult(0, json, "", false));
         var snapshot = await Fetch();
         Assert.Equal(ProviderStatus.Ok, snapshot.Status);
-        Assert.Equal(["-p", "/usage", "--output-format", "json"], _runner.Calls[1].Arguments.ToArray());
+        Assert.Equal(["--disable-slash-commands=false", "-p", "/usage", "--output-format", "json"],
+            _runner.Calls[1].Arguments.ToArray());
+        Assert.Equal(2, _runner.Calls.Count);
+        Assert.Null(snapshot.PlanLabel);
         Assert.Equal(["gemini-weekly", "gemini-5h", "other-5h"], snapshot.Meters.Select(m => m.Key).ToArray());
         Assert.Equal(new double?[] { 100, 25, 0 }, snapshot.Meters.Select(m => m.UsedPercent));
         Assert.Equal(new DateTimeOffset(2026, 12, 1, 10, 0, 0, TimeSpan.Zero), snapshot.Meters[0].ResetsAt);

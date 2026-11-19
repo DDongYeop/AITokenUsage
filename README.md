@@ -89,7 +89,7 @@ open dist/mac/AITokenUsage.app
 | Copilot | 별도 설치 없음 | 설정 창의 **GitHub 로그인**(기기 코드), 또는 `gh auth login` · Copilot CLI · VS Code 계열 Copilot |
 | Antigravity | [Antigravity CLI](https://antigravity.google/docs/cli) 1.1.11 이상 | `agy` 실행 후 Google 계정으로 로그인 |
 
-Antigravity는 기본으로 Gemini 모델의 5시간·주간 한도를 표시합니다. **설정 → AI 연결 → Antigravity**에서 계정에 제공되는 다른 모델 그룹의 한도도 선택할 수 있습니다. 터미널에서 같은 값을 확인하려면 `agy -p /usage --output-format json`을 실행하세요.
+Antigravity는 기본으로 Gemini 모델의 5시간·주간 한도를 표시합니다. **설정 → AI 연결 → Antigravity**에서 계정에 제공되는 다른 모델 그룹의 한도도 선택할 수 있습니다. 터미널에서 같은 값을 확인하려면 `agy --disable-slash-commands=false -p /usage --output-format json`을 실행하세요. CLI 1.5.12의 사용량 응답에는 구독 플랜명이 없어 위젯에는 한도만 표시됩니다.
 
 Claude·Codex·Gemini 설치에는 Node.js가 필요합니다: `winget install OpenJS.NodeJS.LTS`
 
@@ -149,7 +149,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/New-AppIcon.ps1
 | Codex | `%USERPROFILE%\.codex\auth.json` (`CODEX_HOME`) | `GET https://chatgpt.com/backend-api/wham/usage`, 토큰이 오래되면 `codex app-server`(15분에 1회), 마지막 대체로 `sessions\**\rollout-*.jsonl` 로그 |
 | Gemini | `%USERPROFILE%\.gemini\oauth_creds.json` 또는 Windows 자격 증명 관리자 `gemini-cli-oauth/main-account` | `POST https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist`, `…:retrieveUserQuota` |
 | Copilot | 앱의 GitHub 로그인 토큰, `COPILOT_GITHUB_TOKEN`/`GH_TOKEN`/`GITHUB_TOKEN`, `gh auth token`, 자격 증명 관리자 `copilot-cli*`, `%LOCALAPPDATA%\github-copilot\apps.json`·`hosts.json` | `GET https://api.github.com/copilot_internal/user` |
-| Antigravity | 설치된 CLI가 현재 로그인을 사용 | `agy -p /usage --output-format json` |
+| Antigravity | 설치된 CLI가 현재 로그인을 사용 | `agy --disable-slash-commands=false -p /usage --output-format json` |
 
 ### 비공식 API 주의
 

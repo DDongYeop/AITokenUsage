@@ -7,14 +7,19 @@ namespace AITokenUsage.Core.Presentation;
 /// <summary>Builds the hover card content (spec §2.3).</summary>
 public static class DetailCardBuilder
 {
-    public static DetailCardModel Build(ProviderView view, ValueMode mode, DateTimeOffset now, TimeZoneInfo zone)
+    public static DetailCardModel Build(ProviderView view, ValueMode mode, DateTimeOffset now, TimeZoneInfo zone,
+        string? line1Key = null, string? line2Key = null)
     {
         ArgumentNullException.ThrowIfNull(view);
         ArgumentNullException.ThrowIfNull(zone);
 
         var formatter = new ResetTimeFormatter(zone);
         bool dimmed = view.IsStale;
-        CardRow[] rows = view.DisplayMeters.Select(m => ToRow(m, mode, now, formatter, dimmed)).ToArray();
+        var rows = view.DisplayMeters.Select(m => ToRow(m, mode, now, formatter, dimmed)).ToList();
+        if (ResetPassPresentation.Selected(line1Key, line2Key) && ResetPassPresentation.Current(view) is { } balance)
+        {
+            rows.Add(ResetPassPresentation.Card(balance, zone));
+        }
 
         string? extra = view.Current.Status == ProviderStatus.Ok
             ? view.Current.ExtraLine

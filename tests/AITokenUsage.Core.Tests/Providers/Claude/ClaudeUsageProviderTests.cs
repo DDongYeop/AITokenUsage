@@ -209,11 +209,52 @@ public class ClaudeUsageProviderTests
         SentRequest sent = Assert.Single(h.Sent);
         Assert.Equal(HttpMethod.Get, sent.Method);
         Assert.Equal("https://api.anthropic.com/api/oauth/usage", sent.Url);
-        Assert.Equal("", sent.Query);
+        Assert.Equal("?cedar_ember=1", sent.Query);
         Assert.Equal("Bearer test-access-token", sent.Authorization);
         Assert.Equal("oauth-2025-04-20", sent.Beta);
         Assert.Equal("claude-code/2.1.400", sent.UserAgent);
         Assert.Equal("application/json", sent.Accept);
+    }
+
+    [Fact]
+    public async Task Reports_each_banked_reset_with_its_grant_expiry_even_before_hitting_a_limit()
+    {
+        var h = new Harness();
+        h.WriteCredentials(ClaudeTestData.Credentials());
+        h.Responses.Enqueue(() => JsonResponse(HttpStatusCode.OK, Fixture.Read("claude/reset-grants.json")));
+        var snapshot = await h.CreateProvider().FetchAsync(CancellationToken.None);
+
+        Assert.Equal(24, Assert.Single(snapshot.Meters).UsedPercent);
+        var balance = Assert.IsType<ResetPassBalance>(snapshot.ResetPasses);
+        Assert.Equal(2, balance.AvailableCount);
+        Assert.Equal(2, balance.Passes.Count);
+        Assert.All(balance.Passes, pass => Assert.Equal(
+            new ResetPass("Weekly", new DateTimeOffset(2026, 11, 3, 20, 0, 0, TimeSpan.Zero)), pass));
+        Assert.Single(h.Sent);
+    }
+
+    [Theory]
+    [InlineData("null", null)]
+    [InlineData("""{"eligible":false,"ineligible_reason":"surface","grants":[]}""", null)]
+    [InlineData("""{"eligible":true}""", null)]
+    [InlineData("""{"eligible":true,"grants":[{"paused":false,"resets_total":3}]}""", null)]
+    [InlineData("""{"eligible":true,"grants":[{"paused":false,"resets_left":1,"ends_at":"bad"}]}""", null)]
+    [InlineData("""{"eligible":true,"grants":[{"paused":false,"resets_left":2,"resets_total":1,"usable_now":true}]}""", null)]
+    [InlineData("""{"eligible":true,"grants":[]}""", 0)]
+    public void Distinguishes_unknown_inventory_from_confirmed_zero(string offer, int? expected)
+    {
+        var parsed = ClaudeUsageParser.Parse("{\"cedar_ember\":" + offer + "}", ClaudeTestData.Now);
+        Assert.Equal(expected, parsed.ResetPasses?.AvailableCount);
+    }
+
+    [Fact]
+    public void UsableGrantWithNoReportedExpiryDoesNotClaimToLastForever()
+    {
+        var parsed = ClaudeUsageParser.Parse("""
+            {"cedar_ember":{"eligible":true,"grants":[{"paused":false,"resets_left":1,"usable_now":true}]}}
+            """, ClaudeTestData.Now);
+        Assert.Equal(1, parsed.ResetPasses!.AvailableCount);
+        Assert.Equal(new ResetPass(null, null), Assert.Single(parsed.ResetPasses.Passes));
     }
 
     [Fact]

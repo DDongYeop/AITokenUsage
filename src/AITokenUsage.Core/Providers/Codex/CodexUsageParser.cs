@@ -4,7 +4,10 @@ using AITokenUsage.Core.Util;
 
 namespace AITokenUsage.Core.Providers.Codex;
 
-public sealed record CodexUsageResult(string? PlanType, IReadOnlyList<UsageMeter> Meters);
+public sealed record CodexUsageResult(string? PlanType, IReadOnlyList<UsageMeter> Meters)
+{
+    public ResetPassBalance? ResetPasses { get; init; }
+}
 
 /// <summary>Parses GET {base}/wham/usage. Unknown fields are ignored; a broken item only drops itself.</summary>
 public static class CodexUsageParser
@@ -35,7 +38,10 @@ public static class CodexUsageParser
             }
         }
 
-        return new CodexUsageResult(NonEmpty(Json.Str(root, "plan_type")), meters);
+        return new CodexUsageResult(NonEmpty(Json.Str(root, "plan_type")), meters)
+        {
+            ResetPasses = CodexResetCredits.Read(Json.Obj(root, "rate_limit_reset_credits"), now),
+        };
     }
 
     /// <summary>Raw plan_type with the first letter upper-cased ("pro" → "Pro"). Empty or "unknown" → null.</summary>

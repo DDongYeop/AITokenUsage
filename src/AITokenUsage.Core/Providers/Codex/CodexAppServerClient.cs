@@ -10,12 +10,13 @@ public enum CodexAppServerOutcome { Ok, AuthRequired, Failed, TimedOut }
 
 public sealed record CodexAppServerResult(CodexAppServerOutcome Outcome, string? PlanType, IReadOnlyList<UsageMeter> Meters)
 {
+    public ResetPassBalance? ResetPasses { get; init; }
     public static CodexAppServerResult Of(CodexAppServerOutcome outcome) => new(outcome, null, Array.Empty<UsageMeter>());
 }
 
 /// <summary>
 /// Runs `codex -s read-only -a never app-server` and speaks newline-delimited JSON-RPC (no "jsonrpc" field):
-/// initialize (8 s) → initialized → account/rateLimits/read {excludeResetCreditDetails:true} (3 s).
+/// initialize → initialized → account/rateLimits/read including reset-credit details.
 /// The app-server refreshes a stale token itself and saves auth.json under its own lock.
 /// </summary>
 public sealed class CodexAppServerClient
@@ -23,14 +24,15 @@ public sealed class CodexAppServerClient
     public const string CommandName = "codex";
     public const string CodexHomeVariable = "CODEX_HOME";
     public static readonly TimeSpan InitializeTimeout = TimeSpan.FromSeconds(8);
-    public static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(3);
+    // The official server allows its optional detail fetch up to five seconds before returning counts only.
+    public static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(9);
     public static readonly TimeSpan ProcessTimeout = TimeSpan.FromSeconds(20);
 
     private const int InitializeId = 1;
     private const int RateLimitsId = 2;
     private const string InitializedNotification = "{\"method\":\"initialized\",\"params\":{}}";
     private const string RateLimitsRequest =
-        "{\"id\":2,\"method\":\"account/rateLimits/read\",\"params\":{\"excludeResetCreditDetails\":true}}";
+        "{\"id\":2,\"method\":\"account/rateLimits/read\",\"params\":{\"excludeResetCreditDetails\":false}}";
 
     private static readonly string[] AppServerArguments = ["-s", "read-only", "-a", "never", "app-server"];
 
@@ -95,7 +97,7 @@ public sealed class CodexAppServerClient
             var rateLimits = await ReadReplyAsync(process, RateLimitsId, RequestTimeout, ct).ConfigureAwait(false);
             if (rateLimits.Outcome is not null) return CodexAppServerResult.Of(rateLimits.Outcome.Value);
 
-            return MapRateLimits(rateLimits.Result!.Value);
+            return MapRateLimits(rateLimits.Result!.Value, _time.GetUtcNow());
         }
         catch (Exception ex) when (ex is IOException or ObjectDisposedException or InvalidOperationException)
         {
@@ -116,7 +118,9 @@ public sealed class CodexAppServerClient
     }
 
     /// <summary>Maps an account/rateLimits/read result: the "codex" family → main meters, other families → additional meters.</summary>
-    public static CodexAppServerResult MapRateLimits(JsonElement result)
+    public static CodexAppServerResult MapRateLimits(JsonElement result) => MapRateLimits(result, DateTimeOffset.UtcNow);
+
+    public static CodexAppServerResult MapRateLimits(JsonElement result, DateTimeOffset now)
     {
         if (result.ValueKind != JsonValueKind.Object) return CodexAppServerResult.Of(CodexAppServerOutcome.Failed);
 
@@ -147,7 +151,10 @@ public sealed class CodexAppServerClient
         }
 
         return new CodexAppServerResult(
-            CodexAppServerOutcome.Ok, string.IsNullOrWhiteSpace(planType) ? null : planType, meters);
+            CodexAppServerOutcome.Ok, string.IsNullOrWhiteSpace(planType) ? null : planType, meters)
+        {
+            ResetPasses = CodexResetCredits.Read(Json.Obj(result, "rateLimitResetCredits"), now, appServer: true),
+        };
     }
 
     private static CodexWindow? Window(JsonElement snapshot, string name)

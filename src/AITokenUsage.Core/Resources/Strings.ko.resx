@@ -426,4 +426,22 @@
   <data name="AccountReauth" xml:space="preserve">
     <value>다시 로그인하세요 · 설정 → AI 연결</value>
   </data>
+  <data name="ResetPassTitle" xml:space="preserve">
+    <value>남은 리셋권</value>
+  </data>
+  <data name="ResetPassCompact" xml:space="preserve">
+    <value>리셋권 {0}개</value>
+  </data>
+  <data name="ResetPassNumber" xml:space="preserve">
+    <value>리셋권 {0}</value>
+  </data>
+  <data name="ResetPassNoExpiry" xml:space="preserve">
+    <value>만료 없음</value>
+  </data>
+  <data name="ResetPassUnknownExpiry" xml:space="preserve">
+    <value>만료일 미확인</value>
+  </data>
+  <data name="ResetPassMissingDetails" xml:space="preserve">
+    <value>상세 정보 없는 리셋권 {0}개</value>
+  </data>
 </root>

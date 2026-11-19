@@ -19,7 +19,7 @@ namespace AITokenUsage.Core.Providers.Claude;
 /// </summary>
 public sealed class ClaudeUsageProvider : IUsageProvider
 {
-    public const string UsageUrl = "https://api.anthropic.com/api/oauth/usage";
+    public const string UsageUrl = "https://api.anthropic.com/api/oauth/usage?cedar_ember=1";
     public const string OAuthBetaHeader = "oauth-2025-04-20";
 
     public static readonly TimeSpan RefreshMargin = TimeSpan.FromMinutes(5);
@@ -255,9 +255,10 @@ public sealed class ClaudeUsageProvider : IUsageProvider
     {
         string body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
         ClaudeUsageData data;
+        var now = _ctx.Time.GetUtcNow();
         try
         {
-            data = ClaudeUsageParser.Parse(body);
+            data = ClaudeUsageParser.Parse(body, now);
         }
         catch (JsonException)
         {
@@ -272,10 +273,10 @@ public sealed class ClaudeUsageProvider : IUsageProvider
             ProviderStatus.Ok,
             plan,
             data.Meters,
-            _ctx.Time.GetUtcNow(),
+            now,
             data.Meters.Count == 0 ? MsgNoMeters : null,
             null,
-            data.ExtraLine);
+            data.ExtraLine) { ResetPasses = data.ResetPasses };
     }
 
     private UsageSnapshot FromCredentialState(ClaudeCredentialState state)

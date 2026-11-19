@@ -352,8 +352,10 @@ public sealed class DetailFlyoutController : IDisposable
             return null;
         }
 
+        var lines = _host.Settings.Providers.FirstOrDefault(p => p.Id == view.ProviderId);
         DetailCardModel card = DetailCardBuilder.Build(
-            view, _host.Settings.ValueMode, _host.ProviderContext.Time.GetUtcNow(), TimeZoneInfo.Local);
+            view, _host.Settings.ValueMode, _host.ProviderContext.Time.GetUtcNow(), TimeZoneInfo.Local,
+            lines?.Line1Key, lines?.Line2Key);
         return _host.ShowsSystemLine ? card with { SystemLine = SystemPanel.CardLine(_host.SystemUsage) } : card;
     }
 

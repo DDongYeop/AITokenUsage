@@ -8,7 +8,10 @@ using AITokenUsage.Core.Util;
 namespace AITokenUsage.Core.Providers.Claude;
 
 /// <summary>Meters and the optional extra-usage line parsed from GET /api/oauth/usage.</summary>
-public sealed record ClaudeUsageData(IReadOnlyList<UsageMeter> Meters, string? ExtraLine);
+public sealed record ClaudeUsageData(IReadOnlyList<UsageMeter> Meters, string? ExtraLine)
+{
+    public ResetPassBalance? ResetPasses { get; init; }
+}
 
 /// <summary>
 /// Lenient parser for the Claude OAuth usage body (docs/research/claude-usage-api.md §2).
@@ -29,7 +32,9 @@ public static partial class ClaudeUsageParser
     private sealed record Window(double? Utilization, DateTimeOffset? ResetsAt);
 
     /// <exception cref="JsonException">The body is not JSON or its root is not an object.</exception>
-    public static ClaudeUsageData Parse(string json)
+    public static ClaudeUsageData Parse(string json) => Parse(json, DateTimeOffset.UtcNow);
+
+    public static ClaudeUsageData Parse(string json, DateTimeOffset now)
     {
         using JsonDocument document = JsonDocument.Parse(json);
         JsonElement root = document.RootElement;
@@ -63,7 +68,44 @@ public static partial class ClaudeUsageParser
             AddScoped(meters, usedKeys, "Opus", opus.Utilization, opus.ResetsAt, null);
         }
 
-        return new ClaudeUsageData(meters, ReadExtraLine(root));
+        return new ClaudeUsageData(meters, ReadExtraLine(root)) { ResetPasses = ReadResetPasses(root, now) };
+    }
+
+    private static ResetPassBalance? ReadResetPasses(JsonElement root, DateTimeOffset now)
+    {
+        if (Json.Obj(root, "cedar_ember") is not { } offer || Json.Bool(offer, "eligible") != true ||
+            Json.Arr(offer, "grants") is not { } grants)
+            return null;
+
+        var passes = new List<ResetPass>();
+        int count = 0;
+        foreach (var grant in grants.EnumerateArray())
+        {
+            if (Json.Bool(grant, "paused") is true) continue;
+            if (grant.ValueKind != JsonValueKind.Object ||
+                !grant.TryGetProperty("resets_left", out var left) || left.ValueKind != JsonValueKind.Number ||
+                !left.TryGetInt32(out int remaining) || remaining < 0)
+                return null;
+            if (remaining == 0) continue;
+
+            var start = ResetPassFields.Timestamp(grant, "starts_at");
+            var end = ResetPassFields.Timestamp(grant, "ends_at");
+            if (start > now || end <= now) continue;
+            // A banked grant can require hitting a limit before redemption (usable_now=false).
+            // Without its active window or affirmative usability, ownership at this instant is unknown.
+            if (Json.Bool(grant, "paused") is not false ||
+                ((start is null || end is null) && Json.Bool(grant, "usable_now") != true))
+                return null;
+            if (remaining > int.MaxValue - count) return null;
+            if (grant.TryGetProperty("resets_total", out var total) &&
+                (total.ValueKind != JsonValueKind.Number || !total.TryGetInt32(out var issued) || remaining > issued))
+                return null;
+            count += remaining;
+            // A grant can contain several identical passes. Bound allocation for anomalous counts.
+            var pass = new ResetPass(Json.Str(grant, "label"), end);
+            passes.AddRange(Enumerable.Repeat(pass, Math.Min(remaining, 1024 - passes.Count)));
+        }
+        return new ResetPassBalance(count, passes);
     }
 
     /// <summary>"team" + "default_claude_max_5x" → "Team · Max 5x"; "max" + "..._max_20x" → "Max 20x".</summary>

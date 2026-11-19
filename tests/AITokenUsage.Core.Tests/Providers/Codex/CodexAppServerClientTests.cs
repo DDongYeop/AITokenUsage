@@ -91,7 +91,7 @@ public class CodexAppServerClientTests
         Assert.Equal(2, read.RootElement.GetProperty("id").GetInt32());
         Assert.Equal("account/rateLimits/read", read.RootElement.GetProperty("method").GetString());
         var parameters = read.RootElement.GetProperty("params");
-        Assert.True(parameters.GetProperty("excludeResetCreditDetails").GetBoolean());
+        Assert.False(parameters.GetProperty("excludeResetCreditDetails").GetBoolean());
         Assert.False(parameters.TryGetProperty("supportsLunaReserve", out _));
     }
 
@@ -193,7 +193,7 @@ public class CodexAppServerClientTests
     }
 
     [Fact]
-    public async Task ReadRateLimits_RequestTimesOutAfterThreeSeconds()
+    public async Task ReadRateLimits_RequestTimesOutAfterDetailLookupBudget()
     {
         var client = CreateClient(ProcessWith(InitializeOk));
         var started = _time.GetUtcNow();
@@ -203,7 +203,7 @@ public class CodexAppServerClientTests
         Assert.Equal(CodexAppServerOutcome.TimedOut, result.Outcome);
         var elapsed = _time.GetUtcNow() - started;
         Assert.True(elapsed >= CodexAppServerClient.RequestTimeout);
-        Assert.True(elapsed < CodexAppServerClient.InitializeTimeout);
+        Assert.True(elapsed < CodexAppServerClient.ProcessTimeout);
     }
 
     [Fact]

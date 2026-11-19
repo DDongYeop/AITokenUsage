@@ -348,7 +348,8 @@ public static class Program
                 ProviderSettings? lines = settings.Providers.FirstOrDefault(p => p.Id == view.ProviderId);
                 WidgetPanelModel widget = WidgetPanelBuilder.Build(
                     view, lines?.Line1Key, lines?.Line2Key, settings.ValueMode, tagged.Count, i, now);
-                DetailCardModel card = DetailCardBuilder.Build(view, settings.ValueMode, now, zone);
+                DetailCardModel card = DetailCardBuilder.Build(view, settings.ValueMode, now, zone,
+                    lines?.Line1Key, lines?.Line2Key);
                 panels.Add(new PanelState(
                     view.ProviderId,
                     ProviderIds.KindOf(view.ProviderId),
@@ -384,8 +385,8 @@ public static class Program
         private ProviderEntry ToEntry(ProviderSettings provider, ProviderView view, DateTimeOffset now, TimeZoneInfo zone)
         {
             IUsageProvider? source = providers.FirstOrDefault(p => p.Id == provider.Id);
-            IReadOnlyList<MeterOption> options = MeterOptionList.Build(
-                source?.StaticMeterOptions ?? [], view.DisplayMeters, [provider.Line1Key, provider.Line2Key]);
+            IReadOnlyList<MeterOption> options = MeterOptionList.ForView(
+                source?.StaticMeterOptions ?? [], view, [provider.Line1Key, provider.Line2Key]);
             ConnectionGuide? guide = ConnectionGuideBuilder.Build(view.ProviderId, view.Current.Status, view.Current.StatusMessage);
             return new ProviderEntry(
                 view.ProviderId,

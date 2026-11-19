@@ -371,9 +371,8 @@ public partial class ProviderCard : UserControl
 
     private void RefreshOptions(ProviderView? view)
     {
-        IReadOnlyList<UsageMeter> meters = view is null ? Array.Empty<UsageMeter>() : view.DisplayMeters;
         IReadOnlyList<MeterOption> options =
-            MeterOptionList.Build(_provider.StaticMeterOptions, meters, [_settings.Line1Key, _settings.Line2Key]);
+            MeterOptionList.ForView(_provider.StaticMeterOptions, view, [_settings.Line1Key, _settings.Line2Key]);
         if (MeterOptionList.SameOptions(options, _options))
         {
             return;

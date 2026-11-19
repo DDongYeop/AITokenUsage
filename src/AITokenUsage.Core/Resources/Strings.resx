@@ -426,4 +426,22 @@
   <data name="AccountReauth" xml:space="preserve">
     <value>Sign in again in Settings</value>
   </data>
+  <data name="ResetPassTitle" xml:space="preserve">
+    <value>Remaining reset passes</value>
+  </data>
+  <data name="ResetPassCompact" xml:space="preserve">
+    <value>Passes {0}</value>
+  </data>
+  <data name="ResetPassNumber" xml:space="preserve">
+    <value>Pass {0}</value>
+  </data>
+  <data name="ResetPassNoExpiry" xml:space="preserve">
+    <value>No expiration</value>
+  </data>
+  <data name="ResetPassUnknownExpiry" xml:space="preserve">
+    <value>Expiration unknown</value>
+  </data>
+  <data name="ResetPassMissingDetails" xml:space="preserve">
+    <value>Passes without details: {0}</value>
+  </data>
 </root>

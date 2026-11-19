@@ -76,6 +76,125 @@ public class CodexUsageProviderTests
 
     private static string StaleAuth() => CodexTestData.AuthJson(accessToken: CodexTestData.AccessJwt(CodexTestData.Now.AddMinutes(2)));
 
+    private const string UsageWithCredits = """
+        {"rate_limit_reset_credits":{"available_count":4},"rate_limit":{"primary_window":{"used_percent":18,"limit_window_seconds":18000}}}
+        """;
+
+    [Fact]
+    public async Task Wham_EnrichesPositiveCount_AndExpiresCachedRowsBetweenReads()
+    {
+        GivenAuth(CodexTestData.AuthJson());
+        int detailReads = 0;
+        GivenWham(request =>
+        {
+            if (request.Url == CodexTestData.DefaultUsageUrl) return Json(HttpStatusCode.OK, UsageWithCredits);
+            Assert.Equal("https://chatgpt.com/backend-api/wham/rate-limit-reset-credits", request.Url);
+            Assert.Equal(CodexTestData.AccountId, request.Headers["chatgpt-account-id"]);
+            detailReads++;
+            return Json(HttpStatusCode.OK, Fixture.Read("codex/reset-details.json"));
+        });
+        var provider = CreateProvider();
+        var first = await provider.FetchAsync(default);
+        var balance = Assert.IsType<ResetPassBalance>(first.ResetPasses);
+        Assert.Equal(4, balance.AvailableCount); // details can be capped
+        Assert.Equal(new ResetPass[] { new("Short reset", CodexTestData.Now.AddMinutes(1)),
+            new(null, null, true), new(null, null) }, balance.Passes);
+        Assert.Equal(18, Assert.Single(first.Meters).UsedPercent);
+        _time.Advance(TimeSpan.FromMinutes(1));
+        var second = await provider.FetchAsync(default);
+        Assert.Equal(2, second.ResetPasses!.Passes.Count);
+        Assert.Equal(4, second.ResetPasses.AvailableCount);
+        Assert.Equal(1, detailReads);
+        _time.Advance(CodexUsageProvider.AppServerMinimumGap);
+        await provider.FetchAsync(default);
+        Assert.Equal(2, detailReads);
+        Assert.Empty(_startedFileNames);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.OK, "{")]
+    [InlineData(HttpStatusCode.OK, "{}")]
+    [InlineData(HttpStatusCode.Unauthorized, "{}")]
+    [InlineData(HttpStatusCode.TooManyRequests, "{}")]
+    public async Task OptionalDetailFailure_PreservesFreshAccountCountAndMeters(HttpStatusCode status, string body)
+    {
+        GivenAccountAuth(CodexTestData.AuthJson(accessToken: "second-account"));
+        GivenWham(request =>
+        {
+            Assert.Equal("Bearer second-account", request.Headers["Authorization"]);
+            return request.Url == CodexTestData.DefaultUsageUrl
+                ? Json(HttpStatusCode.OK, UsageWithCredits) : Json(status, body);
+        });
+        var provider = CreateAccount();
+        var snapshot = await provider.FetchAsync(default);
+        Assert.Equal(AccountId, snapshot.ProviderId);
+        Assert.Equal(ProviderStatus.Ok, snapshot.Status);
+        Assert.Equal(18, Assert.Single(snapshot.Meters).UsedPercent);
+        Assert.Equal(4, snapshot.ResetPasses!.AvailableCount);
+        Assert.Empty(snapshot.ResetPasses.Passes);
+        await provider.FetchAsync(default);
+        Assert.Equal(3, _requests.Count);
+    }
+
+    [Fact]
+    public async Task AppServer_ReadsUnixSecondExpiry_AndPreservesCountWhenDetailsArePartial()
+    {
+        GivenAuth(StaleAuth());
+        GivenCodexInstalled(InitializeOk, """
+            {"id":2,"result":{"rateLimitResetCredits":{"availableCount":5,"credits":[
+            {"status":"redeemed","expiresAt":null},{"status":"available","expiresAt":1793156400},
+            {"status":"available","title":"Weekly","expiresAt":1793156460},{"status":"available","expiresAt":null}]}}}
+            """);
+        var provider = CreateProvider();
+        var first = await provider.FetchAsync(default);
+        Assert.Equal(5, first.ResetPasses!.AvailableCount);
+        Assert.Equal(new ResetPass[] { new("Weekly", CodexTestData.Now.AddMinutes(1)),
+            new(null, null, true) }, first.ResetPasses.Passes);
+        _time.Advance(TimeSpan.FromMinutes(1));
+        var cached = await provider.FetchAsync(default);
+        Assert.Equal(4, cached.ResetPasses!.AvailableCount);
+        Assert.True(Assert.Single(cached.ResetPasses.Passes).NoExpiry);
+        Assert.Single(_startedFileNames);
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("""{"rate_limit_reset_credits":{"credits":[]}}""")]
+    [InlineData("""{"rate_limit_reset_credits":{"available_count":-1}}""")]
+    [InlineData("""{"rate_limit_reset_credits":{"available_count":1.5}}""")]
+    public async Task MissingOrInvalidWhamCountDoesNotImplyZeroOrTriggerDetails(string body)
+    {
+        GivenAuth(CodexTestData.AuthJson());
+        GivenWham(_ => Json(HttpStatusCode.OK, body));
+        var snapshot = await CreateProvider().FetchAsync(default);
+        Assert.Equal(ProviderStatus.Ok, snapshot.Status);
+        Assert.Null(snapshot.ResetPasses);
+        Assert.Single(_requests);
+    }
+
+    [Fact]
+    public async Task ReplacedLoginNeverReusesAnotherAccountsDetails_AndUsesConfiguredApiRoute()
+    {
+        GivenAuth(CodexTestData.AuthJson(accessToken: "first-login"));
+        _files.AddFile(CodexTestData.ConfigPath, "chatgpt_base_url = 'https://example.test'", CodexTestData.FileTime);
+        const string detailUrl = "https://example.test/api/codex/rate-limit-reset-credits";
+        GivenWham(request =>
+        {
+            if (request.Url == "https://example.test/api/codex/usage") return Json(HttpStatusCode.OK, UsageWithCredits);
+            Assert.Equal(detailUrl, request.Url);
+            return request.Headers["Authorization"] == "Bearer first-login"
+                ? Json(HttpStatusCode.OK, Fixture.Read("codex/reset-details.json"))
+                : Json(HttpStatusCode.ServiceUnavailable, "{}");
+        });
+        var provider = CreateProvider();
+        Assert.NotEmpty((await provider.FetchAsync(default)).ResetPasses!.Passes);
+        GivenAuth(CodexTestData.AuthJson(accessToken: "second-login"));
+        var second = await provider.FetchAsync(default);
+        Assert.Equal(4, second.ResetPasses!.AvailableCount);
+        Assert.Empty(second.ResetPasses.Passes);
+        Assert.Equal(2, _requests.Count(r => r.Url == detailUrl));
+    }
+
     [WindowsFact]
     public void Metadata_FollowsSpec()
     {
@@ -126,6 +245,7 @@ public class CodexUsageProviderTests
 
         Assert.Equal(ProviderStatus.Ok, snapshot.Status);
         Assert.Equal("Plus", snapshot.PlanLabel);
+        Assert.Equal(0, snapshot.ResetPasses!.AvailableCount);
         Assert.Null(snapshot.StatusMessage);
         Assert.Equal(CodexTestData.Now, snapshot.FetchedAt);
         Assert.Equal(new[] { "5h", "weekly" }, snapshot.Meters.Select(m => m.Key).ToArray());

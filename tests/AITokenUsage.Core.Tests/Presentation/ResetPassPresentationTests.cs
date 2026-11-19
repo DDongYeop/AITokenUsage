@@ -46,7 +46,7 @@ public class ResetPassPresentationTests
         Assert.Contains("Passes 4", TrayTextFormatter.Tooltip(view, lines, ValueMode.Remaining));
         Assert.Equal(first ? "—" : "86", TrayTextFormatter.IconText(TrayTextFormatter.SelectLine1(view, lines), ValueMode.Remaining));
 
-        var card = DetailCardBuilder.Build(view, ValueMode.Used, Now, Kst, lines.Line1Key, lines.Line2Key);
+        var card = DetailCardBuilder.Build(view, ValueMode.Used, Now, Kst);
         var detail = Assert.Single(card.Rows, r => r.Label == choice.Label);
         Assert.Equal("4", detail.Value);
         string[] entries = detail.ResetText.Split(Environment.NewLine);
@@ -66,13 +66,14 @@ public class ResetPassPresentationTests
         var good = Ok("claude", Weekly) with { ResetPasses = new(7, []) };
         var current = good with { Status = status, ResetPasses = status == ProviderStatus.Ok ? null : good.ResetPasses };
         var view = View(current, good);
-        Assert.DoesNotContain(MeterOptionList.ForView([], view, []), o => o.Key == PassKey);
+        var availableChoice = Assert.Single(MeterOptionList.ForView([], view, []), o => o.Key == PassKey);
+        Assert.EndsWith(MeterOptionList.MissingSuffix, availableChoice.Label);
         var saved = Assert.Single(MeterOptionList.ForView([], view, [PassKey]), o => o.Key == PassKey);
         Assert.Equal("Remaining reset passes" + MeterOptionList.MissingSuffix, saved.Label);
         var widget = WidgetPanelBuilder.Build(view, PassKey, "weekly", ValueMode.Used, 1, 0, Now);
         Assert.Equal("14%", widget.Row1.Value);
         Assert.Null(widget.Row2);
-        Assert.Single(DetailCardBuilder.Build(view, ValueMode.Used, Now, Kst, PassKey).Rows);
+        Assert.Single(DetailCardBuilder.Build(view, ValueMode.Used, Now, Kst).Rows);
     }
 
     [Fact]
@@ -82,7 +83,7 @@ public class ResetPassPresentationTests
         var widget = WidgetPanelBuilder.Build(view, "5h", PassKey, ValueMode.Used, 1, 0, Now);
         Assert.Equal("Passes 0", widget.Row1.Value);
         Assert.Null(widget.Row2);
-        var row = Assert.Single(DetailCardBuilder.Build(view, ValueMode.Used, Now, Kst, PassKey, PassKey).Rows);
+        var row = Assert.Single(DetailCardBuilder.Build(view, ValueMode.Used, Now, Kst).Rows);
         Assert.Equal("0", row.Value);
         Assert.Empty(row.ResetText);
     }
@@ -97,7 +98,8 @@ public class ResetPassPresentationTests
         var panel = WidgetPanelBuilder.Build(view, first, second, ValueMode.Used, 1, 0, Now);
         Assert.Equal("14%", panel.Row1.Value);
         Assert.Null(panel.Row2);
-        Assert.Single(DetailCardBuilder.Build(view, ValueMode.Used, Now, Kst, first, second).Rows);
+        var rows = DetailCardBuilder.Build(view, ValueMode.Used, Now, Kst).Rows;
+        Assert.Equal(id != "gemini", rows.Any(row => row.Label == "Remaining reset passes"));
         if (id == "gemini")
             Assert.DoesNotContain(MeterOptionList.ForView([], view, []), o => o.Key == PassKey);
     }

@@ -11,9 +11,11 @@ public static class MeterOptionList
     public static IReadOnlyList<MeterOption> ForView(
         IReadOnlyList<MeterOption> staticOptions, ProviderView? view, IEnumerable<string?> selectedKeys)
     {
-        if (ResetPassPresentation.Current(view) is not null)
+        if (view is not null && ProviderIds.KindOf(view.ProviderId) is ProviderIds.Claude or ProviderIds.Codex)
         {
-            staticOptions = [.. staticOptions, new(ResetPassPresentation.Key, Strings.ResetPassTitle)];
+            string label = ResetPassPresentation.Current(view) is null
+                ? Strings.ResetPassTitle + MissingSuffix : Strings.ResetPassTitle;
+            staticOptions = [.. staticOptions, new(ResetPassPresentation.Key, label)];
         }
 
         return Build(staticOptions, view?.DisplayMeters ?? [], selectedKeys);

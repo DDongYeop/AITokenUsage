@@ -348,8 +348,7 @@ public static class Program
                 ProviderSettings? lines = settings.Providers.FirstOrDefault(p => p.Id == view.ProviderId);
                 WidgetPanelModel widget = WidgetPanelBuilder.Build(
                     view, lines?.Line1Key, lines?.Line2Key, settings.ValueMode, tagged.Count, i, now);
-                DetailCardModel card = DetailCardBuilder.Build(view, settings.ValueMode, now, zone,
-                    lines?.Line1Key, lines?.Line2Key);
+                DetailCardModel card = DetailCardBuilder.Build(view, settings.ValueMode, now, zone);
                 panels.Add(new PanelState(
                     view.ProviderId,
                     ProviderIds.KindOf(view.ProviderId),

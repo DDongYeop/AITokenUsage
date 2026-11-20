@@ -181,6 +181,39 @@
   <data name="WidgetSmoothTextDescription" xml:space="preserve">
     <value>작업 표시줄 글자의 간격을 픽셀에 맞추고 회색조로 가장자리를 표현해요.</value>
   </data>
+  <data name="WidgetProviderIconStyleHeader" xml:space="preserve">
+    <value>AI 아이콘 스타일</value>
+  </data>
+  <data name="ProviderIconStyleDescription" xml:space="preserve">
+    <value>서비스는 이 기기에 설치된 앱의 아이콘을 사용해요. 아이콘을 찾을 수 없으면 클래식으로 표시해요.</value>
+  </data>
+  <data name="ProviderIconClassic" xml:space="preserve">
+    <value>클래식</value>
+  </data>
+  <data name="ProviderIconService" xml:space="preserve">
+    <value>서비스</value>
+  </data>
+  <data name="ProviderIconCustom" xml:space="preserve">
+    <value>사용자 지정</value>
+  </data>
+  <data name="CustomIconHeader" xml:space="preserve">
+    <value>사용자 지정 아이콘</value>
+  </data>
+  <data name="CustomIconFormats" xml:space="preserve">
+    <value>PNG, JPG/JPEG, BMP, GIF(첫 프레임), WebP, ICO</value>
+  </data>
+  <data name="CustomIconChoose" xml:space="preserve">
+    <value>이미지 선택…</value>
+  </data>
+  <data name="CustomIconRemove" xml:space="preserve">
+    <value>삭제</value>
+  </data>
+  <data name="CustomIconError" xml:space="preserve">
+    <value>사용자 지정 아이콘을 변경할 수 없어요.</value>
+  </data>
+  <data name="ImageFiles" xml:space="preserve">
+    <value>이미지 파일</value>
+  </data>
   <data name="WidgetTextColorHeader" xml:space="preserve">
     <value>글자색</value>
   </data>

@@ -17,7 +17,8 @@ struct MenuWindow: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(12)
             } else if let panel = client.currentPanel {
-                DetailCard(panel: panel, pager: client.rotatingPanels.count > 1 ? pager : nil)
+                DetailCard(panel: panel, iconStyle: client.state?.providerIconStyle, pager: client.rotatingPanels.count > 1 ? pager : nil)
+                    .id(client.customIconRevision)
             } else if client.state != nil {
                 Text(t(.noProviders)).foregroundColor(.secondary).padding(12)
             } else {
@@ -59,12 +60,13 @@ struct MenuWindow: View {
 /// value, then the bar with "3시간 12분 후 · 오늘 15:50" beside it; a divider and the status lines.
 struct DetailCard: View {
     let panel: PanelState
+    let iconStyle: String?
     var pager: AnyView?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                ProviderGlyph(kind: panel.kind, size: 16)
+                ProviderGlyph(id: panel.id, kind: panel.kind, style: iconStyle, size: 16)
                 Text(panel.title).font(.system(size: 15, weight: .semibold))
                 if let plan = panel.card.plan {
                     Text(plan).font(.system(size: 13)).foregroundColor(.secondary)

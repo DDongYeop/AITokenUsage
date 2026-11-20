@@ -10,6 +10,7 @@ struct AgentState: Decodable, Equatable {
     var generatedAt: String
     var language: String
     var languageSetting: String
+    var providerIconStyle: String? // Absent in older agent states and preview fixtures.
     var valueMode: String
     var rotationEnabled: Bool
     var rotationSeconds: Int

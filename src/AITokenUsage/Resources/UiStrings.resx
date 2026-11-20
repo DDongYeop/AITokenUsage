@@ -181,6 +181,39 @@ Log: {0}</value>
   <data name="WidgetSmoothTextDescription" xml:space="preserve">
     <value>Use pixel-aligned text spacing and grayscale smoothing on the taskbar.</value>
   </data>
+  <data name="WidgetProviderIconStyleHeader" xml:space="preserve">
+    <value>Provider icon style</value>
+  </data>
+  <data name="ProviderIconStyleDescription" xml:space="preserve">
+    <value>Service uses an icon from an app installed on this device. Classic appears if no icon is available.</value>
+  </data>
+  <data name="ProviderIconClassic" xml:space="preserve">
+    <value>Classic</value>
+  </data>
+  <data name="ProviderIconService" xml:space="preserve">
+    <value>Service</value>
+  </data>
+  <data name="ProviderIconCustom" xml:space="preserve">
+    <value>Custom</value>
+  </data>
+  <data name="CustomIconHeader" xml:space="preserve">
+    <value>Custom icon</value>
+  </data>
+  <data name="CustomIconFormats" xml:space="preserve">
+    <value>PNG, JPG/JPEG, BMP, GIF (first frame), WebP or ICO</value>
+  </data>
+  <data name="CustomIconChoose" xml:space="preserve">
+    <value>Choose image…</value>
+  </data>
+  <data name="CustomIconRemove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="CustomIconError" xml:space="preserve">
+    <value>Couldn’t update the custom icon.</value>
+  </data>
+  <data name="ImageFiles" xml:space="preserve">
+    <value>Image files</value>
+  </data>
   <data name="WidgetTextColorHeader" xml:space="preserve">
     <value>Text color</value>
   </data>

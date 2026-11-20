@@ -25,6 +25,7 @@ namespace AITokenUsage.Agent;
 ///   | set-value-mode used|remaining | set-rotation &lt;seconds&gt;|off | set-rotation-enabled true|false
 ///   | set-rotation-seconds &lt;n&gt; | set-skip-unavailable true|false | set-pause-on-hover true|false
 ///   | set-show-reset-time true|false | set-widget-font-family [base64-encoded UTF-8 family name]
+///   | set-provider-icon-style classic|service|custom
 ///   | set-refresh &lt;minutes&gt; | set-language auto|ko|en | copilot-signin | copilot-cancel | copilot-signout | quit
 /// Besides "state" lines, Copilot sign-in progress is written as {"type":"copilotSignIn","phase":...} lines.
 /// </summary>
@@ -173,6 +174,18 @@ public static class Program
 
             case "set-value-mode" when parts.Length == 2:
                 lock (Gate) settings.ValueMode = parts[1] == "remaining" ? ValueMode.Remaining : ValueMode.Used;
+                break;
+
+            case "set-provider-icon-style" when parts.Length == 2 && parts[1] is "classic" or "service" or "custom":
+                lock (Gate)
+                {
+                    settings.ProviderIconStyle = parts[1] switch
+                    {
+                        "service" => ProviderIconStyle.Service,
+                        "custom" => ProviderIconStyle.Custom,
+                        _ => ProviderIconStyle.Classic,
+                    };
+                }
                 break;
 
             case "set-lines" when parts.Length == 4:
@@ -392,6 +405,7 @@ public static class Program
                 culture.TwoLetterISOLanguageName,
                 settings.Language,
                 settings.ValueMode,
+                settings.ProviderIconStyle,
                 settings.RotationEnabled,
                 settings.RotationSeconds,
                 settings.SkipUnavailable,
@@ -444,6 +458,7 @@ public static class Program
         string Language,
         string LanguageSetting,
         ValueMode ValueMode,
+        ProviderIconStyle ProviderIconStyle,
         bool RotationEnabled,
         int RotationSeconds,
         bool SkipUnavailable,

@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 import ServiceManagement
 import SwiftUI
 
@@ -156,7 +157,8 @@ private struct ProviderSettingsCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 10) {
-                ProviderGlyph(kind: provider.kind, size: 16)
+                ProviderGlyph(id: provider.id, kind: provider.kind, style: client.state?.providerIconStyle, size: 16)
+                    .id(client.customIconRevision)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(provider.title).font(.system(size: 13, weight: .semibold))
                     HStack(spacing: 5) {
@@ -370,6 +372,7 @@ private struct WidgetPage: View {
         $0.localizedStandardCompare($1) == .orderedAscending
     }
 
+    @State private var iconError: String?
     @ObservedObject var client: AgentClient
     let state: AgentState
     private func t(_ key: L10n.Key) -> String { L10n.text(key, language: state.language) }
@@ -405,8 +408,47 @@ private struct WidgetPage: View {
             }
             .labelsHidden()
         }
+        SettingsCard(header: t(.iconStyle), description: t(.iconStyleDescription)) {
+            Picker(t(.iconStyle), selection: Binding(get: { state.providerIconStyle ?? "classic" }, set: client.setProviderIconStyle)) {
+                Text(t(.iconClassic)).tag("classic")
+                Text(t(.iconService)).tag("service")
+                Text(t(.iconCustom)).tag("custom")
+            }
+            .labelsHidden()
+        }
+        if state.providerIconStyle == "custom" {
+            Text(t(.iconFormats)).font(.callout).foregroundColor(.secondary)
+            ForEach(state.providers) { provider in
+                SettingsCard(header: provider.title, description: provider.id == provider.kind ? nil : provider.id) {
+                    ProviderGlyph(id: provider.id, kind: provider.kind, style: "custom", size: 16)
+                        .id(client.customIconRevision)
+                    Button(t(.iconChoose)) { changeIcon(provider.id, remove: false) }
+                    Button(t(.iconRemove)) { changeIcon(provider.id, remove: true) }
+                        .disabled(CustomProviderIcons.load(provider.id) == nil)
+                }
+            }
+            if let iconError { Text(iconError).foregroundColor(.secondary) }
+        }
         SettingsCard(header: t(.showResetTime), description: t(.showResetTimeDescription)) {
             OnOffToggle(isOn: state.showResetTime, language: state.language) { client.setShowResetTime($0) }
+        }
+    }
+
+    private func changeIcon(_ id: String, remove: Bool) {
+        do {
+            if remove {
+                try CustomProviderIcons.remove(id)
+            } else {
+                let panel = NSOpenPanel()
+                panel.allowedContentTypes = [.png, .jpeg, .bmp, .gif, .webP, .ico]
+                panel.title = t(.iconChoose)
+                guard panel.runModal() == .OK, let url = panel.url else { return }
+                try CustomProviderIcons.importImage(id, from: url)
+            }
+            iconError = nil
+            client.customIconChanged()
+        } catch {
+            iconError = t(.iconError) + " " + error.localizedDescription
         }
     }
 }

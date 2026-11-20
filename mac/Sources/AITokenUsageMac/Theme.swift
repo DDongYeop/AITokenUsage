@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// The Windows app's colours and provider marks (src/AITokenUsage/UI/ProviderGlyphs.cs): simple geometric marks,
@@ -47,13 +48,28 @@ enum Theme {
 
 /// The 14×14 provider mark.
 struct ProviderGlyph: View {
+    let id: String
     let kind: String
+    let style: String?
     var size: CGFloat = 14
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var image: NSImage? {
+        guard !id.isEmpty, id != "system" else { return nil }
+        switch style {
+        case "service": return InstalledServiceIcons.load(id)
+        case "custom": return CustomProviderIcons.load(id)
+        default: return nil
+        }
+    }
 
     var body: some View {
         let color = Theme.brand(kind)
         Group {
-            if kind == "gemini" {
+            if let image {
+                Image(nsImage: image).renderingMode(.original).resizable().interpolation(.high).scaledToFit()
+                    .shadow(color: (colorScheme == .dark ? Color.white : .black).opacity(0.8), radius: 0.75)
+            } else if kind == "gemini" {
                 GlyphShape(kind: kind).fill(color)
             } else {
                 GlyphShape(kind: kind)

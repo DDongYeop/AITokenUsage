@@ -5,6 +5,7 @@ using System.Windows.Documents;
 using System.Windows.Interop;
 using System.Windows.Media;
 using AITokenUsage.Core.Presentation;
+using AITokenUsage.Core.Settings;
 using AITokenUsage.Core.SystemUsage;
 using AITokenUsage.Core.Taskbar;
 
@@ -35,7 +36,7 @@ public partial class DetailFlyout : Window
     }
 
     /// <param name="taskbarIsLight">System (taskbar) theme, not the app theme (spec 2.3, 4.6).</param>
-    public void Render(DetailCardModel model, bool taskbarIsLight)
+    public void Render(DetailCardModel model, bool taskbarIsLight, ProviderIconStyle iconStyle)
     {
         ArgumentNullException.ThrowIfNull(model);
 
@@ -46,7 +47,7 @@ public partial class DetailFlyout : Window
         ShadowLayer.Background = background;
         Divider.Background = palette.Track;
 
-        GlyphHost.Content = ProviderGlyphs.CreateIcon(model.ProviderId, 16, palette.Text);
+        GlyphHost.Render(model.ProviderId, iconStyle, !taskbarIsLight, palette.Text);
         TitleText.Text = model.DisplayName;
         TitleText.Foreground = palette.Text;
         PlanText.Text = model.Plan ?? "";

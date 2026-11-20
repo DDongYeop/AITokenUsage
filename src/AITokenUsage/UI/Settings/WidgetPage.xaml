@@ -1,6 +1,7 @@
 <local:SettingsPage x:Class="AITokenUsage.UI.Settings.WidgetPage"
                     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:ui="clr-namespace:AITokenUsage.UI"
                     xmlns:local="clr-namespace:AITokenUsage.UI.Settings"
                     xmlns:controls="clr-namespace:AITokenUsage.UI.Controls"
                     xmlns:res="clr-namespace:AITokenUsage.Resources">
@@ -46,6 +47,27 @@
         <controls:SettingsCard Header="{x:Static res:UiStrings.WidgetSystemMonitorHeader}">
             <ComboBox x:Name="SystemMonitorBox" Width="260" DisplayMemberPath="Label"
                       AutomationProperties.Name="{x:Static res:UiStrings.WidgetSystemMonitorHeader}" />
+        </controls:SettingsCard>
+
+        <controls:SettingsCard Header="{x:Static res:UiStrings.WidgetProviderIconStyleHeader}"
+                               Description="{x:Static res:UiStrings.ProviderIconStyleDescription}">
+            <ComboBox x:Name="IconStyleBox" Width="260" DisplayMemberPath="Label"
+                      AutomationProperties.Name="{x:Static res:UiStrings.WidgetProviderIconStyleHeader}" />
+        </controls:SettingsCard>
+
+        <controls:SettingsCard x:Name="CustomIconCard" Visibility="Collapsed"
+                               Header="{x:Static res:UiStrings.CustomIconHeader}"
+                               Description="{x:Static res:UiStrings.CustomIconFormats}">
+            <StackPanel Width="260">
+                <ComboBox x:Name="CustomProviderBox" DisplayMemberPath="Label"
+                          AutomationProperties.Name="{x:Static res:UiStrings.CustomIconHeader}" />
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                    <ui:ProviderIcon x:Name="CustomIconPreview" Width="16" Height="16" Margin="0,0,8,0"
+                                    VerticalAlignment="Center" Focusable="False" IsTabStop="False" />
+                    <Button x:Name="ChooseIconButton" Content="{x:Static res:UiStrings.CustomIconChoose}" />
+                    <Button x:Name="RemoveIconButton" Margin="6,0,0,0" Content="{x:Static res:UiStrings.CustomIconRemove}" />
+                </StackPanel>
+            </StackPanel>
         </controls:SettingsCard>
 
         <controls:SettingsCard Header="{x:Static res:UiStrings.WidgetTextColorHeader}">

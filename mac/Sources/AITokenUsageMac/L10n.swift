@@ -14,6 +14,7 @@ enum L10n {
         case menuBarFont, defaultFont
         case textWeight, weightDefault, weightNormal, weightBold
         case valueMode, valueUsed, valueRemaining, showResetTime, showResetTimeDescription
+        case iconStyle, iconStyleDescription, iconClassic, iconService, iconCustom, iconChoose, iconRemove, iconError, iconFormats
         case rotationEnabled, rotationInterval, secondsFormat, pauseOnOpen, skipUnavailable
         case language, languageAuto, restartNotice, restartNow, refreshInterval, minutesFormat, launchAtLogin, launchAtLoginNeedsApp
         case versionFormat, unofficialApiHeader, unofficialApiDescription, logs, openLogFolder, settingsFile, settingsFileFormat
@@ -73,6 +74,15 @@ enum L10n {
         case .weightDefault: return ("기본", "Default")
         case .weightNormal: return ("보통", "Normal")
         case .weightBold: return ("굵게", "Bold")
+        case .iconStyle: return ("AI 아이콘 스타일", "Provider icon style")
+        case .iconStyleDescription: return ("서비스는 이 기기에 설치된 앱의 아이콘을 사용해요. 아이콘을 찾을 수 없으면 클래식으로 표시해요.", "Service uses an icon from an app installed on this device. Classic appears if no icon is available.")
+        case .iconClassic: return ("클래식", "Classic")
+        case .iconService: return ("서비스", "Service")
+        case .iconCustom: return ("사용자 지정", "Custom")
+        case .iconFormats: return ("PNG, JPG/JPEG, BMP, GIF(첫 프레임), WebP, ICO", "PNG, JPG/JPEG, BMP, GIF (first frame), WebP or ICO")
+        case .iconChoose: return ("이미지 선택…", "Choose image…")
+        case .iconRemove: return ("삭제", "Remove")
+        case .iconError: return ("사용자 지정 아이콘을 변경할 수 없어요.", "Couldn’t update the custom icon.")
         case .valueMode: return ("수치", "Values")
         case .valueUsed: return ("사용한 %", "Used %")
         case .valueRemaining: return ("남은 %", "Remaining %")

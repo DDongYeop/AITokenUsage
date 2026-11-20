@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using AITokenUsage.Core.Abstractions;
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Providers.Claude;
 using AITokenUsage.Core.Tests.Fakes;
@@ -11,6 +12,8 @@ namespace AITokenUsage.Core.Tests.Providers.Claude;
 
 public class ClaudeUsageProviderTests
 {
+    private const string ClaudeExe = @"C:\fake-cli\claude.exe";
+
     private sealed record SentRequest(
         HttpMethod Method,
         string Url,
@@ -47,6 +50,8 @@ public class ClaudeUsageProviderTests
 
         public FakeEnvironment Env { get; } = new();
 
+        public FakeProcessRunner Processes { get; } = new();
+
         public StubHttpHandler Http { get; } = new();
 
         public List<SentRequest> Sent { get; } = [];
@@ -66,12 +71,14 @@ public class ClaudeUsageProviderTests
             _credentialsWritten = true;
         }
 
-        public ClaudeUsageProvider CreateProvider() => new(
-            TestContexts.Create(Http, Time, Files, Env),
-            new ClaudeVersionProbe(
-                Env,
-                _ => new[] { "anthropic.claude-code-2.1.400-win32-x64" },
-                () => Array.Empty<string?>()));
+        public ProviderContext Context => TestContexts.Create(Http, Time, Files, Env, Processes);
+
+        public ClaudeVersionProbe VersionProbe => new(
+            Env,
+            _ => new[] { "anthropic.claude-code-2.1.400-win32-x64" },
+            () => Array.Empty<string?>());
+
+        public ClaudeUsageProvider CreateProvider() => new(Context, VersionProbe);
     }
 
     private static HttpResponseMessage JsonResponse(HttpStatusCode status, string body) =>
@@ -159,7 +166,7 @@ public class ClaudeUsageProviderTests
     [InlineData(299)]
     [InlineData(0)]
     [InlineData(-3600)]
-    public async Task Token_expiring_within_five_minutes_waits_for_cli_without_any_http(int secondsLeft)
+    public async Task Unavailable_cli_leaves_expiring_token_waiting_without_http(int secondsLeft)
     {
         var h = new Harness();
         h.WriteCredentials(ClaudeTestData.Credentials(
@@ -170,21 +177,155 @@ public class ClaudeUsageProviderTests
         Assert.Equal(ProviderStatus.WaitingForCliRefresh, snapshot.Status);
         Assert.Equal("Claude Code가 로그인을 갱신하면 자동으로 다시 불러옵니다", snapshot.StatusMessage);
         Assert.Equal("Team · Max 5x", snapshot.PlanLabel);
+        Assert.Empty(h.Processes.Calls);
         Assert.Empty(h.Http.Requests);
         Assert.Empty(h.Sent);
     }
 
     [Fact]
-    public async Task Token_with_more_than_five_minutes_left_is_used()
+    public async Task Token_with_more_than_five_minutes_left_is_used_without_running_claude()
     {
         var h = new Harness();
+        h.Processes.SetPath("claude", ClaudeExe);
         h.WriteCredentials(ClaudeTestData.Credentials(expiresAtMs: ClaudeTestData.Now.AddSeconds(301).ToUnixTimeMilliseconds()));
         h.Responses.Enqueue(Usage);
 
         UsageSnapshot snapshot = await h.CreateProvider().FetchAsync(CancellationToken.None);
 
         Assert.Equal(ProviderStatus.Ok, snapshot.Status);
-        Assert.Single(h.Sent);
+        Assert.Empty(h.Processes.Calls);
+        Assert.Equal("Bearer " + ClaudeTestData.TokenA, Assert.Single(h.Sent).Authorization);
+    }
+
+    [Theory]
+    [InlineData(300, null, null)]
+    [InlineData(299, null, null)]
+    [InlineData(0, null, null)]
+    [InlineData(-1, null, null)]
+    [InlineData(299, "custom-config", null)]
+    [InlineData(-1, "custom-config", "secure-store")]
+    [InlineData(-1, "custom-config", "")]
+    public async Task Primary_cli_renews_and_usage_reads_the_new_bearer_from_the_selected_store(
+        int secondsLeft, string? config, string? secure)
+    {
+        var h = new Harness();
+        string? configDir = config is null ? null : Path.Combine(h.Env.UserProfile, config);
+        string? secureDir = string.IsNullOrEmpty(secure) ? secure : Path.Combine(h.Env.UserProfile, secure);
+        h.Env.Set(ClaudePaths.ConfigDirVariable, configDir);
+        h.Env.Set(ClaudePaths.SecureStorageDirVariable, secureDir);
+
+        // A defined empty secure override pins the default store, even with a custom config.
+        string? selectedDir = secureDir ?? configDir;
+        string path = string.IsNullOrEmpty(selectedDir) ? h.CredentialsPath : Path.Combine(selectedDir, ".credentials.json");
+        h.Files.AddFile(path, ClaudeTestData.Credentials(
+            expiresAtMs: ClaudeTestData.Now.AddSeconds(secondsLeft).ToUnixTimeMilliseconds()));
+        h.Processes.SetPath("claude", ClaudeExe).OnRun(_ =>
+        {
+            h.Files.AddFile(path, ClaudeTestData.Credentials(accessToken: ClaudeTestData.TokenB));
+            return new ProcessResult(1, "", "", false);
+        });
+        h.Responses.Enqueue(Usage);
+
+        UsageSnapshot snapshot = await h.CreateProvider().FetchAsync(CancellationToken.None);
+
+        ProcessSpec command = Assert.Single(h.Processes.Calls);
+        Assert.Equal(ClaudeExe, command.FileName);
+        Assert.Equal(new[] { "mcp", "get", ClaudeCliRenewer.ProbeServerName }, command.Arguments);
+        var overrides = command.EnvironmentOverrides?.Keys ?? Enumerable.Empty<string>();
+        Assert.DoesNotContain(ClaudePaths.ConfigDirVariable, overrides, StringComparer.OrdinalIgnoreCase);
+        Assert.DoesNotContain(ClaudePaths.SecureStorageDirVariable, overrides, StringComparer.OrdinalIgnoreCase);
+        Assert.Equal(ProviderStatus.Ok, snapshot.Status);
+        AssertOnlyRefreshedUsageRequest(h);
+    }
+
+    [Fact]
+    public async Task Primary_keychain_renewal_rereads_keychain_even_when_the_file_has_a_fresh_token()
+    {
+        var h = new Harness();
+        var keychain = new FakeCredentialStore();
+        keychain.Add(ClaudeKeychainCredentialSource.ServiceName, null,
+            ClaudeTestData.Credentials(expiresAtMs: ClaudeTestData.Now.ToUnixTimeMilliseconds()));
+        h.WriteCredentials(ClaudeTestData.Credentials(accessToken: "test-file-only-token"));
+        var source = new ClaudeKeychainCredentialSource(keychain, h.Files, h.Env);
+        var provider = new ClaudeUsageProvider(h.Context, ProviderIds.Claude, source, h.VersionProbe);
+        h.Processes.SetPath("claude", ClaudeExe).OnRun(_ =>
+        {
+            keychain.Add(ClaudeKeychainCredentialSource.ServiceName, null,
+                ClaudeTestData.Credentials(accessToken: ClaudeTestData.TokenB));
+            return new ProcessResult(1, "", "", false);
+        });
+        h.Responses.Enqueue(Usage);
+
+        UsageSnapshot snapshot = await provider.FetchAsync(CancellationToken.None);
+
+        Assert.Equal(ProviderStatus.Ok, snapshot.Status);
+        Assert.Single(h.Processes.Calls);
+        AssertOnlyRefreshedUsageRequest(h);
+    }
+
+    [Theory]
+    [InlineData(true, 299)]
+    [InlineData(true, -1)]
+    [InlineData(false, -1)]
+    public async Task Unsuccessful_primary_renewal_waits_and_retries_at_two_minutes(bool cliAvailable, int secondsLeft)
+    {
+        var h = new Harness();
+        h.WriteCredentials(ClaudeTestData.Credentials(
+            expiresAtMs: ClaudeTestData.Now.AddSeconds(secondsLeft).ToUnixTimeMilliseconds()));
+        // A successful exit alone does not mean the credential was renewed.
+        h.Processes.SetPath("claude", cliAvailable ? ClaudeExe : null)
+            .OnRun(_ => new ProcessResult(0, "", "", false));
+        ClaudeUsageProvider provider = h.CreateProvider();
+
+        UsageSnapshot first = await provider.FetchAsync(CancellationToken.None);
+        Assert.Equal(ProviderStatus.WaitingForCliRefresh, first.Status);
+        int firstAttemptCalls = h.Processes.Calls.Count;
+        Assert.Equal(cliAvailable, firstAttemptCalls > 0);
+        Assert.Empty(h.Sent);
+
+        h.Processes.SetPath("claude", ClaudeExe).OnRun(_ =>
+        {
+            h.WriteCredentials(ClaudeTestData.Credentials(accessToken: ClaudeTestData.TokenB));
+            return new ProcessResult(1, "", "", false);
+        });
+        h.Time.Advance(TimeSpan.FromSeconds(119));
+        UsageSnapshot throttled = await provider.FetchAsync(CancellationToken.None);
+        Assert.Equal(ProviderStatus.WaitingForCliRefresh, throttled.Status);
+        Assert.Equal(firstAttemptCalls, h.Processes.Calls.Count);
+        Assert.Empty(h.Sent);
+
+        h.Time.Advance(TimeSpan.FromSeconds(1));
+        h.Responses.Enqueue(Usage);
+        UsageSnapshot retried = await provider.FetchAsync(CancellationToken.None);
+        Assert.Equal(ProviderStatus.Ok, retried.Status);
+        Assert.Equal(firstAttemptCalls + 1, h.Processes.Calls.Count);
+        AssertOnlyRefreshedUsageRequest(h);
+    }
+
+    [Fact]
+    public async Task Cancelling_primary_cli_renewal_propagates_without_another_command_or_http()
+    {
+        var h = new Harness();
+        h.WriteCredentials(ClaudeTestData.Credentials(expiresAtMs: ClaudeTestData.Now.ToUnixTimeMilliseconds()));
+        using var cancellation = new CancellationTokenSource();
+        h.Processes.SetPath("claude", ClaudeExe).OnRun(_ =>
+        {
+            cancellation.Cancel();
+            throw new OperationCanceledException(cancellation.Token);
+        });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => h.CreateProvider().FetchAsync(cancellation.Token));
+
+        Assert.Single(h.Processes.Calls);
+        Assert.Empty(h.Sent);
+    }
+
+    private static void AssertOnlyRefreshedUsageRequest(Harness h)
+    {
+        SentRequest request = Assert.Single(h.Sent);
+        Assert.Equal(HttpMethod.Get, request.Method);
+        Assert.Equal(ClaudeUsageProvider.UsageUrl, request.Url + request.Query);
+        Assert.Equal("Bearer " + ClaudeTestData.TokenB, request.Authorization);
     }
 
     [Fact]

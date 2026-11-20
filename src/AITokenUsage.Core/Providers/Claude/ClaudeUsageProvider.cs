@@ -13,8 +13,8 @@ namespace AITokenUsage.Core.Providers.Claude;
 
 /// <summary>
 /// Calls GET /api/oauth/usage with the login from an <see cref="IClaudeCredentialSource"/>.
-/// The built-in panel reads Claude Code's login read-only and never refreshes or writes it; an extra account
-/// (<see cref="ForAccount"/>) reads Claude Code's login in its own account folder and has Claude Code renew it.
+/// Claude Code renews its own login. The built-in panel keeps the CLI's default profile;
+/// an extra account (<see cref="ForAccount"/>) renews in its own account folder.
 /// Never logs tokens, headers or bodies.
 /// </summary>
 public sealed class ClaudeUsageProvider : IUsageProvider
@@ -44,6 +44,8 @@ public sealed class ClaudeUsageProvider : IUsageProvider
     private readonly ProviderContext _ctx;
     private readonly ClaudeVersionProbe _versionProbe;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly ClaudeCliRenewer? _primaryRenewer;
+    private long? _lastPrimaryAttempt;
 
     private string? _version;
     private DateTimeOffset _versionProbedAt;
@@ -79,6 +81,8 @@ public sealed class ClaudeUsageProvider : IUsageProvider
         _ctx = ctx;
         Id = id;
         Source = source;
+        if (id == ProviderIds.Claude && !source.RenewsItself)
+            _primaryRenewer = new ClaudeCliRenewer(ctx.Processes, ctx.Files, ctx.Time, ctx.Log);
         _versionProbe = versionProbe ?? new ClaudeVersionProbe(ctx.Env);
     }
 
@@ -131,6 +135,13 @@ public sealed class ClaudeUsageProvider : IUsageProvider
         {
             string userAgent = "claude-code/" + UserAgentVersion(_ctx.Time.GetUtcNow());
             ClaudeCredentialReadResult read = await Source.ReadAsync(ct).ConfigureAwait(false);
+            if (_primaryRenewer is not null && read.State == ClaudeCredentialState.Ok &&
+                !ClaudeCliRenewer.IsFresh(read, _ctx.Time.GetUtcNow()) &&
+                (_lastPrimaryAttempt is not { } last || _ctx.Time.GetElapsedTime(last) >= ClaudeDelegatedCredentialSource.RenewalGap))
+            {
+                _lastPrimaryAttempt = _ctx.Time.GetTimestamp();
+                read = await _primaryRenewer.RenewPrimaryAsync(Source, ct).ConfigureAwait(false) ?? read;
+            }
             if (read.State != ClaudeCredentialState.Ok || read.Credentials is null)
             {
                 return FromCredentialState(read.State);
@@ -155,7 +166,7 @@ public sealed class ClaudeUsageProvider : IUsageProvider
             return Status(_heldStatus, _heldMessage, plan);
         }
 
-        if (!Source.RenewsItself && credentials.ExpiresAt is { } expiresAt && expiresAt - now < RefreshMargin)
+        if (!Source.RenewsItself && credentials.ExpiresAt is { } expiresAt && expiresAt - now <= RefreshMargin)
         {
             // Claude Code renews the login under its own lock; the file watcher re-queries when it does.
             return Status(ProviderStatus.WaitingForCliRefresh, MsgWaitingForCli, plan);

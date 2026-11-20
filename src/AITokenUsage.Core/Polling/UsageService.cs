@@ -503,11 +503,18 @@ public sealed class UsageService : IAsyncDisposable
         }
     }
 
-    private Task RequestFetch(ProviderWorker worker)
+    /// <summary>Refresh just the panel entered by the pointer. A fetch already in flight will update it.</summary>
+    public void NotifyHover(string? providerId)
+    {
+        if (IsRunning && providerId is not null && Find(providerId) is { } worker)
+            _ = RequestFetch(worker, skipIfFetching: true);
+    }
+
+    private Task RequestFetch(ProviderWorker worker, bool skipIfFetching = false)
     {
         lock (worker.Gate)
         {
-            if (worker.IsShutDown || IsBlocked(worker))
+            if (worker.IsShutDown || IsBlocked(worker) || (skipIfFetching && worker.IsFetching))
             {
                 return Task.CompletedTask;
             }

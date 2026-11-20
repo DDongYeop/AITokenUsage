@@ -50,6 +50,7 @@ public partial class WidgetPage : SettingsPage
         RemainingRadio.IsChecked = settings.ValueMode == ValueMode.Remaining;
         ShowResetTimeBox.IsChecked = settings.ShowResetTime;
         ShowDetailCardBox.IsChecked = settings.ShowDetailCard;
+        RefreshOnHoverBox.IsChecked = settings.RefreshOnHover;
         SystemMonitorBox.ItemsSource = SystemMonitorChoices;
         SystemMonitorBox.SelectedItem = Find(SystemMonitorChoices, settings.SystemMonitor);
         TextColorBox.ItemsSource = TextColorChoices;
@@ -78,6 +79,7 @@ public partial class WidgetPage : SettingsPage
         RemainingRadio.Checked += (_, _) => Update(s => s.ValueMode = ValueMode.Remaining);
         HookToggle(ShowResetTimeBox, on => Update(s => s.ShowResetTime = on));
         HookToggle(ShowDetailCardBox, on => Update(s => s.ShowDetailCard = on));
+        HookToggle(RefreshOnHoverBox, on => Update(s => s.RefreshOnHover = on));
         SystemMonitorBox.SelectionChanged += (_, _) =>
         {
             if (SystemMonitorBox.SelectedItem is SettingsChoice { Value: SystemMonitorMode mode })

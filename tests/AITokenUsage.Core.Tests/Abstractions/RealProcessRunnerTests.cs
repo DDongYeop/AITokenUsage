@@ -114,6 +114,33 @@ public class RealProcessRunnerTests
     }
 
     [Fact]
+    public void FindOnWindowsPath_FallsBackOnlyToInstalledAgy()
+    {
+        using var directory = new TempDirectory();
+        string bin = Directory.CreateDirectory(directory.Combine("agy", "bin")).FullName;
+        string installed = Path.Combine(bin, "agy.exe");
+        File.WriteAllText(Path.Combine(bin, "other.exe"), "");
+
+        Assert.Null(RealProcessRunner.FindOnWindowsPath("agy", "", directory.Path));
+        File.WriteAllText(installed, "");
+        Assert.Equal(installed, RealProcessRunner.FindOnWindowsPath("agy", "", directory.Path));
+        Assert.Equal(installed, RealProcessRunner.FindOnWindowsPath("AGY.EXE", "", directory.Path));
+        Assert.Null(RealProcessRunner.FindOnWindowsPath("other.exe", "", directory.Path));
+    }
+
+    [WindowsFact]
+    public void FindOnWindowsPath_PrefersAgyOnPathToUserInstall()
+    {
+        using var directory = new TempDirectory();
+        string bin = Directory.CreateDirectory(directory.Combine("agy", "bin")).FullName;
+        File.WriteAllText(Path.Combine(bin, "agy.exe"), "");
+        string onPath = directory.Combine("agy.exe");
+        File.WriteAllText(onPath, "");
+
+        Assert.Equal(onPath, RealProcessRunner.FindOnWindowsPath("agy", directory.Path, directory.Path), ignoreCase: true);
+    }
+
+    [Fact]
     public void FindOnPath_ReturnsNull_ForUnknownCommand()
     {
         Assert.Null(_runner.FindOnPath("aitokenusage-no-such-command-xyz"));

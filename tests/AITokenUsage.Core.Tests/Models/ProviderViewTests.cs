@@ -83,6 +83,6 @@ public class ProviderViewTests
     [Fact]
     public void ProviderIds_All_IsInCanonicalOrder()
     {
-        Assert.Equal(["claude", "codex", "gemini", "copilot"], ProviderIds.All);
+        Assert.Equal(["claude", "codex", "gemini", "copilot", "antigravity"], ProviderIds.All);
     }
 }

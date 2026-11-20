@@ -19,13 +19,14 @@ public static class ProviderStatusText
     private const string Separator = " · ";
     private const string Dash = " — ";
 
-    /// <summary>The tool whose login the app waits for: "Claude Code", "Codex", "Gemini CLI", "Copilot".</summary>
+    /// <summary>The tool whose login the app waits for.</summary>
     public static string CliName(string providerId) => ProviderIds.KindOf(providerId) switch
     {
         ProviderIds.Claude => "Claude Code",
         ProviderIds.Codex => "Codex",
         ProviderIds.Gemini => "Gemini CLI",
         ProviderIds.Copilot => "Copilot",
+        ProviderIds.Antigravity => "Antigravity CLI",
         _ => providerId,
     };
 

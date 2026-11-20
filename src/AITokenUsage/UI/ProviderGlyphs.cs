@@ -16,6 +16,7 @@ public static class ProviderGlyphs
     public static readonly Color CodexColor = Color.FromRgb(0x10, 0xA3, 0x7F);
     public static readonly Color GeminiColor = Color.FromRgb(0x42, 0x85, 0xF4);
     public static readonly Color CopilotColor = Color.FromRgb(0x89, 0x57, 0xE5);
+    public static readonly Color AntigravityColor = Color.FromRgb(0x19, 0xA9, 0xBA);
     public static readonly Color NeutralColor = Color.FromRgb(0x8A, 0x8A, 0x8A);
 
     /// <summary>The "PC" panel's neutral grey (design §3.1): its icon and normal bars.</summary>
@@ -41,6 +42,9 @@ public static class ProviderGlyphs
     private static readonly Geometry CopilotGeometry =
         Frozen(Geometry.Parse("M7,1 L12.2,4 L12.2,10 L7,13 L1.8,10 L1.8,4 Z"));
 
+    private static readonly Geometry AntigravityGeometry =
+        Frozen(Geometry.Parse("M1.5,11.5 L7,2.5 L12.5,11.5 M4,11.5 L10,11.5"));
+
     /// <summary>A plain monitor: screen, neck and foot (not a brand logo).</summary>
     private static readonly Geometry SystemGeometry =
         Frozen(Geometry.Parse("M1.5,2 L12.5,2 L12.5,9.5 L1.5,9.5 Z M7,9.5 L7,12 M4.5,12 L9.5,12"));
@@ -54,6 +58,7 @@ public static class ProviderGlyphs
         [ProviderIds.Codex] = FrozenBrush(CodexColor),
         [ProviderIds.Gemini] = FrozenBrush(GeminiColor),
         [ProviderIds.Copilot] = FrozenBrush(CopilotColor),
+        [ProviderIds.Antigravity] = FrozenBrush(AntigravityColor),
         [SystemPanel.Id] = FrozenBrush(SystemColor),
     };
 
@@ -68,6 +73,7 @@ public static class ProviderGlyphs
         ProviderIds.Codex => CodexColor,
         ProviderIds.Gemini => GeminiColor,
         ProviderIds.Copilot => CopilotColor,
+        ProviderIds.Antigravity => AntigravityColor,
         SystemPanel.Id => SystemColor,
         _ => NeutralColor,
     };
@@ -81,6 +87,7 @@ public static class ProviderGlyphs
         ProviderIds.Codex => CodexGeometry,
         ProviderIds.Gemini => GeminiGeometry,
         ProviderIds.Copilot => CopilotGeometry,
+        ProviderIds.Antigravity => AntigravityGeometry,
         SystemPanel.Id => SystemGeometry,
         _ => NeutralGeometry,
     };

@@ -1,6 +1,6 @@
 # AI 사용량 작업 표시줄 위젯 (AITokenUsage)
 
-Windows 11 작업 표시줄 안에 **Claude · Codex · Gemini CLI · GitHub Copilot**의 구독 사용량(5시간·주간·일간·월간 한도 %)을 2줄 미니바로 보여 주는 작은 WPF 위젯입니다. 한 번에 AI 하나를 보여 주고 몇 초마다 다음 AI로 넘깁니다.
+Windows 11 작업 표시줄 안에 **Claude · Codex · Gemini CLI · GitHub Copilot · Antigravity CLI**의 구독 사용량(5시간·주간·일간·월간 한도 %)을 2줄 미니바로 보여 주는 작은 WPF 위젯입니다. 한 번에 AI 하나를 보여 주고 몇 초마다 다음 AI로 넘깁니다.
 
 <p align="center">
   <img src="docs/images/widget.png" alt="작업 표시줄에 붙은 위젯: Claude의 5시간 한도 44%와 주간 한도 82%, 각 한도가 초기화될 때까지 남은 시간" width="234">
@@ -89,6 +89,9 @@ Windows의 **설정 → 위젯 표시 → 마우스를 올리면 현재 AI 새�
 | Codex | `npm install -g @openai/codex` | `codex login` (ChatGPT 계정) |
 | Gemini | `npm install -g @google/gemini-cli` | `gemini` 실행 후 "Login with Google" 선택 (Workspace Code Assist 계정) |
 | Copilot | 별도 설치 없음 | 설정 창의 **GitHub 로그인**(기기 코드), 또는 `gh auth login` · Copilot CLI · VS Code 계열 Copilot |
+| Antigravity | [Antigravity CLI](https://antigravity.google/docs/cli) 1.1.11 이상 | `agy` 실행 후 Google 계정으로 로그인 |
+
+Antigravity는 기본으로 Gemini 모델의 5시간·주간 한도를 표시합니다. **설정 → AI 연결 → Antigravity**에서 계정에 제공되는 다른 모델 그룹의 한도도 선택할 수 있습니다. 터미널에서 같은 값을 확인하려면 `agy --disable-slash-commands=false -p /usage --output-format json`을 실행하세요. CLI 1.5.12의 사용량 응답에는 구독 플랜명이 없어 위젯에는 한도만 표시됩니다.
 
 Claude·Codex·Gemini 설치에는 Node.js가 필요합니다: `winget install OpenJS.NodeJS.LTS`
 
@@ -148,6 +151,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/New-AppIcon.ps1
 | Codex | `%USERPROFILE%\.codex\auth.json` (`CODEX_HOME`) | `GET https://chatgpt.com/backend-api/wham/usage`, 토큰이 오래되면 `codex app-server`(15분에 1회), 마지막 대체로 `sessions\**\rollout-*.jsonl` 로그 |
 | Gemini | `%USERPROFILE%\.gemini\oauth_creds.json` 또는 Windows 자격 증명 관리자 `gemini-cli-oauth/main-account` | `POST https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist`, `…:retrieveUserQuota` |
 | Copilot | 앱의 GitHub 로그인 토큰, `COPILOT_GITHUB_TOKEN`/`GH_TOKEN`/`GITHUB_TOKEN`, `gh auth token`, 자격 증명 관리자 `copilot-cli*`, `%LOCALAPPDATA%\github-copilot\apps.json`·`hosts.json` | `GET https://api.github.com/copilot_internal/user` |
+| Antigravity | 설치된 CLI가 현재 로그인을 사용 | `agy --disable-slash-commands=false -p /usage --output-format json` |
 
 ### 비공식 API 주의
 
@@ -183,7 +187,7 @@ Gemini 토큰을 갱신하려면 Gemini CLI의 Google OAuth 클라이언트가 �
 ## 알려진 한계
 
 - **Codex, Gemini CLI, Copilot은 실제 계정으로 검증하지 못했습니다.** 개발 PC에는 Claude Code만 로그인돼 있어, 세 공급자는 조사 보고서의 실제 응답 형태로 만든 샘플 데이터 단위 테스트로만 확인했습니다. 실제 계정에서 "설치 안 됨"·"로그인 필요" 외의 표시가 이상하면 이슈로 알려 주세요.
-- **Antigravity는 지원하지 않습니다.** Gemini 개인 계정의 Code Assist 지원 종료(2026-06-18) 이후 개인 계정은 "개인 계정 지원 종료 — Antigravity 사용"으로만 표시됩니다.
+- Gemini 개인 계정의 Code Assist 지원은 2026-06-18에 종료되었습니다. 개인 구독 한도는 **Antigravity** 항목에서 확인하세요. API 키 세션에는 구독 한도가 없습니다.
 - **세로(왼쪽/오른쪽) 작업 표시줄은 지원하지 않습니다.** 이때와 작업 표시줄에 자리가 부족할 때는 위젯을 숨기고 트레이 아이콘만 남깁니다.
 - 위젯은 모니터 한 개에만 표시합니다(설정에서 고를 수 있음).
 - Copilot 언어 서버의 `auth.db`, Gemini의 암호화 파일 저장소(`gemini-credentials.json`)는 읽지 않습니다.

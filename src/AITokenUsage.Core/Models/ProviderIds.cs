@@ -6,9 +6,10 @@ public static class ProviderIds
     public const string Codex = "codex";
     public const string Gemini = "gemini";
     public const string Copilot = "copilot";
+    public const string Antigravity = "antigravity";
 
-    /// <summary>Canonical order: claude, codex, gemini, copilot.</summary>
-    public static readonly IReadOnlyList<string> All = [Claude, Codex, Gemini, Copilot];
+    /// <summary>Built-in providers in default display order.</summary>
+    public static readonly IReadOnlyList<string> All = [Claude, Codex, Gemini, Copilot, Antigravity];
 
     /// <summary>
     /// The AI kind of a panel id: the text before the account separator ("claude#k3x9q2" → "claude");

@@ -33,6 +33,21 @@ public class WidgetPanelBuilderTests
     }
 
     [Fact]
+    public void Build_AntigravityDefaultLines_SelectGeminiWindowsInConfiguredOrder()
+    {
+        var snapshot = Ok(ProviderIds.Antigravity,
+            Meter("other-5h", "5h", 12), Meter("gemini-weekly", "주", 40), Meter("gemini-5h", "5h", 75));
+        var settings = ProviderDefaults.CreateDefault(ProviderIds.Antigravity);
+
+        var panel = WidgetPanelBuilder.Build(View(snapshot, displayName: "Antigravity"),
+            settings.Line1Key, settings.Line2Key, ValueMode.Used, 1, 0, Now);
+
+        Assert.Equal("Antigravity", panel.DisplayName);
+        Assert.Equal("75%", panel.Row1.Value);
+        Assert.Equal("40%", panel.Row2!.Value);
+    }
+
+    [Fact]
     public void Build_SingleEligibleProvider_HidesDots()
     {
         WidgetPanelModel model = WidgetPanelBuilder.Build(View(Ok("claude", Session, Weekly)), "session", "weekly", ValueMode.Used, 1, 0, Now);

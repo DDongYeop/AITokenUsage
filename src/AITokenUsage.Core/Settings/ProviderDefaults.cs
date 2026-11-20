@@ -10,13 +10,14 @@ public static class ProviderDefaults
     public static List<ProviderSettings> CreateDefaultProviders() =>
         ProviderIds.All.Select(CreateDefault).ToList();
 
-    /// <summary>claude: session/weekly, codex: 5h/weekly, gemini: pro/flash, copilot: monthly/reset. Account ids ("claude#k3x9q2") use their kind's lines.</summary>
+    /// <summary>Initial widget lines for each provider. Account ids ("claude#k3x9q2") use their kind's lines.</summary>
     public static (string Line1, string Line2) DefaultLines(string providerId) => ProviderIds.KindOf(providerId) switch
     {
         ProviderIds.Claude => ("session", "weekly"),
         ProviderIds.Codex => ("5h", "weekly"),
         ProviderIds.Gemini => ("pro", "flash"),
         ProviderIds.Copilot => ("monthly", "reset"),
+        ProviderIds.Antigravity => ("gemini-5h", "gemini-weekly"),
         _ => throw new ArgumentOutOfRangeException(nameof(providerId), providerId, "Unknown provider id."),
     };
 

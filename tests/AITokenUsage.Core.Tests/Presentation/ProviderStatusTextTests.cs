@@ -145,6 +145,7 @@ public class ProviderStatusTextTests
         Assert.Equal("Codex", ProviderStatusText.CliName(ProviderIds.Codex));
         Assert.Equal("Gemini CLI", ProviderStatusText.CliName(ProviderIds.Gemini));
         Assert.Equal("Copilot", ProviderStatusText.CliName(ProviderIds.Copilot));
+        Assert.Equal("Antigravity CLI", ProviderStatusText.CliName(ProviderIds.Antigravity));
         Assert.Equal("other", ProviderStatusText.CliName("other"));
     }
 

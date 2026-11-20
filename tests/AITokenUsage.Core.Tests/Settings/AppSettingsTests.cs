@@ -12,7 +12,7 @@ public class AppSettingsTests
         var settings = new AppSettings();
 
         Assert.Equal(1, settings.Version);
-        Assert.Equal(["claude", "codex", "gemini", "copilot"], Ids(settings));
+        Assert.Equal(["claude", "codex", "gemini", "copilot", "antigravity"], Ids(settings));
         Assert.All(settings.Providers, p => Assert.True(p.Enabled));
         Assert.True(settings.RotationEnabled);
         Assert.Equal(5, settings.RotationSeconds);
@@ -37,7 +37,7 @@ public class AppSettingsTests
 
         settings.Normalize();
 
-        Assert.Equal(["copilot", "claude", "codex", "gemini"], Ids(settings));
+        Assert.Equal(["copilot", "claude", "codex", "gemini", "antigravity"], Ids(settings));
         Assert.False(settings.Providers[0].Enabled);
         Assert.Equal("completions", settings.Providers[0].Line2Key);
         Assert.Equal(("session", "weekly"), (settings.Providers[1].Line1Key, settings.Providers[1].Line2Key));
@@ -51,7 +51,7 @@ public class AppSettingsTests
         {
             Providers =
             [
-                new ProviderSettings { Id = "antigravity", Line1Key = "x", Line2Key = "y" },
+                new ProviderSettings { Id = "unknown", Line1Key = "x", Line2Key = "y" },
                 new ProviderSettings { Id = "", Line1Key = "x", Line2Key = "y" },
                 new ProviderSettings { Id = "gemini", Line1Key = "flash-lite", Line2Key = "pro" },
             ],
@@ -59,7 +59,7 @@ public class AppSettingsTests
 
         settings.Normalize();
 
-        Assert.Equal(["gemini", "claude", "codex", "copilot"], Ids(settings));
+        Assert.Equal(["gemini", "claude", "codex", "copilot", "antigravity"], Ids(settings));
         Assert.Equal("flash-lite", settings.Providers[0].Line1Key);
     }
 
@@ -78,7 +78,7 @@ public class AppSettingsTests
 
         settings.Normalize();
 
-        Assert.Equal(["claude", "codex", "gemini", "copilot"], Ids(settings));
+        Assert.Equal(["claude", "codex", "gemini", "copilot", "antigravity"], Ids(settings));
         Assert.False(settings.Providers[0].Enabled);
         Assert.Equal("weekly:fable", settings.Providers[0].Line1Key);
     }
@@ -110,11 +110,11 @@ public class AppSettingsTests
     {
         var settings = new AppSettings { Providers = null! };
         settings.Normalize();
-        Assert.Equal(["claude", "codex", "gemini", "copilot"], Ids(settings));
+        Assert.Equal(["claude", "codex", "gemini", "copilot", "antigravity"], Ids(settings));
 
         var withNulls = new AppSettings { Providers = [null!, new ProviderSettings { Id = "gemini" }, null!] };
         withNulls.Normalize();
-        Assert.Equal(["gemini", "claude", "codex", "copilot"], Ids(withNulls));
+        Assert.Equal(["gemini", "claude", "codex", "copilot", "antigravity"], Ids(withNulls));
         Assert.Equal(("pro", "flash"), (withNulls.Providers[0].Line1Key, withNulls.Providers[0].Line2Key));
     }
 
@@ -358,7 +358,7 @@ public class AppSettingsTests
 
         settings.Normalize();
 
-        Assert.Equal(["claude", "claude#k3x9q2", "codex#a1b2c3", "codex", "gemini", "copilot"], Ids(settings));
+        Assert.Equal(["claude", "claude#k3x9q2", "codex#a1b2c3", "codex", "gemini", "copilot", "antigravity"], Ids(settings));
         Assert.False(settings.Providers[1].Enabled);
         Assert.Equal(("weekly", "session"), (settings.Providers[1].Line1Key, settings.Providers[1].Line2Key));
     }
@@ -410,7 +410,7 @@ public class AppSettingsTests
 
         settings.Normalize();
 
-        Assert.Equal(["claude#k3x9q2", "claude", "codex", "gemini", "copilot"], Ids(settings));
+        Assert.Equal(["claude#k3x9q2", "claude", "codex", "gemini", "copilot", "antigravity"], Ids(settings));
     }
 
     [Fact]
@@ -428,7 +428,7 @@ public class AppSettingsTests
 
         settings.Normalize();
 
-        Assert.Equal(["claude#k3x9q2", "claude#a1b2c3", "claude", "codex", "gemini", "copilot"], Ids(settings));
+        Assert.Equal(["claude#k3x9q2", "claude#a1b2c3", "claude", "codex", "gemini", "copilot", "antigravity"], Ids(settings));
         Assert.False(settings.Providers[0].Enabled);
     }
 

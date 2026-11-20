@@ -15,6 +15,7 @@ public class ConnectionGuideBuilderTests
     [InlineData(ProviderIds.Codex)]
     [InlineData(ProviderIds.Gemini)]
     [InlineData(ProviderIds.Copilot)]
+    [InlineData(ProviderIds.Antigravity)]
     public void Build_Ok_ReturnsNull(string providerId)
     {
         Assert.Null(ConnectionGuideBuilder.Build(providerId, ProviderStatus.Ok, null));
@@ -25,6 +26,7 @@ public class ConnectionGuideBuilderTests
     [InlineData(ProviderIds.Codex)]
     [InlineData(ProviderIds.Gemini)]
     [InlineData(ProviderIds.Copilot)]
+    [InlineData(ProviderIds.Antigravity)]
     public void Build_ErrorAndRateLimited_ReturnNull(string providerId)
     {
         Assert.Null(ConnectionGuideBuilder.Build(providerId, ProviderStatus.Error, "boom"));
@@ -104,6 +106,29 @@ public class ConnectionGuideBuilderTests
         Assert.Equal(GuideAction.OpenTerminal, guide.Steps[0].Action);
         Assert.Equal("claude", guide.Steps[0].TerminalCommand);
         Assert.Equal(GuideAction.Recheck, guide.Steps[1].Action);
+    }
+
+    [Fact]
+    public void Build_AntigravityNotInstalled_UsesTheNativeInstallerThenOpensAgy()
+    {
+        var guide = ConnectionGuideBuilder.Build(ProviderIds.Antigravity, ProviderStatus.NotInstalled, null)!;
+        string installer = OperatingSystem.IsWindows()
+            ? "irm https://antigravity.google/cli/install.ps1 | iex"
+            : "curl -fsSL https://antigravity.google/cli/install.sh | bash";
+
+        Assert.Collection(guide.Steps,
+            step => Assert.Equal(new GuideStep(Strings.GuideStepInstallAntigravity, installer, GuideAction.None), step),
+            step => Assert.Equal(new GuideStep(Strings.GuideStepLoginAntigravity, null, GuideAction.OpenTerminal, "agy"), step),
+            step => Assert.Equal(GuideAction.Recheck, step.Action));
+    }
+
+    [Fact]
+    public void Build_AntigravitySignedOut_OpensAgyWithoutReinstalling()
+    {
+        var guide = ConnectionGuideBuilder.Build(ProviderIds.Antigravity, ProviderStatus.SignedOut, null)!;
+        Assert.Collection(guide.Steps,
+            step => Assert.Equal(new GuideStep(Strings.GuideStepLoginAntigravity, null, GuideAction.OpenTerminal, "agy"), step),
+            step => Assert.Equal(GuideAction.Recheck, step.Action));
     }
 
     [Fact]

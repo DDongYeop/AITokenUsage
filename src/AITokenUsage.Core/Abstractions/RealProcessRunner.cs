@@ -74,9 +74,14 @@ public sealed class RealProcessRunner : IProcessRunner
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
         }
 
+        return FindOnWindowsPath(commandName, Environment.GetEnvironmentVariable("PATH") ?? "",
+            Environment.GetEnvironmentVariable("LOCALAPPDATA"));
+    }
+
+    internal static string? FindOnWindowsPath(string commandName, string pathVariable, string? localAppData)
+    {
         string[] extensions = ReadPathExtensions();
         bool hasExtension = Path.HasExtension(commandName);
-        string pathVariable = Environment.GetEnvironmentVariable("PATH") ?? "";
 
         foreach (string rawDirectory in pathVariable.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
@@ -105,6 +110,14 @@ public sealed class RealProcessRunner : IProcessRunner
                     return candidate;
                 }
             }
+        }
+
+        if ((commandName.Equals("agy", StringComparison.OrdinalIgnoreCase) ||
+             commandName.Equals("agy.exe", StringComparison.OrdinalIgnoreCase)) &&
+            localAppData is not null && Path.IsPathFullyQualified(localAppData))
+        {
+            string installed = Path.Combine(localAppData, "agy", "bin", "agy.exe");
+            if (File.Exists(installed)) return installed;
         }
 
         return null;

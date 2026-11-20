@@ -38,6 +38,9 @@ public sealed class AppSettings
 
     public TextColorMode TextColor { get; set; } = TextColorMode.Auto;
 
+    /// <summary>Installed font family name, or null to use the platform's default widget font.</summary>
+    public string? WidgetFontFamily { get; set; }
+
     /// <summary>One of ProviderDefaults.RefreshChoicesMinutes (2, 5, 10, 15).</summary>
     public int RefreshMinutes { get; set; } = 5;
 
@@ -75,6 +78,7 @@ public sealed class AppSettings
         RotationSeconds = Math.Clamp(RotationSeconds, MinRotationSeconds, MaxRotationSeconds);
         RefreshMinutes = NearestRefreshChoice(RefreshMinutes);
         Language = LanguageResolver.Normalize(Language);
+        WidgetFontFamily = string.IsNullOrWhiteSpace(WidgetFontFamily) ? null : WidgetFontFamily.Trim();
 
         if (!Enum.IsDefined(Placement))
         {
@@ -122,6 +126,7 @@ public sealed class AppSettings
         Placement = Placement,
         ValueMode = ValueMode,
         TextColor = TextColor,
+        WidgetFontFamily = WidgetFontFamily,
         RefreshMinutes = RefreshMinutes,
         StartWithWindows = StartWithWindows,
         ShowTrayIcon = ShowTrayIcon,

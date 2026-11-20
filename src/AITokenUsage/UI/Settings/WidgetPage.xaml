@@ -52,5 +52,10 @@
             <ComboBox x:Name="TextColorBox" Width="260" DisplayMemberPath="Label"
                       AutomationProperties.Name="{x:Static res:UiStrings.WidgetTextColorHeader}" />
         </controls:SettingsCard>
+
+        <controls:SettingsCard Header="{x:Static res:UiStrings.WidgetFontHeader}">
+            <ComboBox x:Name="FontBox" Width="260" DisplayMemberPath="Label" TextSearch.TextPath="Label"
+                      AutomationProperties.Name="{x:Static res:UiStrings.WidgetFontHeader}" />
+        </controls:SettingsCard>
     </StackPanel>
 </local:SettingsPage>

@@ -1,4 +1,5 @@
 using System.Windows.Threading;
+using System.Windows.Media;
 using AITokenUsage.Core.Models;
 using AITokenUsage.Core.Presentation;
 using AITokenUsage.Core.Rotation;
@@ -32,6 +33,7 @@ public sealed class WidgetViewModel : IDisposable
         _dispatcher = Dispatcher.CurrentDispatcher;
         CurrentModel = BuildModel();
         Palette = ResolvePalette();
+        FontFamily = WidgetFontChoice.Resolve(_host.Settings.WidgetFontFamily).Family;
 
         _host.ViewChanged += OnViewChanged;
         _host.SystemUsageChanged += OnSystemUsageChanged;
@@ -60,6 +62,8 @@ public sealed class WidgetViewModel : IDisposable
     public WidgetPanelModel CurrentModel { get; private set; }
 
     public WidgetPalette Palette { get; private set; }
+
+    public FontFamily FontFamily { get; private set; }
 
     public bool IsUserPaused => _host.Rotation.IsUserPaused;
 
@@ -197,6 +201,7 @@ public sealed class WidgetViewModel : IDisposable
 
     private void OnSettingsChanged(object? sender, EventArgs e)
     {
+        FontFamily = WidgetFontChoice.Resolve(_host.Settings.WidgetFontFamily).Family;
         ApplyHoverPause();
         RaiseUpdated();
     }

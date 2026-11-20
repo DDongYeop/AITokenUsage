@@ -11,6 +11,7 @@ struct AgentState: Decodable, Equatable {
     var rotationSeconds: Int
     var skipUnavailable: Bool
     var pauseOnHover: Bool
+    var widgetFontFamily: String?
     var showResetTime: Bool
     var refreshMinutes: Int
     var version: String

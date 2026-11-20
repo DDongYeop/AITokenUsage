@@ -77,6 +77,14 @@ final class AgentClient: ObservableObject {
     func setRotationSeconds(_ seconds: Int) { send("set-rotation-seconds \(seconds)") }
     func setSkipUnavailable(_ value: Bool) { send("set-skip-unavailable \(value)") }
     func setPauseOnHover(_ value: Bool) { send("set-pause-on-hover \(value)") }
+    func setWidgetFontFamily(_ family: String?) {
+        // A single line/token even for font names containing whitespace.
+        if let family {
+            send("set-widget-font-family \(Data(family.utf8).base64EncodedString())")
+        } else {
+            send("set-widget-font-family")
+        }
+    }
     func setShowResetTime(_ value: Bool) { send("set-show-reset-time \(value)") }
     func setRefresh(_ minutes: Int) { send("set-refresh \(minutes)") }
     func setLines(_ id: String, _ line1: String, _ line2: String) { send("set-lines \(id) \(line1) \(line2)") }

@@ -11,6 +11,7 @@ enum L10n {
         case nickname, nicknamePlaceholder, save
         case copy, copied, signInTerminal, openTerminal, recheck, terminalFailed
         case githubSignIn, githubSignOut, cancel, openBrowser, enterCodeFormat, verifying, waitingForCode, unofficialApi
+        case menuBarFont, defaultFont
         case valueMode, valueUsed, valueRemaining, showResetTime, showResetTimeDescription
         case rotationEnabled, rotationInterval, secondsFormat, pauseOnOpen, skipUnavailable
         case language, languageAuto, restartNotice, restartNow, refreshInterval, minutesFormat, launchAtLogin, launchAtLoginNeedsApp
@@ -65,6 +66,8 @@ enum L10n {
         case .verifying: return ("GitHub 계정을 확인하는 중…", "Verifying your GitHub account…")
         case .waitingForCode: return ("GitHub 로그인 코드를 받는 중…", "Requesting a GitHub sign-in code…")
         case .unofficialApi: return ("비공식 API를 사용합니다", "Uses an unofficial API")
+        case .menuBarFont: return ("메뉴 막대 글꼴", "Menu bar font")
+        case .defaultFont: return ("시스템 기본값", "System default")
         case .valueMode: return ("수치", "Values")
         case .valueUsed: return ("사용한 %", "Used %")
         case .valueRemaining: return ("남은 %", "Remaining %")

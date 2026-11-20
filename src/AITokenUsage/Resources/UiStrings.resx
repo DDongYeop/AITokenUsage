@@ -157,6 +157,12 @@ Log: {0}</value>
   <data name="SystemMonitorCardOnly" xml:space="preserve">
     <value>Detail card and tooltip only</value>
   </data>
+  <data name="WidgetFontHeader" xml:space="preserve">
+    <value>Widget font</value>
+  </data>
+  <data name="WidgetFontAutomatic" xml:space="preserve">
+    <value>Automatic (default widget font)</value>
+  </data>
   <data name="WidgetTextColorHeader" xml:space="preserve">
     <value>Text color</value>
   </data>

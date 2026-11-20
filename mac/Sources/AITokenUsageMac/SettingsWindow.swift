@@ -366,11 +366,28 @@ private struct CopilotSignInView: View {
 // MARK: 위젯 표시
 
 private struct WidgetPage: View {
+    @MainActor private static let fontFamilies = NSFontManager.shared.availableFontFamilies.sorted {
+        $0.localizedStandardCompare($1) == .orderedAscending
+    }
+
     @ObservedObject var client: AgentClient
     let state: AgentState
     private func t(_ key: L10n.Key) -> String { L10n.text(key, language: state.language) }
 
     var body: some View {
+        SettingsCard(header: t(.menuBarFont)) {
+            Picker(t(.menuBarFont), selection: Binding(get: { state.widgetFontFamily }, set: client.setWidgetFontFamily)) {
+                Text(t(.defaultFont)).tag(String?.none)
+                if let saved = state.widgetFontFamily, !Self.fontFamilies.contains(saved) {
+                    Text(verbatim: saved).tag(Optional(saved))
+                }
+                ForEach(Self.fontFamilies, id: \.self) { family in
+                    Text(verbatim: family).tag(Optional(family))
+                }
+            }
+            .labelsHidden()
+            .frame(width: 180)
+        }
         SettingsCard(header: t(.valueMode)) {
             Picker("", selection: Binding(get: { state.valueMode }, set: { client.setValueMode($0) })) {
                 Text(t(.valueUsed)).tag("used")

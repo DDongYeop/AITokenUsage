@@ -20,7 +20,9 @@ enum PreviewRenderer {
 
             for (i, panel) in client.rotatingPanels.enumerated() {
                 for dark in [false, true] {
-                    let bar = WidgetContent(panel: panel, foreground: dark ? .white : .black, showReset: state.showResetTime)
+                    let bar = WidgetContent(
+                        panel: panel, foreground: dark ? .white : .black, showReset: state.showResetTime,
+                        labelFont: MenuBarFont(family: state.widgetFontFamily))
                         .frame(height: 22)
                         .padding(.horizontal, 8)
                         .background(dark ? Color(white: 0.12) : Color(white: 0.93))

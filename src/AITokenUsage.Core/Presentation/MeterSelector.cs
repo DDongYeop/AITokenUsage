@@ -24,6 +24,8 @@ public static class MeterSelector
         UsageMeter? second = Find(meters, line2Key);
 
         first ??= meters.FirstOrDefault(m => !ReferenceEquals(m, second));
+        // A single available meter can match line 2. Render it in the widget's primary row.
+        if (first is null) return (second, null);
         second ??= meters.FirstOrDefault(m => !ReferenceEquals(m, first));
 
         return (first, second);

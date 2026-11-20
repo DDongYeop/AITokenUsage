@@ -503,18 +503,22 @@ public sealed class UsageService : IAsyncDisposable
         }
     }
 
-    /// <summary>Refresh just the panel entered by the pointer. A fetch already in flight will update it.</summary>
+    /// <summary>
+    /// Refresh just the panel entered by the pointer. A fetch already in flight will update it, and a panel fetched
+    /// less than the provider's MinInterval ago is left alone: moving the pointer in and out must not flood the service.
+    /// </summary>
     public void NotifyHover(string? providerId)
     {
         if (IsRunning && providerId is not null && Find(providerId) is { } worker)
-            _ = RequestFetch(worker, skipIfFetching: true);
+            _ = RequestFetch(worker, hover: true);
     }
 
-    private Task RequestFetch(ProviderWorker worker, bool skipIfFetching = false)
+    private Task RequestFetch(ProviderWorker worker, bool hover = false)
     {
         lock (worker.Gate)
         {
-            if (worker.IsShutDown || IsBlocked(worker) || (skipIfFetching && worker.IsFetching))
+            if (worker.IsShutDown || IsBlocked(worker)
+                || (hover && (worker.IsFetching || IsFetchedRecently(worker))))
             {
                 return Task.CompletedTask;
             }
@@ -524,6 +528,9 @@ public sealed class UsageService : IAsyncDisposable
             return worker.Pending.Task;
         }
     }
+
+    private bool IsFetchedRecently(ProviderWorker worker) =>
+        worker.LastResult is not null && _time.GetUtcNow() - worker.LastFetchAt < worker.Provider.MinInterval;
 
     private bool IsBlocked(ProviderWorker worker)
     {

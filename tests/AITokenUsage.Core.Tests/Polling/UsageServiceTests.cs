@@ -464,6 +464,12 @@ public sealed class UsageServiceTests : IAsyncLifetime
         await views.NextAsync();
         await views.NextAsync();
 
+        // Within the provider's MinInterval (1 min) of the last fetch a hover does nothing.
+        service.NotifyHover("codex");
+        await views.AssertNoneAsync();
+        Assert.Equal(1, target.CallCount);
+        _time.Advance(TimeSpan.FromMinutes(1));
+
         service.NotifyHover(null);
         service.NotifyHover("system");
         service.NotifyHover("codex");

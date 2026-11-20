@@ -81,7 +81,7 @@ open dist/mac/AITokenUsage.app
 - 터미널에서 바로 확인: `dist/mac/AITokenUsage.app/Contents/Resources/agent/aitokenusage-agent --once`
 - 저장 위치: 설정·캐시는 `~/Library/Application Support/AITokenUsage`, 로그는 `~/Library/Logs/AITokenUsage`.
 
-Windows의 **설정 → 위젯 표시 → 마우스를 올리면 현재 AI 새로고침**을 켜면 작업 표시줄 위젯에 포인터가 들어갈 때 현재 AI를 바로 조회합니다. 상세 카드 표시를 꺼도 동작합니다. 조회 중이거나 서비스가 재시도를 제한한 동안에는 추가 요청을 보내지 않습니다. 기본값은 꺼짐입니다.
+Windows의 **설정 → 위젯 표시 → 마우스를 올리면 현재 AI 새로고침**을 켜면 작업 표시줄 위젯에 포인터가 들어갈 때 현재 AI를 바로 조회합니다. 상세 카드 표시를 꺼도 동작합니다. 조회 중이거나, 마지막 조회 후 서비스별 최소 간격(1~5분)이 지나지 않았거나, 서비스가 재시도를 제한한 동안에는 추가 요청을 보내지 않습니다. 기본값은 꺼짐입니다.
 
 ## AI 연결 방법
 

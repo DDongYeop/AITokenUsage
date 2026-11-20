@@ -410,8 +410,8 @@ public static class Program
         private ProviderEntry ToEntry(ProviderSettings provider, ProviderView view, DateTimeOffset now, TimeZoneInfo zone)
         {
             IUsageProvider? source = providers.FirstOrDefault(p => p.Id == provider.Id);
-            IReadOnlyList<MeterOption> options = MeterOptionList.Build(
-                source?.StaticMeterOptions ?? [], view.DisplayMeters, [provider.Line1Key, provider.Line2Key]);
+            IReadOnlyList<MeterOption> options = MeterOptionList.ForView(
+                source?.StaticMeterOptions ?? [], view, [provider.Line1Key, provider.Line2Key]);
             ConnectionGuide? guide = ConnectionGuideBuilder.Build(view.ProviderId, view.Current.Status, view.Current.StatusMessage);
             return new ProviderEntry(
                 view.ProviderId,

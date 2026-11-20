@@ -11,6 +11,18 @@ public static class MeterSelector
     /// <summary>Placeholder for a line that has no value (em dash), used by the tray and the widget alike.</summary>
     public const string MissingValue = "—";
 
+    public static (UsageMeter? First, UsageMeter? Second) SelectForView(ProviderView view, string? line1Key, string? line2Key)
+    {
+        IReadOnlyList<UsageMeter> meters = view.DisplayMeters;
+        // Only an explicitly requested pass can enter selection. That line claims it before quota fallback runs.
+        if (ResetPassPresentation.Selected(line1Key, line2Key) && ResetPassPresentation.Current(view) is { } balance)
+        {
+            meters = [.. meters, ResetPassPresentation.CountMeter(balance)];
+        }
+
+        return Select(meters, line1Key, line2Key);
+    }
+
     /// <summary>
     /// Each line takes the meter with its configured key. A line whose key is blank or missing
     /// takes the first meter (in provider order) that the other line does not already show.

@@ -1,0 +1,12 @@
+{
+  "available_count": 4,
+  "credits": [
+    { "id": "opaque", "status": "redeeming", "expires_at": null },
+    { "status": "redeemed", "expires_at": null },
+    { "status": "available", "expires_at": "2026-10-28T03:00:00Z" },
+    { "status": "available", "title": "Short reset", "expires_at": "2026-10-28T12:01:00+09:00" },
+    { "status": "available", "expires_at": null },
+    { "status": "available" },
+    { "status": "available", "expires_at": "invalid" }
+  ]
+}

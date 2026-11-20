@@ -1,0 +1,17 @@
+{
+  "five_hour": { "utilization": 24 },
+  "cedar_ember": {
+    "eligible": true, "at_limit": false,
+    "grants": [
+      { "label": "Weekly", "resets_left": 2, "resets_total": 3, "paused": false,
+        "usable_now": false, "use_requires_limit": true,
+        "starts_at": "2026-10-28T12:00:00+09:00", "ends_at": "2026-11-03T16:00:00-04:00" },
+      { "label": "Expired", "resets_left": 1, "paused": false,
+        "starts_at": "2026-09-01T00:00:00Z", "ends_at": "2026-10-28T03:00:00Z" },
+      { "label": "Future", "resets_left": 1, "paused": false,
+        "starts_at": "2026-10-28T03:00:01Z", "ends_at": "2026-12-01T00:00:00Z" },
+      { "label": "Paused", "resets_left": 1, "paused": true },
+      { "label": "Exhausted", "resets_left": 0, "resets_total": 4, "paused": false }
+    ]
+  }
+}

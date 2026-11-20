@@ -8,6 +8,19 @@ public static class MeterOptionList
 {
     public static string MissingSuffix => Strings.MeterMissingSuffix;
 
+    public static IReadOnlyList<MeterOption> ForView(
+        IReadOnlyList<MeterOption> staticOptions, ProviderView? view, IEnumerable<string?> selectedKeys)
+    {
+        if (view is not null && ProviderIds.KindOf(view.ProviderId) is ProviderIds.Claude or ProviderIds.Codex)
+        {
+            string label = ResetPassPresentation.Current(view) is null
+                ? Strings.ResetPassTitle + MissingSuffix : Strings.ResetPassTitle;
+            staticOptions = [.. staticOptions, new(ResetPassPresentation.Key, label)];
+        }
+
+        return Build(staticOptions, view?.DisplayMeters ?? [], selectedKeys);
+    }
+
     /// <summary>
     /// Static provider options first, then meters seen in the current view (by LongLabel),
     /// then any currently selected key that neither list has (so the selection is never lost).
@@ -45,7 +58,8 @@ public static class MeterOptionList
         {
             if (!string.IsNullOrEmpty(key) && seen.Add(key))
             {
-                result.Add(new MeterOption(key, key + MissingSuffix));
+                string label = key == ResetPassPresentation.Key ? Strings.ResetPassTitle : key;
+                result.Add(new MeterOption(key, label + MissingSuffix));
             }
         }
 

@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using AITokenUsage.Core.Abstractions;
 using AITokenUsage.Core.Accounts;
@@ -36,6 +38,10 @@ public sealed class CodexUsageProvider : IUsageProvider
     private DateTimeOffset? _lastAppServerAttempt;
     private CodexAppServerOutcome? _lastAppServerOutcome;
     private UsageSnapshot? _lastAppServerSnapshot;
+    private string? _authFingerprint;
+    private string? _detailUsageUrl;
+    private DateTimeOffset _nextDetailRead;
+    private ResetPassBalance? _details;
 
     private string? _accountEmail;
 
@@ -118,6 +124,7 @@ public sealed class CodexUsageProvider : IUsageProvider
         var now = _ctx.Time.GetUtcNow();
         var read = await _authReader.ReadAsync(_paths.AuthFile, ct).ConfigureAwait(false);
         var auth = read.Auth;
+        BindResetCredits(auth);
         Volatile.Write(ref _accountEmail, auth?.Email);
         if (auth?.Mode == CodexAuthMode.ApiKey)
             return UsageSnapshot.WithStatus(Id, ProviderStatus.Unsupported, now, MessageApiKey);
@@ -144,6 +151,7 @@ public sealed class CodexUsageProvider : IUsageProvider
                     && !string.Equals(changed.AccessToken, auth.AccessToken, StringComparison.Ordinal))
                 {
                     auth = changed;
+                    BindResetCredits(changed);
                     response = await _client.GetUsageAsync(usageUrl, changed, ct).ConfigureAwait(false);
                 }
             }
@@ -151,7 +159,8 @@ public sealed class CodexUsageProvider : IUsageProvider
             switch (response.Outcome)
             {
                 case CodexHttpOutcome.Ok:
-                    if (TryParseWham(response.Body ?? "", auth, now) is { } ok) return ok;
+                    if (TryParseWham(response.Body ?? "", auth, now) is { } ok)
+                        return await WithCreditDetailsAsync(ok, usageUrl, auth, now, ct).ConfigureAwait(false);
                     reason = Reason.WhamFailed;
                     break;
                 case CodexHttpOutcome.RateLimited:
@@ -186,7 +195,8 @@ public sealed class CodexUsageProvider : IUsageProvider
                 if (result.Outcome == CodexAppServerOutcome.Ok)
                 {
                     var plan = CodexUsageParser.FormatPlan(result.PlanType ?? auth?.PlanTypeClaim);
-                    _lastAppServerSnapshot = new UsageSnapshot(Id, ProviderStatus.Ok, plan, result.Meters, now);
+                    _lastAppServerSnapshot = new UsageSnapshot(Id, ProviderStatus.Ok, plan, result.Meters, now)
+                    { ResetPasses = result.ResetPasses };
                     return _lastAppServerSnapshot;
                 }
                 _lastAppServerSnapshot = null;
@@ -201,7 +211,16 @@ public sealed class CodexUsageProvider : IUsageProvider
         if (fromLogs is not null && (cachedServerSnapshot is null || fromLogs.Timestamp > cachedServerSnapshot.FetchedAt))
             return FromRollout(fromLogs, auth, now);
         if (cachedServerSnapshot is not null)
-            return cachedServerSnapshot;
+        {
+            // A keyring-only login has no local identity with which to bind cached credit details.
+            var cachedBalance = _authFingerprint is null ? null : cachedServerSnapshot.ResetPasses;
+            if (cachedBalance is not null && cachedBalance.Passes.Any(p => p.ExpiresAt <= now))
+            {
+                var live = cachedBalance.Passes.Where(p => !(p.ExpiresAt <= now)).ToArray();
+                cachedBalance = new(cachedBalance.AvailableCount - (cachedBalance.Passes.Count - live.Length), live);
+            }
+            return cachedServerSnapshot with { ResetPasses = cachedBalance };
+        }
 
         if (codexPath is not null && _lastAppServerOutcome == CodexAppServerOutcome.AuthRequired)
             return SignedOut(now);
@@ -234,13 +253,74 @@ public sealed class CodexUsageProvider : IUsageProvider
         {
             var parsed = CodexUsageParser.ParseWham(body, now);
             var plan = CodexUsageParser.FormatPlan(parsed.PlanType ?? auth.PlanTypeClaim);
-            return new UsageSnapshot(Id, ProviderStatus.Ok, plan, parsed.Meters, now);
+            return new UsageSnapshot(Id, ProviderStatus.Ok, plan, parsed.Meters, now) { ResetPasses = parsed.ResetPasses };
         }
         catch (JsonException)
         {
             _ctx.Log.Warn("Codex wham/usage returned a non-JSON body.");
             return null;
         }
+    }
+
+    private void BindResetCredits(CodexAuth? auth)
+    {
+        // The same account folder can be signed into again; never retain a bearer as a cache key.
+        var fingerprint = auth?.AccessToken is { } token
+            ? Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(auth.AccountId + "\n" + token)))
+            : null;
+        if (_authFingerprint == fingerprint) return;
+        _authFingerprint = fingerprint;
+        _details = null;
+        _nextDetailRead = default;
+        if (_lastAppServerSnapshot is { } previous)
+            _lastAppServerSnapshot = previous with { ResetPasses = null };
+    }
+
+    private async Task<UsageSnapshot> WithCreditDetailsAsync(
+        UsageSnapshot usage, string usageUrl, CodexAuth auth, DateTimeOffset now, CancellationToken ct)
+    {
+        // A later fallback must not resurrect an older inventory after a successful usage poll.
+        if (_lastAppServerSnapshot is { ResetPasses: not null } older)
+            _lastAppServerSnapshot = older with { ResetPasses = null };
+        if (_detailUsageUrl != usageUrl)
+        {
+            _detailUsageUrl = usageUrl;
+            _details = null;
+            _nextDetailRead = default;
+        }
+        var summary = usage.ResetPasses;
+        if (summary is null || summary.AvailableCount == 0)
+        {
+            _details = null;
+            return usage;
+        }
+        if (_details?.AvailableCount != summary.AvailableCount) _details = null;
+        if (now >= _nextDetailRead)
+        {
+            _nextDetailRead = now + AppServerMinimumGap;
+            _details = null;
+            var detailUrl = new Uri(new Uri(usageUrl), "rate-limit-reset-credits").AbsoluteUri;
+            var response = await _client.GetUsageAsync(detailUrl, auth, ct).ConfigureAwait(false);
+            if (response.RetryAfter is { } wait && wait > AppServerMinimumGap)
+                _nextDetailRead = wait < DateTimeOffset.MaxValue - now ? now + wait : DateTimeOffset.MaxValue;
+            if (response.Outcome == CodexHttpOutcome.Ok && response.Body is { } body)
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(body);
+                    _details = CodexResetCredits.Read(doc.RootElement, _ctx.Time.GetUtcNow());
+                }
+                catch (JsonException)
+                {
+                    _ctx.Log.Warn("Codex reset-credit details could not be parsed.");
+                }
+            }
+        }
+        if (_details is not { } details) return usage;
+        // A fresh /usage count supersedes cached counts. Expiries can also pass within the poll interval.
+        var asOf = _ctx.Time.GetUtcNow();
+        var live = details.Passes.Where(p => !(p.ExpiresAt <= asOf)).ToArray();
+        return usage with { ResetPasses = details with { Passes = live } };
     }
 
     private UsageSnapshot FromRollout(CodexRolloutSnapshot logs, CodexAuth? auth, DateTimeOffset now)

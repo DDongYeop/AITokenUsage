@@ -14,7 +14,11 @@ public static class DetailCardBuilder
 
         var formatter = new ResetTimeFormatter(zone);
         bool dimmed = view.IsStale;
-        CardRow[] rows = view.DisplayMeters.Select(m => ToRow(m, mode, now, formatter, dimmed)).ToArray();
+        var rows = view.DisplayMeters.Select(m => ToRow(m, mode, now, formatter, dimmed)).ToList();
+        if (ResetPassPresentation.Current(view) is { } balance)
+        {
+            rows.Add(ResetPassPresentation.Card(balance, zone));
+        }
 
         string? extra = view.Current.Status == ProviderStatus.Ok
             ? view.Current.ExtraLine

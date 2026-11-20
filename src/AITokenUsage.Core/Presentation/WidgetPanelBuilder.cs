@@ -27,7 +27,11 @@ public static class WidgetPanelBuilder
     {
         ArgumentNullException.ThrowIfNull(view);
 
-        (UsageMeter? first, UsageMeter? second) = MeterSelector.Select(view.DisplayMeters, line1Key, line2Key);
+        (UsageMeter? first, UsageMeter? second) = MeterSelector.SelectForView(view, line1Key, line2Key);
+        if (first is null && second is not null && ResetPassPresentation.Selected(line1Key, line2Key))
+        {
+            (first, second) = (second, null);
+        }
         if (first is null)
         {
             return new WidgetPanelModel(

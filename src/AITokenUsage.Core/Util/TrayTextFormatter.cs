@@ -20,14 +20,14 @@ public static class TrayTextFormatter
     public static UsageMeter? SelectLine1(ProviderView view, ProviderSettings? lines)
     {
         ArgumentNullException.ThrowIfNull(view);
-        return MeterSelector.Select(view.DisplayMeters, lines?.Line1Key, lines?.Line2Key).First;
+        return MeterSelector.SelectForView(view, lines?.Line1Key, lines?.Line2Key).First;
     }
 
     /// <summary>Line 2 exactly as the widget shows it (MeterSelector, the shared rule). Null when there is no other meter.</summary>
     public static UsageMeter? SelectLine2(ProviderView view, ProviderSettings? lines)
     {
         ArgumentNullException.ThrowIfNull(view);
-        return MeterSelector.Select(view.DisplayMeters, lines?.Line1Key, lines?.Line2Key).Second;
+        return MeterSelector.SelectForView(view, lines?.Line1Key, lines?.Line2Key).Second;
     }
 
     /// <summary>Clamped used percent, or 100 − used in Remaining mode. Null when the meter has no percent.</summary>
@@ -99,7 +99,8 @@ public static class TrayTextFormatter
         }
 
         string text;
-        if (!view.HasAnyData)
+        var (line1, line2) = MeterSelector.SelectForView(view, lines?.Line1Key, lines?.Line2Key);
+        if (line1 is null && line2 is null)
         {
             string status = string.IsNullOrWhiteSpace(view.Current.StatusMessage)
                 ? StatusText(view.Current.Status)
@@ -108,7 +109,6 @@ public static class TrayTextFormatter
         }
         else
         {
-            (UsageMeter? line1, UsageMeter? line2) = MeterSelector.Select(view.DisplayMeters, lines?.Line1Key, lines?.Line2Key);
             var parts = new List<string>(2);
             if (line1 is not null)
             {

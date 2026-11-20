@@ -67,6 +67,11 @@ final class AgentClient: ObservableObject {
 
     func refresh() { send("refresh") }
     func setEnabled(_ id: String, _ enabled: Bool) { send("set-enabled \(id) \(enabled)") }
+    func setNickname(_ id: String, _ nickname: String) {
+        // Keep a paste containing line breaks inside one agent command.
+        let singleLine = nickname.components(separatedBy: .newlines).joined(separator: " ")
+        send("set-nickname \(id) \(singleLine)")
+    }
     func setValueMode(_ mode: String) { send("set-value-mode \(mode)") }
     func setRotationEnabled(_ value: Bool) { send("set-rotation-enabled \(value)") }
     func setRotationSeconds(_ seconds: Int) { send("set-rotation-seconds \(seconds)") }

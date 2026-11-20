@@ -291,7 +291,7 @@ public sealed class AppHost : IAsyncDisposable
             }
         }
 
-        var result = new List<ProviderView>(AccountTags.Apply(enabled));
+        var result = new List<ProviderView>(AccountTags.Apply(enabled, Settings.Providers));
         if (Settings.SystemMonitor == SystemMonitorMode.RotationPanel)
         {
             result.Add(SystemPanel.ToView(SystemUsage));

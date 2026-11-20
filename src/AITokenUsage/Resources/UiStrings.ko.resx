@@ -241,6 +241,9 @@
   <data name="ProviderOptionsName" xml:space="preserve">
     <value>표시 설정</value>
   </data>
+  <data name="ProviderNicknameLabel" xml:space="preserve">
+    <value>별명 (비워 두면 기본 이름 사용)</value>
+  </data>
   <data name="ProviderLine1Label" xml:space="preserve">
     <value>1줄 표시</value>
   </data>

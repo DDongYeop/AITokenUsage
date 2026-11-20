@@ -241,6 +241,9 @@ Log: {0}</value>
   <data name="ProviderOptionsName" xml:space="preserve">
     <value>Display options</value>
   </data>
+  <data name="ProviderNicknameLabel" xml:space="preserve">
+    <value>Nickname (leave blank for the default name)</value>
+  </data>
   <data name="ProviderLine1Label" xml:space="preserve">
     <value>Line 1</value>
   </data>

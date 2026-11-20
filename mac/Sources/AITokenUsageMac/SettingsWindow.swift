@@ -147,6 +147,7 @@ private struct ProviderSettingsCard: View {
     let isFirst: Bool
     let isLast: Bool
     @State private var expanded: Bool?
+    @State private var nicknameDraft: String?
 
     private func t(_ key: L10n.Key) -> String { L10n.text(key, language: language) }
     /// Expanded by default while there is something to do (a guide), like the Windows card.
@@ -174,6 +175,17 @@ private struct ProviderSettingsCard: View {
             }
 
             if isExpanded {
+                HStack(spacing: 8) {
+                    Text(t(.nickname)).font(.system(size: 12))
+                    TextField(t(.nicknamePlaceholder), text: Binding(
+                        get: { nicknameDraft ?? provider.nickname ?? "" },
+                        set: { nicknameDraft = $0 }))
+                        .accessibilityLabel(t(.nickname))
+                        .onSubmit { saveNickname() }
+                    Button(t(.save)) { saveNickname() }
+                        .disabled(nicknameDraft == nil || nicknameDraft == (provider.nickname ?? ""))
+                }
+                .padding(.leading, 26)
                 if let guide = provider.guide {
                     GuideView(client: client, provider: provider, guide: guide, language: language)
                 }
@@ -186,6 +198,12 @@ private struct ProviderSettingsCard: View {
         .padding(16)
         .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.05)))
         .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.08)))
+    }
+
+    private func saveNickname() {
+        guard let nicknameDraft else { return }
+        client.setNickname(provider.id, nicknameDraft)
+        self.nicknameDraft = nil
     }
 }
 

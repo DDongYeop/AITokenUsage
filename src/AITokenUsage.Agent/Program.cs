@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using AITokenUsage.Core.Abstractions;
@@ -20,6 +21,7 @@ namespace AITokenUsage.Agent;
 /// Otherwise runs until stdin closes or "quit" arrives, printing a state line whenever something changes and every
 /// 30 s (so "resets in" texts stay current). Commands, one per line on stdin:
 ///   refresh [id] | set-enabled &lt;id&gt; true|false | set-lines &lt;id&gt; &lt;key1&gt; &lt;key2&gt; | move &lt;id&gt; up|down
+///   | set-nickname &lt;id&gt; [nickname including spaces] (omit the nickname to clear it)
 ///   | set-value-mode used|remaining | set-rotation &lt;seconds&gt;|off | set-rotation-enabled true|false
 ///   | set-rotation-seconds &lt;n&gt; | set-skip-unavailable true|false | set-pause-on-hover true|false
 ///   | set-show-reset-time true|false
@@ -42,6 +44,9 @@ public static class Program
 
     public static async Task<int> Main(string[] args)
     {
+        // The Swift client exchanges UTF-8 lines regardless of the host's console code page.
+        Console.InputEncoding = new UTF8Encoding(false);
+        Console.OutputEncoding = new UTF8Encoding(false);
         bool once = args.Contains("--once");
         string? osLanguage = ArgumentAfter(args, "--language");
 
@@ -111,7 +116,9 @@ public static class Program
         string? line;
         while ((line = await Console.In.ReadLineAsync().ConfigureAwait(false)) is not null)
         {
-            string[] parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            // A nickname occupies the rest of the line, including any interior spaces.
+            int maxParts = line.TrimStart().StartsWith("set-nickname ", StringComparison.Ordinal) ? 3 : int.MaxValue;
+            string[] parts = line.Split(' ', maxParts, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (parts.Length == 0) continue;
             if (parts[0] == "quit") break;
             if (copilotSignIn.TryHandle(parts[0])) continue;
@@ -151,6 +158,15 @@ public static class Program
                 {
                     if (settings.Providers.FirstOrDefault(p => p.Id == parts[1]) is not { } provider) return false;
                     provider.Enabled = enabled;
+                }
+
+                break;
+
+            case "set-nickname" when parts.Length is 2 or 3:
+                lock (Gate)
+                {
+                    if (settings.Providers.FirstOrDefault(p => p.Id == parts[1]) is not { } provider) return false;
+                    provider.Nickname = parts.Length == 3 ? parts[2] : null;
                 }
 
                 break;
@@ -331,23 +347,24 @@ public static class Program
             DateTimeOffset now = DateTimeOffset.UtcNow;
             TimeZoneInfo zone = TimeZoneInfo.Local;
 
-            var enabled = new List<ProviderView>();
-            var all = new List<ProviderEntry>();
+            var views = new List<ProviderView>();
             foreach (ProviderSettings provider in settings.Providers)
             {
-                if (usage.GetView(provider.Id) is not ProviderView view) continue;
-                all.Add(ToEntry(provider, view, now, zone));
-                if (provider.Enabled) enabled.Add(view);
+                if (usage.GetView(provider.Id) is ProviderView view) views.Add(view);
             }
 
-            IReadOnlyList<ProviderView> tagged = AccountTags.Apply(enabled);
+            var byId = settings.Providers.ToDictionary(p => p.Id);
+            // Settings can distinguish every account, including disabled ones. The widget tags only visible accounts.
+            var all = AccountTags.Apply(views).Select(v => ToEntry(byId[v.ProviderId], v, now, zone)).ToArray();
+            var enabled = views.Where(v => byId[v.ProviderId].Enabled).ToList();
+            IReadOnlyList<ProviderView> tagged = AccountTags.Apply(enabled, settings.Providers);
             var panels = new List<PanelState>(tagged.Count);
             for (int i = 0; i < tagged.Count; i++)
             {
                 ProviderView view = tagged[i];
-                ProviderSettings? lines = settings.Providers.FirstOrDefault(p => p.Id == view.ProviderId);
+                ProviderSettings lines = byId[view.ProviderId];
                 WidgetPanelModel widget = WidgetPanelBuilder.Build(
-                    view, lines?.Line1Key, lines?.Line2Key, settings.ValueMode, tagged.Count, i, now);
+                    view, lines.Line1Key, lines.Line2Key, settings.ValueMode, tagged.Count, i, now);
                 DetailCardModel card = DetailCardBuilder.Build(view, settings.ValueMode, now, zone);
                 panels.Add(new PanelState(
                     view.ProviderId,
@@ -390,7 +407,8 @@ public static class Program
             return new ProviderEntry(
                 view.ProviderId,
                 ProviderIds.KindOf(view.ProviderId),
-                view.Title,
+                view.IdentityTitle,
+                provider.Nickname,
                 provider.Enabled,
                 view.Current.Status,
                 ProviderStatusText.ForSettings(view, now, zone),
@@ -434,6 +452,7 @@ public static class Program
         string Id,
         string Kind,
         string Title,
+        string? Nickname,
         bool Enabled,
         ProviderStatus Status,
         string StatusText,

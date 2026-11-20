@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Threading;
 using AITokenUsage.Accounts;
 using AITokenUsage.Core.Accounts;
@@ -80,6 +81,17 @@ public partial class ProviderCard : UserControl
 
         ExtraHost.Content = extra;
 
+        NicknameBox.Text = settings.Nickname ?? "";
+        NicknameBox.LostKeyboardFocus += (_, _) => CommitNickname();
+        NicknameBox.KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Enter)
+            {
+                CommitNickname();
+                e.Handled = true;
+            }
+        };
+
         WhileLoading(() => EnabledBox.IsChecked = settings.Enabled);
 
         RoutedEventHandler onEnabledToggled = (_, _) =>
@@ -100,6 +112,17 @@ public partial class ProviderCard : UserControl
         DownButton.Click += (_, _) => MoveRequested?.Invoke(this, +1);
         Line1Box.SelectionChanged += (_, _) => OnLineChanged(Line1Box, key => _settings.Line1Key = key);
         Line2Box.SelectionChanged += (_, _) => OnLineChanged(Line2Box, key => _settings.Line2Key = key);
+    }
+
+    internal void CommitNickname()
+    {
+        string? previous = _settings.Nickname;
+        _settings.Nickname = NicknameBox.Text;
+        NicknameBox.Text = _settings.Nickname ?? "";
+        if (previous != _settings.Nickname)
+        {
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     public string ProviderId => _settings.Id;
@@ -189,7 +212,7 @@ public partial class ProviderCard : UserControl
     /// </summary>
     public void Refresh(ProviderView? view, DateTimeOffset now, int panelsOfKind)
     {
-        SetTitle(view?.Title ?? _provider.DisplayName);
+        SetTitle(view?.IdentityTitle ?? _provider.DisplayName);
         SetSubtitle(Subtitle(panelsOfKind));
 
         string status = view is null ? "" : ProviderStatusText.ForSettings(view, now, TimeZoneInfo.Local);
@@ -229,6 +252,7 @@ public partial class ProviderCard : UserControl
         NameText.Text = title;
         AutomationProperties.SetName(EnabledBox, ControlName(title, UiStrings.ProviderShowOnWidget));
         AutomationProperties.SetName(ExpandButton, ControlName(title, UiStrings.ProviderOptionsName));
+        AutomationProperties.SetName(NicknameBox, ControlName(title, UiStrings.ProviderNicknameLabel));
         AutomationProperties.SetName(Line1Box, ControlName(title, UiStrings.ProviderLine1Label));
         AutomationProperties.SetName(Line2Box, ControlName(title, UiStrings.ProviderLine2Label));
         AutomationProperties.SetName(UpButton, ControlName(title, UiStrings.ProviderMoveUpButton));

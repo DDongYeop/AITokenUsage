@@ -320,6 +320,31 @@ public sealed class SettingsStoreTests : IDisposable
         Assert.False(loaded.ShowDetailCard);
     }
 
+    [Theory]
+    [InlineData(TextWeightMode.Default, false)]
+    [InlineData(TextWeightMode.Normal, true)]
+    [InlineData(TextWeightMode.Bold, false)]
+    public void WidgetTypography_SurvivesSnapshotAndReload(TextWeightMode weight, bool smooth)
+    {
+        var settings = new AppSettings { TextWeight = weight, SmoothWidgetText = smooth };
+        _store.Save(settings.Clone());
+        var loaded = _store.Load();
+        Assert.Equal(weight, loaded.TextWeight);
+        Assert.Equal(smooth, loaded.SmoothWidgetText);
+    }
+
+    [Theory]
+    [InlineData("""{ "rotationSeconds": 8 }""")]
+    [InlineData("""{ "rotationSeconds": 8, "textWeight": 123 }""")]
+    public void WidgetTypography_LegacyOrUnknownWeight_KeepsOriginalAppearance(string json)
+    {
+        WriteRaw(json);
+        var loaded = _store.Load();
+        Assert.Equal(TextWeightMode.Default, loaded.TextWeight);
+        Assert.False(loaded.SmoothWidgetText);
+        Assert.Equal(8, loaded.RotationSeconds);
+    }
+
     [Fact]
     public void Load_JsonWithoutSystemMonitor_IsOff()
     {

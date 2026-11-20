@@ -163,6 +163,24 @@ Log: {0}</value>
   <data name="WidgetFontAutomatic" xml:space="preserve">
     <value>Automatic (default widget font)</value>
   </data>
+  <data name="WidgetTextWeightHeader" xml:space="preserve">
+    <value>Text weight</value>
+  </data>
+  <data name="TextWeightDefault" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="TextWeightNormal" xml:space="preserve">
+    <value>Normal</value>
+  </data>
+  <data name="TextWeightBold" xml:space="preserve">
+    <value>Bold</value>
+  </data>
+  <data name="WidgetSmoothTextHeader" xml:space="preserve">
+    <value>Smooth widget text</value>
+  </data>
+  <data name="WidgetSmoothTextDescription" xml:space="preserve">
+    <value>Use pixel-aligned text spacing and grayscale smoothing on the taskbar.</value>
+  </data>
   <data name="WidgetTextColorHeader" xml:space="preserve">
     <value>Text color</value>
   </data>

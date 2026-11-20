@@ -12,6 +12,7 @@ enum L10n {
         case copy, copied, signInTerminal, openTerminal, recheck, terminalFailed
         case githubSignIn, githubSignOut, cancel, openBrowser, enterCodeFormat, verifying, waitingForCode, unofficialApi
         case menuBarFont, defaultFont
+        case textWeight, weightDefault, weightNormal, weightBold
         case valueMode, valueUsed, valueRemaining, showResetTime, showResetTimeDescription
         case rotationEnabled, rotationInterval, secondsFormat, pauseOnOpen, skipUnavailable
         case language, languageAuto, restartNotice, restartNow, refreshInterval, minutesFormat, launchAtLogin, launchAtLoginNeedsApp
@@ -68,6 +69,10 @@ enum L10n {
         case .unofficialApi: return ("비공식 API를 사용합니다", "Uses an unofficial API")
         case .menuBarFont: return ("메뉴 막대 글꼴", "Menu bar font")
         case .defaultFont: return ("시스템 기본값", "System default")
+        case .textWeight: return ("글자 굵기", "Text weight")
+        case .weightDefault: return ("기본", "Default")
+        case .weightNormal: return ("보통", "Normal")
+        case .weightBold: return ("굵게", "Bold")
         case .valueMode: return ("수치", "Values")
         case .valueUsed: return ("사용한 %", "Used %")
         case .valueRemaining: return ("남은 %", "Remaining %")

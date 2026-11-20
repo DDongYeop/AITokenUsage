@@ -2,23 +2,37 @@ import AppKit
 import SwiftUI
 
 /// Resolve the installed family to a face name for SwiftUI; a missing family uses the system font.
+/// The text weight setting (default / normal / bold) is applied on top of each text's original weight.
 struct MenuBarFont {
     private let faceName: String?
+    let textWeight: WidgetTextWeight
 
     @MainActor
-    init(family: String?) {
+    init(family: String?, textWeight: WidgetTextWeight = .default) {
         faceName = family.flatMap {
             NSFontManager.shared.font(withFamily: $0, traits: [], weight: 5, size: 12)?.fontName
         }
+        self.textWeight = textWeight
     }
 
-    func font(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+    func font(size: CGFloat, weight original: Font.Weight = .regular) -> Font {
+        let weight = textWeight.resolve(original)
         guard let faceName else { return .system(size: size, weight: weight) }
         return .custom(faceName, fixedSize: size).weight(weight)
     }
 
     var fallbackLabelFont: Font? {
         faceName.map { .custom($0, fixedSize: NSFont.systemFontSize) }
+    }
+}
+
+private extension WidgetTextWeight {
+    func resolve(_ original: Font.Weight = .regular) -> Font.Weight {
+        switch self {
+        case .default: return original
+        case .normal: return .regular
+        case .bold: return .bold
+        }
     }
 }
 
@@ -29,13 +43,16 @@ struct MenuBarLabel: View {
     @ObservedObject var client: AgentClient
     @Environment(\.colorScheme) private var colorScheme
 
+    private var weight: WidgetTextWeight { client.state?.textWeight ?? .default }
+
     var body: some View {
-        let labelFont = MenuBarFont(family: client.state?.widgetFontFamily)
+        let labelFont = MenuBarFont(family: client.state?.widgetFontFamily, textWeight: weight)
         if let image = renderedImage(labelFont: labelFont) {
             Image(nsImage: image)
         } else {
             Text(client.currentPanel.map { "\($0.shortName) \($0.row1.value)" } ?? "AI")
                 .font(labelFont.fallbackLabelFont)
+                .fontWeight(weight == .default ? nil : weight.resolve())
         }
     }
 

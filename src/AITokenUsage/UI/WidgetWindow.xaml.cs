@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using AITokenUsage.Core.Settings;
 using AITokenUsage.Core.Taskbar;
 using AITokenUsage.Resources;
 
@@ -25,6 +26,7 @@ public partial class WidgetWindow : Window
     private int _transitionId;
     private bool _transitionRunning;
     private double _widthDip;
+    private (TextWeightMode Weight, bool Smooth)? _typography;
 
     public WidgetWindow(WidgetViewModel vm)
     {
@@ -33,6 +35,7 @@ public partial class WidgetWindow : Window
         _vm = vm;
         InitializeComponent();
         FontFamily = _vm.FontFamily;
+        ApplyTypography();
         ApplyWidth();
 
         _front = PanelA;
@@ -119,9 +122,23 @@ public partial class WidgetWindow : Window
 
     private void OnFlyoutPointerOverChanged(object? sender, EventArgs e) => _vm.SetPointerOver(_flyout.IsPointerOver);
 
+    private void ApplyTypography()
+    {
+        var settings = _vm.Host.Settings;
+        var current = (settings.TextWeight, settings.SmoothWidgetText);
+        if (_typography == current)
+        {
+            return;
+        }
+
+        WidgetTypography.Apply(Root, current.TextWeight, current.SmoothWidgetText);
+        _typography = current;
+    }
+
     private void OnUpdated(object? sender, EventArgs e)
     {
         FontFamily = _vm.FontFamily;
+        ApplyTypography();
         ApplyWidth();
         _front.Render(_vm.CurrentModel, _vm.Palette, _vm.ShowResetTime);
         RenderSystemColumn();

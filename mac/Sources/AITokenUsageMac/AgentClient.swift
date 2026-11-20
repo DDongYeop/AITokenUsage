@@ -85,6 +85,7 @@ final class AgentClient: ObservableObject {
             send("set-widget-font-family")
         }
     }
+    func setTextWeight(_ value: WidgetTextWeight) { send("set-text-weight \(value.rawValue)") }
     func setShowResetTime(_ value: Bool) { send("set-show-reset-time \(value)") }
     func setRefresh(_ minutes: Int) { send("set-refresh \(minutes)") }
     func setLines(_ id: String, _ line1: String, _ line2: String) { send("set-lines \(id) \(line1) \(line2)") }

@@ -22,7 +22,7 @@ enum PreviewRenderer {
                 for dark in [false, true] {
                     let bar = WidgetContent(
                         panel: panel, foreground: dark ? .white : .black, showReset: state.showResetTime,
-                        labelFont: MenuBarFont(family: state.widgetFontFamily))
+                        labelFont: MenuBarFont(family: state.widgetFontFamily, textWeight: state.textWeight ?? .default))
                         .frame(height: 22)
                         .padding(.horizontal, 8)
                         .background(dark ? Color(white: 0.12) : Color(white: 0.93))

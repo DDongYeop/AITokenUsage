@@ -38,3 +38,10 @@ public enum TextColorMode
     Light,
     Dark,
 }
+
+public enum TextWeightMode
+{
+    Default,
+    Normal,
+    Bold,
+}

@@ -57,5 +57,16 @@
             <ComboBox x:Name="FontBox" Width="260" DisplayMemberPath="Label" TextSearch.TextPath="Label"
                       AutomationProperties.Name="{x:Static res:UiStrings.WidgetFontHeader}" />
         </controls:SettingsCard>
+
+        <controls:SettingsCard Header="{x:Static res:UiStrings.WidgetTextWeightHeader}">
+            <ComboBox x:Name="TextWeightBox" Width="260" DisplayMemberPath="Label"
+                      AutomationProperties.Name="{x:Static res:UiStrings.WidgetTextWeightHeader}" />
+        </controls:SettingsCard>
+
+        <controls:SettingsCard Header="{x:Static res:UiStrings.WidgetSmoothTextHeader}"
+                               Description="{x:Static res:UiStrings.WidgetSmoothTextDescription}">
+            <CheckBox x:Name="SmoothWidgetTextBox" Style="{StaticResource ToggleSwitchStyle}"
+                      AutomationProperties.Name="{x:Static res:UiStrings.WidgetSmoothTextHeader}" />
+        </controls:SettingsCard>
     </StackPanel>
 </local:SettingsPage>

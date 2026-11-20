@@ -397,6 +397,14 @@ private struct WidgetPage: View {
             .horizontalRadioGroupLayout()
             .labelsHidden()
         }
+        SettingsCard(header: t(.textWeight)) {
+            Picker(t(.textWeight), selection: Binding(get: { state.textWeight ?? .default }, set: client.setTextWeight)) {
+                Text(t(.weightDefault)).tag(WidgetTextWeight.default)
+                Text(t(.weightNormal)).tag(WidgetTextWeight.normal)
+                Text(t(.weightBold)).tag(WidgetTextWeight.bold)
+            }
+            .labelsHidden()
+        }
         SettingsCard(header: t(.showResetTime), description: t(.showResetTimeDescription)) {
             OnOffToggle(isOn: state.showResetTime, language: state.language) { client.setShowResetTime($0) }
         }
